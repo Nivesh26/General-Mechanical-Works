@@ -6,7 +6,7 @@ import GMWlogoWhite from "../assets/GMWlogowhite.png";
 
 const quickLinks = [
   { to: "/", label: "Home" },
-  { to: "/about-us", label: "About us" },
+  { to: "/aboutus", label: "About us" },
   { to: "/services", label: "Services" },
   { to: "/products", label: "Products" },
   { to: "/contactus", label: "Contact Us" },

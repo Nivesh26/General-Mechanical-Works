@@ -5,7 +5,7 @@ import GMWlogo from '../assets/GMWlogo.png'
 const Header = () => {
   const navLinks = [
     { to: '/', label: 'Home' },
-    { to: '/about-us', label: 'About Us' },
+    { to: '/aboutus', label: 'About Us' },
     { to: '/services', label: 'Services' },
     { to: '/products', label: 'Products' },
     { to: '/contactus', label: 'Contact Us' },
