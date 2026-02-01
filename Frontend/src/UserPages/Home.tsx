@@ -5,6 +5,8 @@ import Copyright from '../UserComponent/Copyright'
 import Hero from '../UserComponent/Hero'
 import Brandweserve from '../UserComponent/Brandweserve'
 import Offer from '../UserComponent/Offer'
+import Service from '../UserComponent/Service'
+import Review from '../UserComponent/Review'
 
 const Home = () => {
   return (
@@ -13,6 +15,8 @@ const Home = () => {
         <Hero />
         <Brandweserve />                                  
         <Offer />
+        <Service />
+        <Review />
         <Footer />
         <Copyright />
     </div>
