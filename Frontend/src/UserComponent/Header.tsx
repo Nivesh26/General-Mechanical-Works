@@ -30,9 +30,10 @@ const Header = () => {
               <NavLink
                 key={to}
                 to={to}
+                end={to === '/'}
                 className={({ isActive }) =>
-                  `text-sm font-medium text-black hover:text-[#b91c1c] transition-colors ${
-                    isActive ? "text-[#b91c1c]" : ""
+                  `text-sm font-medium transition-colors ${
+                    isActive ? "text-primary" : "text-black hover:text-primary"
                   }`
                 }
               >
@@ -57,7 +58,7 @@ const Header = () => {
           {/* Login button */}
           <NavLink
             to="/login"
-            className="flex-shrink-0 px-6 py-2.5 rounded-full bg-[#b91c1c] text-white text-sm font-medium hover:bg-[#991b1b] transition-colors"
+            className="flex-shrink-0 px-6 py-2.5 rounded-full bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-colors"
           >
             Login
           </NavLink>
