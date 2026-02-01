@@ -26,8 +26,8 @@ function App() {
     <Route path="/adminsignup" element={<Adminsignup />} />
 
     {/* User Login and Signup */}
-    <Route path="/userlogin" element={<Userlogin />} />
-    <Route path="/usersignup" element={<Usersignup />} />
+    <Route path="/login" element={<Userlogin />} />
+    <Route path="/signup" element={<Usersignup />} />
 
     </Routes>
     </BrowserRouter>
