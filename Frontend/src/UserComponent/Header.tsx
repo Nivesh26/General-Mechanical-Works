@@ -13,7 +13,7 @@ function Header() {
 
   return (
     <header className="bg-white border-t-[3px] py-2">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="mx-[80px]">
         <div className="flex items-center justify-between h-20 gap-6">
           {/* Logo */}
           <NavLink to="/" className="flex-shrink-0">

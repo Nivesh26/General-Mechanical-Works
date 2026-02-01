@@ -6,7 +6,7 @@ import GMWlogoWhite from "../assets/GMWlogowhite.png";
 const Footer = () => {
   return (
     <footer className="bg-[#1e1e1f] text-white font-sans py-2">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="mx-[80px]">
         <div className="flex flex-wrap justify-between py-10">
           {/* Logo Section  */}
           <div className="flex-shrink-0 basis-[250px] max-w-[300px]">
