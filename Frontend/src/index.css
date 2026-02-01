@@ -1,7 +1,6 @@
-@import "@fontsource/geist";
 @import "tailwindcss";
+@import "@fontsource/geist";
 
-/* Trobus Expanded from OnlineWebFonts */
 @font-face {
   font-family: "Trobus Expanded";
   src: url("https://db.onlinewebfonts.com/t/dc60a7ff5630fa21ca307f698366549d.woff2") format("woff2"),
@@ -22,7 +21,6 @@ body {
   background-color: white;
 }
 
-/* Ensure font utilities work */
 .font-sec {
   font-family: "Trobus Expanded", Impact, "Arial Black", sans-serif;
 }
