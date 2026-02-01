@@ -2,13 +2,13 @@ import { NavLink } from 'react-router-dom'
 import { HiOutlineMagnifyingGlass } from 'react-icons/hi2'
 import GMWlogo from '../assets/GMWlogo.png'
 
-function Header() {
+const Header = () => {
   const navLinks = [
     { to: '/', label: 'Home' },
     { to: '/about-us', label: 'About Us' },
     { to: '/services', label: 'Services' },
     { to: '/products', label: 'Products' },
-    { to: '/contact-us', label: 'Contact Us' },
+    { to: '/contactus', label: 'Contact Us' },
   ]
 
   return (
@@ -30,7 +30,11 @@ function Header() {
               <NavLink
                 key={to}
                 to={to}
-                className="text-sm font-bolt text-black hover:text-[#b91c1c] transition-colors"
+                className={({ isActive }) =>
+                  `text-sm font-medium text-black hover:text-[#b91c1c] transition-colors ${
+                    isActive ? "text-[#b91c1c]" : ""
+                  }`
+                }
               >
                 {label}
               </NavLink>

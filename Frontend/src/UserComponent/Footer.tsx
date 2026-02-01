@@ -1,7 +1,16 @@
+import { NavLink } from "react-router-dom";
 import { HiOutlinePhone, HiOutlineEnvelope, HiOutlineMapPin } from "react-icons/hi2";
 import { FaFacebook, FaInstagram, FaTiktok, FaLinkedin } from "react-icons/fa";
 
 import GMWlogoWhite from "../assets/GMWlogowhite.png";
+
+const quickLinks = [
+  { to: "/", label: "Home" },
+  { to: "/about-us", label: "About us" },
+  { to: "/services", label: "Services" },
+  { to: "/products", label: "Products" },
+  { to: "/contactus", label: "Contact Us" },
+];
 
 const Footer = () => {
   return (
@@ -34,14 +43,22 @@ const Footer = () => {
 
           {/* Quick Links */}
           <div className="flex-shrink-0 basis-[200px] my-5">
-            <h4 className="text-base mb-4 font-bold">Quicks links</h4>
+            <h4 className="text-base mb-4 font-bold">Quick links</h4>
             <ul className="list-none p-0 border-0 outline-none">
-              <li className="mb-2.5 text-sm cursor-pointer">Home</li>
-              <li className="mb-2.5 text-sm cursor-pointer">About us</li>
-              <li className="mb-2.5 text-sm cursor-pointer">Services</li>
-
-              <li className="mb-2.5 text-sm cursor-pointer">Products</li>
-              <li className="mb-2.5 text-sm cursor-pointer">Contact Us</li>
+              {quickLinks.map(({ to, label }) => (
+                <li key={to} className="mb-2.5 text-sm">
+                  <NavLink
+                    to={to}
+                    className={({ isActive }) =>
+                      `text-white hover:opacity-80 transition-opacity ${
+                        isActive ? "opacity-100 font-semibold" : "opacity-90"
+                      }`
+                    }
+                  >
+                    {label}
+                  </NavLink>
+                </li>
+              ))}
             </ul>
           </div>
 

@@ -1,18 +1,16 @@
 import React from 'react'
-import Header from '../UserComponent/Header'
 import Footer from '../UserComponent/Footer'
+import Header from '../UserComponent/Header'
 import Copyright from '../UserComponent/Copyright'
-import Hero from '../UserComponent/Hero'
 
-const Home = () => {
+const Service = () => {
   return (
     <div>
         <Header />
-        <Hero />
         <Footer />
         <Copyright />
     </div>
   )
 }
 
-export default Home
+export default Service
