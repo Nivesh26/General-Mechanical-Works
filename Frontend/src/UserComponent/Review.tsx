@@ -90,6 +90,22 @@ const ReviewCard = ({
 };
 
 const Review = () => {
+  const [startIndex, setStartIndex] = useState(0);
+
+  const goToPrev = () => {
+    setStartIndex((prev) => (prev === 0 ? reviews.length - 1 : prev - 1));
+  };
+
+  const goToNext = () => {
+    setStartIndex((prev) => (prev === reviews.length - 1 ? 0 : prev + 1));
+  };
+
+  const displayOrder = [
+    reviews[startIndex],
+    reviews[(startIndex + 1) % reviews.length],
+    reviews[(startIndex + 2) % reviews.length],
+  ];
+
   return (
     <section className="w-full py-12 sm:py-16 bg-white overflow-hidden">
       <h2 className="text-center text-primary text-2xl sm:text-3xl font-sec font-bold tracking-[4px] uppercase mb-10 sm:mb-12">
@@ -97,10 +113,11 @@ const Review = () => {
       </h2>
 
       <div className="relative max-w-6xl mx-auto px-4 sm:px-8 overflow-visible">
-        {/* Left arrow - static for now */}
+        {/* Left arrow - cycles to previous review order */}
         <button
           type="button"
-          className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white border-2 border-gray-300 shadow-md flex items-center justify-center hover:bg-gray-50 hover:border-gray-400 transition-colors cursor-pointer"
+          onClick={goToPrev}
+          className="absolute -left-9 sm:-left-11 top-1/2 -translate-y-1/2 z-10 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white border-2 border-gray-300 shadow-md flex items-center justify-center hover:bg-gray-50 hover:border-gray-400 transition-colors cursor-pointer"
           aria-label="Previous review"
         >
           <svg
@@ -113,10 +130,11 @@ const Review = () => {
           </svg>
         </button>
 
-        {/* Right arrow - static for now */}
+        {/* Right arrow - cycles to next review order */}
         <button
           type="button"
-          className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white border-2 border-gray-300 shadow-md flex items-center justify-center hover:bg-gray-50 hover:border-gray-400 transition-colors cursor-pointer"
+          onClick={goToNext}
+          className="absolute -right-9 sm:-right-11 top-1/2 -translate-y-1/2 z-10 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white border-2 border-gray-300 shadow-md flex items-center justify-center hover:bg-gray-50 hover:border-gray-400 transition-colors cursor-pointer"
           aria-label="Next review"
         >
           <svg
@@ -129,8 +147,8 @@ const Review = () => {
           </svg>
         </button>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 pt-6 sm:pt-8 px-12 sm:px-14">
-          {reviews.map((review) => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 pt-6 sm:pt-8">
+          {displayOrder.map((review) => (
             <ReviewCard
               key={review.id}
               name={review.name}
