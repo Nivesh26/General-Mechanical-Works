@@ -8,6 +8,9 @@ import Offer from '../UserComponent/Offer'
 import Service from '../UserComponent/Service'
 import Review from '../UserComponent/Review'
 import Chooseus from '../UserComponent/Chooseus'
+import CTA from '../UserComponent/CTA'
+import Faq from '../UserComponent/Faq'
+import Blog from '../UserComponent/Blog'
 
 const Home = () => {
   return (
@@ -19,6 +22,9 @@ const Home = () => {
         <Service />
         <Review />
         <Chooseus />
+        <CTA />
+        <Blog />
+        <Faq />
         <Footer />
         <Copyright />
     </div>
