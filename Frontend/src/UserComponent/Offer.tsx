@@ -1,3 +1,4 @@
+import { useState } from "react";
 import Poster1 from "../assets/Poster1.png";
 import Poster2 from "../assets/Poster2.png";
 import Poster3 from "../assets/Poster3.png";
@@ -9,8 +10,43 @@ const offers = [
 ];
 
 const Offer = () => {
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const selectedOffer = offers.find((o) => o.id === selectedId);
+
   return (
     <section className="w-full py-12 sm:py-16 bg-white overflow-hidden">
+      {/* Fullscreen lightbox - click backdrop or close to minimize */}
+      {selectedOffer && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 cursor-pointer"
+          onClick={() => setSelectedId(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Viewing offer"
+        >
+          <button
+            type="button"
+            className="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-white/90 hover:bg-white border-2 border-gray-300 flex items-center justify-center text-gray-700 cursor-pointer"
+            onClick={() => setSelectedId(null)}
+            aria-label="Close"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          <div
+            className="relative max-w-7xl w-full max-h-[95vh] flex items-center justify-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={selectedOffer.image}
+              alt={selectedOffer.alt}
+              className="max-w-full max-h-[95vh] w-auto h-auto object-contain rounded-lg shadow-2xl"
+            />
+          </div>
+        </div>
+      )}
+
       <h2 className="text-center text-primary text-2xl sm:text-3xl font-sec font-bold italic tracking-[4px] uppercase mb-10 sm:mb-12">
         Latest Offers
       </h2>
@@ -53,6 +89,11 @@ const Offer = () => {
             <div
               key={offer.id}
               className="rounded-2xl overflow-hidden shadow-lg border border-gray-200 cursor-pointer"
+              onClick={() => setSelectedId(offer.id)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === "Enter" && setSelectedId(offer.id)}
+              aria-label={`View ${offer.alt}`}
             >
               <img
                 src={offer.image}
