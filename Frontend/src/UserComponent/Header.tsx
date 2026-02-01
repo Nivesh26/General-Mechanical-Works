@@ -30,7 +30,7 @@ function Header() {
               <NavLink
                 key={to}
                 to={to}
-                className="text-sm font-medium text-black hover:text-[#b91c1c] transition-colors"
+                className="text-sm font-bolt text-black hover:text-[#b91c1c] transition-colors"
               >
                 {label}
               </NavLink>
