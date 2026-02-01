@@ -15,8 +15,40 @@ const Offer = () => {
         Latest Offers
       </h2>
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-8">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-12">
+      <div className="relative max-w-6xl mx-auto px-4 sm:px-8">
+        {/* Left arrow - static for now */}
+        <button
+          type="button"
+          className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white border-2 border-gray-300 shadow-md flex items-center justify-center hover:bg-gray-50 hover:border-gray-400 transition-colors cursor-pointer"
+          aria-label="Previous offer"
+        >
+          <svg
+            className="w-5 h-5 sm:w-6 sm:h-6 text-gray-700"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+
+        {/* Right arrow - static for now */}
+        <button
+          type="button"
+          className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white border-2 border-gray-300 shadow-md flex items-center justify-center hover:bg-gray-50 hover:border-gray-400 transition-colors cursor-pointer"
+          aria-label="Next offer"
+        >
+          <svg
+            className="w-5 h-5 sm:w-6 sm:h-6 text-gray-700"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-12 px-12 sm:px-14">
           {offers.map((offer) => (
             <div
               key={offer.id}

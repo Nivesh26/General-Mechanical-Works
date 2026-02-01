@@ -7,6 +7,7 @@ import Brandweserve from '../UserComponent/Brandweserve'
 import Offer from '../UserComponent/Offer'
 import Service from '../UserComponent/Service'
 import Review from '../UserComponent/Review'
+import Chooseus from '../UserComponent/Chooseus'
 
 const Home = () => {
   return (
@@ -17,6 +18,7 @@ const Home = () => {
         <Offer />
         <Service />
         <Review />
+        <Chooseus />
         <Footer />
         <Copyright />
     </div>

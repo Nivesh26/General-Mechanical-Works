@@ -16,8 +16,13 @@
   --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
 }
 
-body {
+body,
+#root,
+p, span, li, td, th, label, input, textarea, button, a, h1, h2, h3, h4, h5, h6 {
   font-family: "Geist", ui-sans-serif, system-ui, sans-serif;
+}
+
+body {
   background-color: white;
 }
 
