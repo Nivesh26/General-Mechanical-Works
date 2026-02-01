@@ -67,7 +67,7 @@ const ReviewCard = ({
       </h3>
 
       <p
-        className={`text-sm leading-snug mb-3 flex-1 text-left max-w-md ${
+        className={`text-sm leading-snug mb-3 flex-1 text-center max-w-md ${
           isHovered ? "text-white/95" : "text-gray-700"
         }`}
       >
@@ -96,8 +96,40 @@ const Review = () => {
         Customer Reviews
       </h2>
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-8 overflow-visible">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 sm:gap-10 pt-8 sm:pt-10">
+      <div className="relative max-w-6xl mx-auto px-4 sm:px-8 overflow-visible">
+        {/* Left arrow - static for now */}
+        <button
+          type="button"
+          className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white border-2 border-gray-300 shadow-md flex items-center justify-center hover:bg-gray-50 hover:border-gray-400 transition-colors cursor-pointer"
+          aria-label="Previous review"
+        >
+          <svg
+            className="w-5 h-5 sm:w-6 sm:h-6 text-gray-700"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+
+        {/* Right arrow - static for now */}
+        <button
+          type="button"
+          className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white border-2 border-gray-300 shadow-md flex items-center justify-center hover:bg-gray-50 hover:border-gray-400 transition-colors cursor-pointer"
+          aria-label="Next review"
+        >
+          <svg
+            className="w-5 h-5 sm:w-6 sm:h-6 text-gray-700"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 sm:gap-10 pt-8 sm:pt-10 px-12 sm:px-14">
           {reviews.map((review) => (
             <ReviewCard
               key={review.id}
