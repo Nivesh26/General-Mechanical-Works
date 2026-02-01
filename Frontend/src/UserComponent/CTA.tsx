@@ -4,7 +4,7 @@ import CtaImg from "../assets/Cta.png";
 const CTA = () => {
   return (
     <section
-      className="relative w-full min-h-[260px] sm:min-h-[300px] flex items-center justify-center bg-cover bg-center bg-no-repeat py-8 sm:py-10"
+      className="relative w-full min-h-[260px] sm:min-h-[300px] flex items-center justify-center bg-cover bg-center bg-no-repeat py-12 sm:py-16"
       style={{ backgroundImage: `url(${CtaImg})` }}
     >
       {/* Dark overlay for text readability */}

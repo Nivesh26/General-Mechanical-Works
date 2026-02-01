@@ -30,8 +30,8 @@ const Faq = () => {
   };
 
   return (
-    <section className="w-full py-16 sm:py-20 bg-white overflow-hidden">
-      <h2 className="text-center text-primary text-2xl sm:text-3xl font-sec font-bold tracking-[4px] uppercase mb-14 sm:mb-16">
+    <section className="w-full py-12 sm:py-16 bg-white overflow-hidden">
+      <h2 className="text-center text-primary text-2xl sm:text-3xl font-sec font-bold tracking-[4px] uppercase mb-10 sm:mb-12">
         FAQ
       </h2>
 

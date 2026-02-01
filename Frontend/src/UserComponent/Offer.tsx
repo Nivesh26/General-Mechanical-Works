@@ -52,7 +52,7 @@ const Offer = () => {
           {offers.map((offer) => (
             <div
               key={offer.id}
-              className="rounded-2xl overflow-hidden shadow-lg border border-gray-200"
+              className="rounded-2xl overflow-hidden shadow-lg border border-gray-200 cursor-pointer"
             >
               <img
                 src={offer.image}
