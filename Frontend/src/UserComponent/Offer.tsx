@@ -16,10 +16,10 @@ const Offer = () => {
       </h2>
 
       <div className="relative max-w-6xl mx-auto px-4 sm:px-8">
-        {/* Left arrow - static for now */}
+        {/* Left arrow - inside content, static for now */}
         <button
           type="button"
-          className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white border-2 border-gray-300 shadow-md flex items-center justify-center hover:bg-gray-50 hover:border-gray-400 transition-colors cursor-pointer"
+          className="absolute -left-9 sm:-left-11 top-1/2 -translate-y-1/2 z-10 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white border-2 border-gray-300 shadow-md flex items-center justify-center hover:bg-gray-50 hover:border-gray-400 transition-colors cursor-pointer"
           aria-label="Previous offer"
         >
           <svg
@@ -32,10 +32,10 @@ const Offer = () => {
           </svg>
         </button>
 
-        {/* Right arrow - static for now */}
+        {/* Right arrow - inside content, static for now */}
         <button
           type="button"
-          className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white border-2 border-gray-300 shadow-md flex items-center justify-center hover:bg-gray-50 hover:border-gray-400 transition-colors cursor-pointer"
+          className="absolute -right-9 sm:-right-11 top-1/2 -translate-y-1/2 z-10 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white border-2 border-gray-300 shadow-md flex items-center justify-center hover:bg-gray-50 hover:border-gray-400 transition-colors cursor-pointer"
           aria-label="Next offer"
         >
           <svg
@@ -48,7 +48,7 @@ const Offer = () => {
           </svg>
         </button>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-12 px-12 sm:px-14">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
           {offers.map((offer) => (
             <div
               key={offer.id}

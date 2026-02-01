@@ -92,7 +92,7 @@ const ReviewCard = ({
 const Review = () => {
   return (
     <section className="w-full py-12 sm:py-16 bg-white overflow-hidden">
-      <h2 className="text-center text-primary text-2xl sm:text-3xl font-sec font-bold tracking-[4px] uppercase mb-14 sm:mb-16">
+      <h2 className="text-center text-primary text-2xl sm:text-3xl font-sec font-bold tracking-[4px] uppercase mb-10 sm:mb-12">
         Customer Reviews
       </h2>
 
@@ -129,7 +129,7 @@ const Review = () => {
           </svg>
         </button>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 sm:gap-10 pt-8 sm:pt-10 px-12 sm:px-14">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 pt-6 sm:pt-8 px-12 sm:px-14">
           {reviews.map((review) => (
             <ReviewCard
               key={review.id}
