@@ -23,7 +23,7 @@ const Profile = () => {
         <Profliephotos firstName={firstName} lastName={lastName} />
         <Profileform firstName={firstName} lastName={lastName} onNameChange={handleNameChange} />
       </div>
-      
+
       <Footer />
       <Copyright /> 
     </div>

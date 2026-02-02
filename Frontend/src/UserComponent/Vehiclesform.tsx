@@ -1,4 +1,74 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
+
+const COMPANIES = ["Yamaha", "Honda", "KTM", "Triumph", "Suzuki"];
+const MODELS_BY_COMPANY: Record<string, string[]> = {
+  Yamaha: ["R1", "R15", "MT-15", "FZ", "RayZR"],
+  Honda: ["CBR", "Activa", "Shine", "Dio", "Hornet"],
+  KTM: ["Duke 390", "RC 390", "Adventure", "Duke 250", "RC 200"],
+  Triumph: ["Street Triple", "Bonneville", "Tiger", "Speed Triple", "Trident"],
+  Suzuki: ["GSX-R", "Gixxer", "Access", "Burgman", "V-Strom"],
+};
+const COLORS = ["Black", "Red", "Blue", "White", "Silver", "Green", "Yellow", "Orange", "Grey"];
+
+interface ComboboxProps {
+  value: string;
+  onChange: (v: string) => void;
+  options: string[];
+  placeholder: string;
+  onKeyDown?: (e: React.KeyboardEvent) => void;
+  className?: string;
+  autoFocus?: boolean;
+}
+
+const Combobox = ({ value, onChange, options, placeholder, onKeyDown, className, autoFocus }: ComboboxProps) => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const filtered = options.filter((o) => o.toLowerCase().includes(value.toLowerCase()));
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  return (
+    <div ref={ref} className="relative w-full max-w-40 mx-auto">
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onFocus={() => setOpen(true)}
+        onKeyDown={onKeyDown}
+        placeholder={placeholder}
+        autoFocus={autoFocus}
+        className={className}
+      />
+      {open && (
+        <div className="absolute top-full left-0 right-0 mt-1 max-h-32 overflow-auto bg-white border border-gray-200 rounded-md shadow-lg z-10">
+          {filtered.length > 0 ? (
+            filtered.map((opt) => (
+              <button
+                key={opt}
+                type="button"
+                className="w-full px-3 py-2 text-left text-[15px] text-[#1a1a1a] hover:bg-gray-100"
+                onClick={() => {
+                  onChange(opt);
+                  setOpen(false);
+                }}
+              >
+                {opt}
+              </button>
+            ))
+          ) : (
+            <div className="px-3 py-2 text-gray-500 text-sm">No match (type to add custom)</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const initialVehicles = [
   { company: "Yamaha", model: "R1", plate: "BA 01 1111", color: "Black" },
@@ -18,7 +88,7 @@ const Vehiclesform = () => {
     setEditingPlate(plate);
     setEditingCompany(company);
     setEditingModel(model);
-    setEditingPlateValue(plate);
+    setEditingPlateValue(plate.startsWith("new-") ? "" : plate);
     setEditingColor(color);
   };
 
@@ -110,13 +180,13 @@ const Vehiclesform = () => {
             >
               <div className="flex justify-center">
                 {isEditing ? (
-                  <input
-                    type="text"
-                    placeholder="Company name"
+                  <Combobox
                     value={editingCompany}
-                    onChange={(e) => setEditingCompany(e.target.value)}
+                    onChange={setEditingCompany}
+                    options={COMPANIES}
+                    placeholder="Company name"
                     onKeyDown={handleKeyDown}
-                    className="w-full max-w-40 bg-transparent border-0 border-b border-gray-200 py-2 px-0 text-[#1a1a1a] text-center text-[15px] sm:text-base focus:outline-none focus:border-primary"
+                    className="w-full bg-transparent border-0 border-b border-gray-200 py-2 px-0 text-[#1a1a1a] text-center text-[15px] sm:text-base focus:outline-none focus:border-primary"
                     autoFocus
                   />
                 ) : (
@@ -127,13 +197,13 @@ const Vehiclesform = () => {
               </div>
               <div className="flex justify-center">
                 {isEditing ? (
-                  <input
-                    type="text"
-                    placeholder="Bike model"
+                  <Combobox
                     value={editingModel}
-                    onChange={(e) => setEditingModel(e.target.value)}
+                    onChange={setEditingModel}
+                    options={MODELS_BY_COMPANY[editingCompany] ?? []}
+                    placeholder="Bike model"
                     onKeyDown={handleKeyDown}
-                    className="w-full max-w-40 bg-transparent border-0 border-b border-gray-200 py-2 px-0 text-[#1a1a1a] text-center text-[15px] sm:text-base focus:outline-none focus:border-primary"
+                    className="w-full bg-transparent border-0 border-b border-gray-200 py-2 px-0 text-[#1a1a1a] text-center text-[15px] sm:text-base focus:outline-none focus:border-primary"
                   />
                 ) : (
                   <span className="text-[#1a1a1a] font-medium text-[15px] sm:text-base text-center">
@@ -146,7 +216,7 @@ const Vehiclesform = () => {
                   <input
                     type="text"
                     placeholder="Plate"
-                    value={editingPlateValue}
+                    value={editingPlateValue.startsWith("new-") ? "" : editingPlateValue}
                     onChange={(e) => setEditingPlateValue(e.target.value)}
                     onKeyDown={handleKeyDown}
                     className="w-full max-w-40 bg-transparent border-0 border-b border-gray-200 py-2 px-0 text-[#1a1a1a] text-center text-[15px] sm:text-base focus:outline-none focus:border-primary"
@@ -159,13 +229,13 @@ const Vehiclesform = () => {
               </div>
               <div className="flex justify-center">
                 {isEditing ? (
-                  <input
-                    type="text"
-                    placeholder="Color"
+                  <Combobox
                     value={editingColor}
-                    onChange={(e) => setEditingColor(e.target.value)}
+                    onChange={setEditingColor}
+                    options={COLORS}
+                    placeholder="Color"
                     onKeyDown={handleKeyDown}
-                    className="w-full max-w-40 bg-transparent border-0 border-b border-gray-200 py-2 px-0 text-[#1a1a1a] text-center text-[15px] sm:text-base focus:outline-none focus:border-primary"
+                    className="w-full bg-transparent border-0 border-b border-gray-200 py-2 px-0 text-[#1a1a1a] text-center text-[15px] sm:text-base focus:outline-none focus:border-primary"
                   />
                 ) : (
                   <span className="text-center text-gray-500 text-[15px] sm:text-base">
