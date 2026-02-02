@@ -103,6 +103,10 @@ const Vehiclesform = ({ vehicles, setVehicles }: VehiclesformProps) => {
     editingCompany.trim() !== "" && editingModel.trim() !== "" && editingPlateValue.trim() !== "";
 
   const startEdit = (company: string, model: string, plate: string, color: string) => {
+    // If switching to another row while editing an unsaved new vehicle, cancel the new vehicle
+    if (editingPlate && editingPlate.startsWith("new-") && plate !== editingPlate) {
+      setVehicles((prev) => prev.filter((v) => v.plate !== editingPlate));
+    }
     setValidationErrors(null);
     setEditingPlate(plate);
     setEditingCompany(company);
@@ -250,7 +254,7 @@ const Vehiclesform = ({ vehicles, setVehicles }: VehiclesformProps) => {
                     </span>
                   )}
                 </div>
-                {isEditing && validationErrors?.company && (
+                {isEditing && plate.startsWith("new-") && validationErrors?.company && (
                   <p className="text-red-600 text-xs sm:text-sm text-center mt-0.5" role="alert">
                     {validationErrors.company}
                   </p>
@@ -273,7 +277,7 @@ const Vehiclesform = ({ vehicles, setVehicles }: VehiclesformProps) => {
                     </span>
                   )}
                 </div>
-                {isEditing && validationErrors?.model && (
+                {isEditing && plate.startsWith("new-") && validationErrors?.model && (
                   <p className="text-red-600 text-xs sm:text-sm text-center mt-0.5" role="alert">
                     {validationErrors.model}
                   </p>
@@ -296,7 +300,7 @@ const Vehiclesform = ({ vehicles, setVehicles }: VehiclesformProps) => {
                     </span>
                   )}
                 </div>
-                {isEditing && validationErrors?.licensePlate && (
+                {isEditing && plate.startsWith("new-") && validationErrors?.licensePlate && (
                   <p className="text-red-600 text-xs sm:text-sm text-center mt-0.5" role="alert">
                     {validationErrors.licensePlate}
                   </p>
