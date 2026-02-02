@@ -24,10 +24,14 @@ const Vehiclesform = () => {
 
   const saveEdit = () => {
     if (editingPlate === null) return;
+    const isNewVehicle = editingPlate.startsWith("new-");
+    if (isNewVehicle && !editingPlateValue.trim()) return; // Require plate for new vehicle
+
+    const newPlate = editingPlateValue.trim();
     setVehicles((prev) =>
       prev.map((v) =>
         v.plate === editingPlate
-          ? { company: editingCompany, model: editingModel, plate: editingPlateValue, color: editingColor }
+          ? { company: editingCompany, model: editingModel, plate: isNewVehicle ? newPlate : (newPlate || v.plate), color: editingColor }
           : v
       )
     );
@@ -39,6 +43,10 @@ const Vehiclesform = () => {
   };
 
   const cancelEdit = () => {
+    const isNewVehicle = editingPlate?.startsWith("new-");
+    if (isNewVehicle) {
+      setVehicles((prev) => prev.filter((v) => v.plate !== editingPlate));
+    }
     setEditingPlate(null);
     setEditingCompany("");
     setEditingModel("");
@@ -56,6 +64,13 @@ const Vehiclesform = () => {
   const removeVehicle = (plate: string) => {
     setVehicles((prev) => prev.filter((v) => v.plate !== plate));
     if (editingPlate === plate) cancelEdit();
+  };
+
+  const addVehicle = () => {
+    const tempId = `new-${Date.now()}`;
+    const newVehicle = { company: "", model: "", plate: tempId, color: "" };
+    setVehicles((prev) => [...prev, newVehicle]);
+    startEdit("", "", tempId, "");
   };
 
   return (
@@ -77,7 +92,9 @@ const Vehiclesform = () => {
           </span>
           <button
             type="button"
-            className="px-4 py-2 rounded-full bg-primary text-white text-sm font-medium hover:opacity-95 transition-opacity cursor-pointer justify-self-center"
+            onClick={addVehicle}
+            disabled={editingPlate?.startsWith("new-") ?? false}
+            className="px-4 py-2 rounded-full bg-primary text-white text-sm font-medium hover:opacity-95 transition-opacity cursor-pointer justify-self-center disabled:opacity-60 disabled:cursor-not-allowed"
           >
             Add Vehicle
           </button>
