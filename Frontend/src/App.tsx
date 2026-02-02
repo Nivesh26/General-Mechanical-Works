@@ -10,6 +10,8 @@ import Adminsignup from './Logins-Signup/Adminsignup'
 import Userlogin from './Logins-Signup/Userlogin'
 import Usersignup from './Logins-Signup/Usersignup'
 import Profile from './UserPages/Profile'
+import Vehicles from './UserPages/ProfileVehicles'
+import ProfileSecurity from './UserPages/ProfileSecurity'
 
 function App() {
   return (
@@ -22,6 +24,8 @@ function App() {
     <Route path="/products" element={<Products />} />
     <Route path="/contactus" element={<Contactus />} />
     <Route path="/profile" element={<Profile />} />
+    <Route path="/profile/vehicles" element={<Vehicles />} />
+    <Route path="/profile/security" element={<ProfileSecurity />} />
 
     {/* User Login and Signup */}
     <Route path="/login" element={<Userlogin />} />
