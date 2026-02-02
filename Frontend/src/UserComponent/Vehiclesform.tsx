@@ -1,21 +1,25 @@
 import { useState } from "react";
 
 const initialVehicles = [
-  { name: "Yamaha R1", plate: "BA 01 1111" },
-  { name: "Honda CBR", plate: "BA 02 2222" },
-  { name: "Suzuki GSX", plate: "BA 03 3333" },
+  { company: "Yamaha", model: "R1", plate: "BA 01 1111", color: "Black" },
+  { company: "Honda", model: "CBR", plate: "BA 02 2222", color: "Red" },
+  { company: "Suzuki", model: "GSX", plate: "BA 03 3333", color: "Blue" },
 ];
 
 const Vehiclesform = () => {
   const [vehicles, setVehicles] = useState(initialVehicles);
   const [editingPlate, setEditingPlate] = useState<string | null>(null);
-  const [editingName, setEditingName] = useState("");
+  const [editingCompany, setEditingCompany] = useState("");
+  const [editingModel, setEditingModel] = useState("");
   const [editingPlateValue, setEditingPlateValue] = useState("");
+  const [editingColor, setEditingColor] = useState("");
 
-  const startEdit = (name: string, plate: string) => {
+  const startEdit = (company: string, model: string, plate: string, color: string) => {
     setEditingPlate(plate);
-    setEditingName(name);
+    setEditingCompany(company);
+    setEditingModel(model);
     setEditingPlateValue(plate);
+    setEditingColor(color);
   };
 
   const saveEdit = () => {
@@ -23,19 +27,23 @@ const Vehiclesform = () => {
     setVehicles((prev) =>
       prev.map((v) =>
         v.plate === editingPlate
-          ? { name: editingName, plate: editingPlateValue }
+          ? { company: editingCompany, model: editingModel, plate: editingPlateValue, color: editingColor }
           : v
       )
     );
     setEditingPlate(null);
-    setEditingName("");
+    setEditingCompany("");
+    setEditingModel("");
     setEditingPlateValue("");
+    setEditingColor("");
   };
 
   const cancelEdit = () => {
     setEditingPlate(null);
-    setEditingName("");
+    setEditingCompany("");
+    setEditingModel("");
     setEditingPlateValue("");
+    setEditingColor("");
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -53,48 +61,70 @@ const Vehiclesform = () => {
   return (
     <section className="w-full py-6 sm:py-8 px-2 sm:px-0">
       <div className="border-t border-gray-200">
-        {/* My Vehicles | License Plate header row */}
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 py-3 sm:py-4 border-b border-gray-200">
-          <span className="text-[#1a1a1a] font-semibold text-[15px] sm:text-base w-full sm:w-32 sm:min-w-32 shrink-0">
-            My Vehicles
+        {/* Company | Model | License Plate | Color header row */}
+        <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_1fr_1fr_auto] sm:items-center gap-4 sm:gap-6 py-3 sm:py-4 border-b border-gray-200">
+          <span className="text-[#1a1a1a] font-semibold text-[15px] sm:text-base text-center">
+            Company
           </span>
-          <span className="flex-1 text-center text-[#1a1a1a] font-semibold text-[15px] sm:text-base min-w-0 hidden sm:block">
+          <span className="text-[#1a1a1a] font-semibold text-[15px] sm:text-base text-center">
+            Model
+          </span>
+          <span className="text-[#1a1a1a] font-semibold text-[15px] sm:text-base text-center">
             License Plate
+          </span>
+          <span className="text-[#1a1a1a] font-semibold text-[15px] sm:text-base text-center">
+            Color
           </span>
           <button
             type="button"
-            className="px-4 py-2 rounded-full bg-primary text-white text-sm font-medium hover:opacity-95 transition-opacity cursor-pointer shrink-0 w-fit"
+            className="px-4 py-2 rounded-full bg-primary text-white text-sm font-medium hover:opacity-95 transition-opacity cursor-pointer justify-self-center"
           >
             Add Vehicle
           </button>
         </div>
 
         {/* Vehicle rows */}
-        {vehicles.map(({ name, plate }) => {
+        {vehicles.map(({ company, model, plate, color }) => {
           const isEditing = editingPlate === plate;
           return (
             <div
               key={plate}
-              className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 py-3 sm:py-4 border-b border-gray-200"
+              className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_1fr_1fr_auto] sm:items-center gap-4 sm:gap-6 py-3 sm:py-4 border-b border-gray-200"
             >
-              <div className="w-full sm:w-32 sm:min-w-32 shrink-0">
+              <div className="flex justify-center">
                 {isEditing ? (
                   <input
                     type="text"
-                    placeholder="Vehicle name"
-                    value={editingName}
-                    onChange={(e) => setEditingName(e.target.value)}
+                    placeholder="Company name"
+                    value={editingCompany}
+                    onChange={(e) => setEditingCompany(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    className="w-full bg-transparent border-0 border-b border-gray-200 py-2 px-0 text-[#1a1a1a] text-[15px] sm:text-base focus:outline-none focus:border-primary"
+                    className="w-full max-w-40 bg-transparent border-0 border-b border-gray-200 py-2 px-0 text-[#1a1a1a] text-center text-[15px] sm:text-base focus:outline-none focus:border-primary"
                     autoFocus
                   />
                 ) : (
-                  <span className="text-[#1a1a1a] font-medium text-[15px] sm:text-base">
-                    {name}
+                  <span className="text-[#1a1a1a] font-medium text-[15px] sm:text-base text-center">
+                    {company}
                   </span>
                 )}
               </div>
-              <div className="flex-1 w-full min-w-0 flex justify-center">
+              <div className="flex justify-center">
+                {isEditing ? (
+                  <input
+                    type="text"
+                    placeholder="Bike model"
+                    value={editingModel}
+                    onChange={(e) => setEditingModel(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    className="w-full max-w-40 bg-transparent border-0 border-b border-gray-200 py-2 px-0 text-[#1a1a1a] text-center text-[15px] sm:text-base focus:outline-none focus:border-primary"
+                  />
+                ) : (
+                  <span className="text-[#1a1a1a] font-medium text-[15px] sm:text-base text-center">
+                    {model}
+                  </span>
+                )}
+              </div>
+              <div className="flex justify-center">
                 {isEditing ? (
                   <input
                     type="text"
@@ -105,16 +135,32 @@ const Vehiclesform = () => {
                     className="w-full max-w-40 bg-transparent border-0 border-b border-gray-200 py-2 px-0 text-[#1a1a1a] text-center text-[15px] sm:text-base focus:outline-none focus:border-primary"
                   />
                 ) : (
-                  <span className="text-center text-gray-500 text-[15px] sm:text-base min-w-0 truncate block w-full">
+                  <span className="text-center text-gray-500 text-[15px] sm:text-base">
                     {plate}
                   </span>
                 )}
               </div>
-              <div className="flex gap-3 sm:gap-4 shrink-0 flex-wrap">
+              <div className="flex justify-center">
+                {isEditing ? (
+                  <input
+                    type="text"
+                    placeholder="Color"
+                    value={editingColor}
+                    onChange={(e) => setEditingColor(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    className="w-full max-w-40 bg-transparent border-0 border-b border-gray-200 py-2 px-0 text-[#1a1a1a] text-center text-[15px] sm:text-base focus:outline-none focus:border-primary"
+                  />
+                ) : (
+                  <span className="text-center text-gray-500 text-[15px] sm:text-base">
+                    {color}
+                  </span>
+                )}
+              </div>
+              <div className="flex gap-3 sm:gap-4 justify-center">
                 <button
                   type="button"
                   onClick={() =>
-                    isEditing ? saveEdit() : startEdit(name, plate)
+                    isEditing ? saveEdit() : startEdit(company, model, plate, color)
                   }
                   className="text-primary text-sm font-medium hover:underline cursor-pointer"
                 >
