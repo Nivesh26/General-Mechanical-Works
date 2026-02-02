@@ -18,9 +18,10 @@ interface ComboboxProps {
   onKeyDown?: (e: React.KeyboardEvent) => void;
   className?: string;
   autoFocus?: boolean;
+  align?: "left" | "center";
 }
 
-const Combobox = ({ value, onChange, options, placeholder, onKeyDown, className, autoFocus }: ComboboxProps) => {
+const Combobox = ({ value, onChange, options, placeholder, onKeyDown, className, autoFocus, align = "center" }: ComboboxProps) => {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const filtered = options.filter((o) => o.toLowerCase().includes(value.toLowerCase()));
@@ -34,7 +35,7 @@ const Combobox = ({ value, onChange, options, placeholder, onKeyDown, className,
   }, []);
 
   return (
-    <div ref={ref} className="relative w-full max-w-40 mx-auto">
+    <div ref={ref} className={`relative w-full max-w-40 ${align === "left" ? "ml-0 mr-auto" : "mx-auto"}`}>
       <input
         type="text"
         value={value}
@@ -207,7 +208,7 @@ const Vehiclesform = ({ vehicles, setVehicles }: VehiclesformProps) => {
       <div className="border-t border-gray-200">
         {/* Company | Model | License Plate | Color header row */}
         <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_1fr_1fr_auto] sm:items-center gap-4 sm:gap-6 py-3 sm:py-4 border-b border-gray-200">
-          <span className="text-[#1a1a1a] font-semibold text-[15px] sm:text-base text-center">
+          <span className="text-[#1a1a1a] font-semibold text-[15px] sm:text-base text-left">
             Company
           </span>
           <span className="text-[#1a1a1a] font-semibold text-[15px] sm:text-base text-center">
@@ -236,8 +237,8 @@ const Vehiclesform = ({ vehicles, setVehicles }: VehiclesformProps) => {
               key={plate}
               className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_1fr_1fr_auto] sm:items-center gap-4 sm:gap-6 py-3 sm:py-4 border-b border-gray-200"
             >
-              <div className="flex flex-col items-center justify-center gap-0.5">
-                <div className="flex justify-center w-full">
+              <div className="flex flex-col items-start justify-center gap-0.5">
+                <div className="flex justify-start w-full">
                   {isEditing ? (
                     <Combobox
                       value={editingCompany}
@@ -245,11 +246,12 @@ const Vehiclesform = ({ vehicles, setVehicles }: VehiclesformProps) => {
                       options={COMPANIES}
                       placeholder="Company name"
                       onKeyDown={handleKeyDown}
-                      className="w-full bg-transparent border-0 border-b border-gray-200 py-2 px-0 text-[#1a1a1a] text-center text-[15px] sm:text-base focus:outline-none focus:border-primary"
+                      className="w-full bg-transparent border-0 border-b border-gray-200 py-2 px-0 text-[#1a1a1a] text-left text-[15px] sm:text-base focus:outline-none focus:border-primary"
                       autoFocus
+                      align="left"
                     />
                   ) : (
-                    <span className="text-[#1a1a1a] font-medium text-[15px] sm:text-base text-center">
+                    <span className="text-[#1a1a1a] font-medium text-[15px] sm:text-base text-left">
                       {company}
                     </span>
                   )}
