@@ -25,7 +25,7 @@ const Profliephotos = () => {
         />
         <button
           type="button"
-          className="absolute top-4 right-4 z-10 px-4 py-2 rounded-lg bg-white text-black text-sm font-medium border border-gray-200 hover:bg-gray-50 cursor-pointer"
+          className="absolute top-4 right-4 z-10 px-4 py-2 rounded-full bg-white text-black text-sm font-medium border border-gray-200 hover:bg-gray-50 cursor-pointer"
         >
           Upload Cover
         </button>
