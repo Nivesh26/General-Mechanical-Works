@@ -10,7 +10,7 @@ const Profile = () => {
   return (
     <div>
       <Header />
-      <div className="mx-[80px]">
+      <div className="mx-4 sm:mx-8 lg:mx-[80px]">
         <Profliephotos />
         <Profileform />
       </div>
