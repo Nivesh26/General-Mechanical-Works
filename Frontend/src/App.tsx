@@ -9,6 +9,7 @@ import Adminlogin from './Logins-Signup/Adminlogin'
 import Adminsignup from './Logins-Signup/Adminsignup'
 import Userlogin from './Logins-Signup/Userlogin'
 import Usersignup from './Logins-Signup/Usersignup'
+import Profile from './UserPages/Profile'
 
 function App() {
   return (
@@ -20,15 +21,16 @@ function App() {
     <Route path="/services" element={<Service />} />
     <Route path="/products" element={<Products />} />
     <Route path="/contactus" element={<Contactus />} />
-
-    {/* Admin Login and Signup */}
-    <Route path="/adminlogin" element={<Adminlogin />} />
-    <Route path="/adminsignup" element={<Adminsignup />} />
+    <Route path="/profile" element={<Profile />} />
 
     {/* User Login and Signup */}
     <Route path="/login" element={<Userlogin />} />
     <Route path="/signup" element={<Usersignup />} />
 
+    {/* Admin Login and Signup */}
+    <Route path="/adminlogin" element={<Adminlogin />} />
+    <Route path="/adminsignup" element={<Adminsignup />} />
+    
     </Routes>
     </BrowserRouter>
   )
