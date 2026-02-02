@@ -52,7 +52,7 @@ const Combobox = ({ value, onChange, options, placeholder, onKeyDown, className,
               <button
                 key={opt}
                 type="button"
-                className="w-full px-3 py-2 text-left text-[15px] text-[#1a1a1a] hover:bg-gray-100"
+                className="w-full px-3 py-2 text-center text-[15px] text-[#1a1a1a] hover:bg-gray-100"
                 onClick={() => {
                   onChange(opt);
                   setOpen(false);
@@ -62,7 +62,7 @@ const Combobox = ({ value, onChange, options, placeholder, onKeyDown, className,
               </button>
             ))
           ) : (
-            <div className="px-3 py-2 text-gray-500 text-sm">No match (type to add custom)</div>
+            <div className="px-3 py-2 text-gray-500 text-sm text-center">No match (type to add custom)</div>
           )}
         </div>
       )}
@@ -70,21 +70,40 @@ const Combobox = ({ value, onChange, options, placeholder, onKeyDown, className,
   );
 };
 
-const initialVehicles = [
+export interface Vehicle {
+  company: string;
+  model: string;
+  plate: string;
+  color: string;
+}
+
+export const initialVehicles: Vehicle[] = [
   { company: "Yamaha", model: "R1", plate: "BA 01 1111", color: "Black" },
-  { company: "Honda", model: "CBR", plate: "BA 02 2222", color: "Red" },
-  { company: "Suzuki", model: "GSX", plate: "BA 03 3333", color: "Blue" },
+  
 ];
 
-const Vehiclesform = () => {
-  const [vehicles, setVehicles] = useState(initialVehicles);
+interface VehiclesformProps {
+  vehicles: Vehicle[];
+  setVehicles: React.Dispatch<React.SetStateAction<Vehicle[]>>;
+}
+
+const REQUIRED_MSG = "Please fill the form (Company, Model and License Plate are required).";
+
+type FieldErrors = { company: string; model: string; licensePlate: string };
+
+const Vehiclesform = ({ vehicles, setVehicles }: VehiclesformProps) => {
   const [editingPlate, setEditingPlate] = useState<string | null>(null);
   const [editingCompany, setEditingCompany] = useState("");
   const [editingModel, setEditingModel] = useState("");
   const [editingPlateValue, setEditingPlateValue] = useState("");
   const [editingColor, setEditingColor] = useState("");
+  const [validationErrors, setValidationErrors] = useState<FieldErrors | null>(null);
+
+  const isNewVehicleFormValid = () =>
+    editingCompany.trim() !== "" && editingModel.trim() !== "" && editingPlateValue.trim() !== "";
 
   const startEdit = (company: string, model: string, plate: string, color: string) => {
+    setValidationErrors(null);
     setEditingPlate(plate);
     setEditingCompany(company);
     setEditingModel(model);
@@ -95,7 +114,17 @@ const Vehiclesform = () => {
   const saveEdit = () => {
     if (editingPlate === null) return;
     const isNewVehicle = editingPlate.startsWith("new-");
-    if (isNewVehicle && !editingPlateValue.trim()) return; // Require plate for new vehicle
+    if (isNewVehicle) {
+      if (!isNewVehicleFormValid()) {
+        setValidationErrors({
+          company: editingCompany.trim() === "" ? REQUIRED_MSG : "",
+          model: editingModel.trim() === "" ? REQUIRED_MSG : "",
+          licensePlate: editingPlateValue.trim() === "" ? REQUIRED_MSG : "",
+        });
+        return;
+      }
+      setValidationErrors(null);
+    }
 
     const newPlate = editingPlateValue.trim();
     setVehicles((prev) =>
@@ -113,6 +142,7 @@ const Vehiclesform = () => {
   };
 
   const cancelEdit = () => {
+    setValidationErrors(null);
     const isNewVehicle = editingPlate?.startsWith("new-");
     if (isNewVehicle) {
       setVehicles((prev) => prev.filter((v) => v.plate !== editingPlate));
@@ -137,6 +167,31 @@ const Vehiclesform = () => {
   };
 
   const addVehicle = () => {
+    if (editingPlate?.startsWith("new-")) {
+      if (!isNewVehicleFormValid()) {
+        setValidationErrors({
+          company: editingCompany.trim() === "" ? REQUIRED_MSG : "",
+          model: editingModel.trim() === "" ? REQUIRED_MSG : "",
+          licensePlate: editingPlateValue.trim() === "" ? REQUIRED_MSG : "",
+        });
+        return;
+      }
+      setValidationErrors(null);
+      // Save current new vehicle's form data into the list before adding another
+      const plateValue = editingPlateValue.trim();
+      setVehicles((prev) =>
+        prev.map((v) =>
+          v.plate === editingPlate
+            ? {
+                company: editingCompany,
+                model: editingModel,
+                plate: plateValue,
+                color: editingColor,
+              }
+            : v
+        )
+      );
+    }
     const tempId = `new-${Date.now()}`;
     const newVehicle = { company: "", model: "", plate: tempId, color: "" };
     setVehicles((prev) => [...prev, newVehicle]);
@@ -163,8 +218,7 @@ const Vehiclesform = () => {
           <button
             type="button"
             onClick={addVehicle}
-            disabled={editingPlate?.startsWith("new-") ?? false}
-            className="px-4 py-2 rounded-full bg-primary text-white text-sm font-medium hover:opacity-95 transition-opacity cursor-pointer justify-self-center disabled:opacity-60 disabled:cursor-not-allowed"
+            className="px-4 py-2 rounded-full bg-primary text-white text-sm font-medium hover:opacity-95 transition-opacity cursor-pointer justify-self-center"
           >
             Add Vehicle
           </button>
@@ -178,53 +232,74 @@ const Vehiclesform = () => {
               key={plate}
               className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_1fr_1fr_auto] sm:items-center gap-4 sm:gap-6 py-3 sm:py-4 border-b border-gray-200"
             >
-              <div className="flex justify-center">
-                {isEditing ? (
-                  <Combobox
-                    value={editingCompany}
-                    onChange={setEditingCompany}
-                    options={COMPANIES}
-                    placeholder="Company name"
-                    onKeyDown={handleKeyDown}
-                    className="w-full bg-transparent border-0 border-b border-gray-200 py-2 px-0 text-[#1a1a1a] text-center text-[15px] sm:text-base focus:outline-none focus:border-primary"
-                    autoFocus
-                  />
-                ) : (
-                  <span className="text-[#1a1a1a] font-medium text-[15px] sm:text-base text-center">
-                    {company}
-                  </span>
+              <div className="flex flex-col items-center justify-center gap-0.5">
+                <div className="flex justify-center w-full">
+                  {isEditing ? (
+                    <Combobox
+                      value={editingCompany}
+                      onChange={setEditingCompany}
+                      options={COMPANIES}
+                      placeholder="Company name"
+                      onKeyDown={handleKeyDown}
+                      className="w-full bg-transparent border-0 border-b border-gray-200 py-2 px-0 text-[#1a1a1a] text-center text-[15px] sm:text-base focus:outline-none focus:border-primary"
+                      autoFocus
+                    />
+                  ) : (
+                    <span className="text-[#1a1a1a] font-medium text-[15px] sm:text-base text-center">
+                      {company}
+                    </span>
+                  )}
+                </div>
+                {isEditing && validationErrors?.company && (
+                  <p className="text-red-600 text-xs sm:text-sm text-center mt-0.5" role="alert">
+                    {validationErrors.company}
+                  </p>
                 )}
               </div>
-              <div className="flex justify-center">
-                {isEditing ? (
-                  <Combobox
-                    value={editingModel}
-                    onChange={setEditingModel}
-                    options={MODELS_BY_COMPANY[editingCompany] ?? []}
-                    placeholder="Bike model"
-                    onKeyDown={handleKeyDown}
-                    className="w-full bg-transparent border-0 border-b border-gray-200 py-2 px-0 text-[#1a1a1a] text-center text-[15px] sm:text-base focus:outline-none focus:border-primary"
-                  />
-                ) : (
-                  <span className="text-[#1a1a1a] font-medium text-[15px] sm:text-base text-center">
-                    {model}
-                  </span>
+              <div className="flex flex-col items-center justify-center gap-0.5">
+                <div className="flex justify-center w-full">
+                  {isEditing ? (
+                    <Combobox
+                      value={editingModel}
+                      onChange={setEditingModel}
+                      options={MODELS_BY_COMPANY[editingCompany] ?? []}
+                      placeholder="Bike model"
+                      onKeyDown={handleKeyDown}
+                      className="w-full bg-transparent border-0 border-b border-gray-200 py-2 px-0 text-[#1a1a1a] text-center text-[15px] sm:text-base focus:outline-none focus:border-primary"
+                    />
+                  ) : (
+                    <span className="text-[#1a1a1a] font-medium text-[15px] sm:text-base text-center">
+                      {model}
+                    </span>
+                  )}
+                </div>
+                {isEditing && validationErrors?.model && (
+                  <p className="text-red-600 text-xs sm:text-sm text-center mt-0.5" role="alert">
+                    {validationErrors.model}
+                  </p>
                 )}
               </div>
-              <div className="flex justify-center">
-                {isEditing ? (
-                  <input
-                    type="text"
-                    placeholder="Plate"
-                    value={editingPlateValue.startsWith("new-") ? "" : editingPlateValue}
-                    onChange={(e) => setEditingPlateValue(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    className="w-full max-w-40 bg-transparent border-0 border-b border-gray-200 py-2 px-0 text-[#1a1a1a] text-center text-[15px] sm:text-base focus:outline-none focus:border-primary"
-                  />
-                ) : (
-                  <span className="text-center text-gray-500 text-[15px] sm:text-base">
-                    {plate}
-                  </span>
+              <div className="flex flex-col items-center justify-center gap-0.5">
+                <div className="flex justify-center w-full">
+                  {isEditing ? (
+                    <input
+                      type="text"
+                      placeholder="Plate"
+                      value={editingPlateValue.startsWith("new-") ? "" : editingPlateValue}
+                      onChange={(e) => setEditingPlateValue(e.target.value)}
+                      onKeyDown={handleKeyDown}
+                      className="w-full max-w-40 bg-transparent border-0 border-b border-gray-200 py-2 px-0 text-[#1a1a1a] text-center text-[15px] sm:text-base focus:outline-none focus:border-primary"
+                    />
+                  ) : (
+                    <span className="text-center text-gray-500 text-[15px] sm:text-base">
+                      {plate}
+                    </span>
+                  )}
+                </div>
+                {isEditing && validationErrors?.licensePlate && (
+                  <p className="text-red-600 text-xs sm:text-sm text-center mt-0.5" role="alert">
+                    {validationErrors.licensePlate}
+                  </p>
                 )}
               </div>
               <div className="flex justify-center">

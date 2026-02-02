@@ -1,17 +1,20 @@
+import { useState } from 'react'
 import Copyright from '../UserComponent/Copyright'
 import Header from '../UserComponent/Header'
 import Footer from '../UserComponent/Footer'
 import Profliephotos from '../UserComponent/Profliephotos'
-import Vehiclesform from '../UserComponent/Vehiclesform'
+import Vehiclesform, { initialVehicles } from '../UserComponent/Vehiclesform'
 
 const ProfileVehicles = () => {
+  const [vehicles, setVehicles] = useState(initialVehicles)
+
   return (
     <div>
       <Header />
 
       <div className="mx-4 sm:mx-8 lg:mx-[80px]">
-        <Profliephotos activeTab="vehicles" />
-        <Vehiclesform />
+        <Profliephotos activeTab="vehicles" vehicles={vehicles} />
+        <Vehiclesform vehicles={vehicles} setVehicles={setVehicles} />
       </div>
 
       <Footer />

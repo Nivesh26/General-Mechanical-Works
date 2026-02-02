@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import niveshImg from "../assets/Nivesh.png";
+import type { Vehicle } from "./Vehiclesform";
 
 type ActiveTab = "profile" | "vehicles" | "security";
 
@@ -7,9 +8,20 @@ interface ProfliphotosProps {
   activeTab?: ActiveTab;
   firstName?: string;
   lastName?: string;
+  vehicles?: Vehicle[];
 }
 
-const Profliephotos = ({ activeTab = "profile", firstName = "Nivesh", lastName = "Shrestha" }: ProfliphotosProps) => {
+const formatVehicleLabel = (v: Vehicle) =>
+  [v.company, v.model].filter(Boolean).join(" ") + (v.plate && !v.plate.startsWith("new-") ? ` (${v.plate})` : "");
+
+const Profliephotos = ({ activeTab = "profile", firstName = "Nivesh", lastName = "Shrestha", vehicles = [] }: ProfliphotosProps) => {
+  const displayVehicles = vehicles.filter((v) => v.company || v.model || (v.plate && !v.plate.startsWith("new-")));
+  const vehicleLabel =
+    displayVehicles.length === 0
+      ? "No vehicles"
+      : displayVehicles.length >= 2
+        ? displayVehicles.map(formatVehicleLabel).join(", ")
+        : formatVehicleLabel(displayVehicles[0]);
   return (
     <section className="w-full pt-8 pb-4">
       {/* Cover + Upload button; only profile photo in front */}
@@ -71,7 +83,7 @@ const Profliephotos = ({ activeTab = "profile", firstName = "Nivesh", lastName =
               {firstName} {lastName}
             </h1>
             <p className="text-black text-sm sm:text-base mt-0.5 font-normal">
-              Yamaha R1 (BA 01 1111)
+              {vehicleLabel}
             </p>
           </div>
         </div>

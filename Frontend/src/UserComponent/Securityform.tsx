@@ -1,22 +1,36 @@
 import { useState } from "react";
 import { HiEye, HiEyeSlash } from "react-icons/hi2";
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 const Securityform = () => {
-  const [email, setEmail] = useState("nivesh@gmail.com.com");
+  const [email, setEmail] = useState("nivesh@gmail.com");
   const [editingEmail, setEditingEmail] = useState(false);
   const [emailInput, setEmailInput] = useState("");
+  const [emailError, setEmailError] = useState("");
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [showCurrent, setShowCurrent] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
   const startEditEmail = () => {
+    setEmailError("");
     setEmailInput(email);
     setEditingEmail(true);
   };
 
   const saveEmail = () => {
-    setEmail(emailInput.trim() || email);
+    const trimmed = emailInput.trim();
+    if (trimmed.length === 0) {
+      setEmailError("Email is required.");
+      return;
+    }
+    if (!EMAIL_REGEX.test(trimmed)) {
+      setEmailError("Please enter a valid email address.");
+      return;
+    }
+    setEmailError("");
+    setEmail(trimmed);
     setEditingEmail(false);
     setEmailInput("");
   };
@@ -36,21 +50,28 @@ const Securityform = () => {
           <span className="text-[#1a1a1a] font-medium text-[15px] sm:text-base w-full sm:w-32 sm:min-w-32 shrink-0">
             Email
           </span>
-          <div className="flex-1 flex justify-center min-w-0 pr-10">
-            {editingEmail ? (
-              <input
-                type="email"
-                value={emailInput}
-                onChange={(e) => setEmailInput(e.target.value)}
-                onKeyDown={handleEmailKeyDown}
-                placeholder="Enter email"
-                className="w-full max-w-md bg-transparent border-0 border-b border-gray-200 py-2 px-0 text-[#1a1a1a] text-center text-[15px] sm:text-base focus:outline-none focus:border-primary"
-                autoFocus
-              />
-            ) : (
-              <span className="text-center text-gray-500 text-[15px] sm:text-base truncate block w-full">
-                {email}
-              </span>
+          <div className="flex-1 flex flex-col items-center gap-0.5 min-w-0 pr-10">
+            <div className="w-full flex justify-center">
+              {editingEmail ? (
+                <input
+                  type="email"
+                  value={emailInput}
+                  onChange={(e) => setEmailInput(e.target.value)}
+                  onKeyDown={handleEmailKeyDown}
+                  placeholder="Enter email"
+                  className="w-full max-w-md bg-transparent border-0 border-b border-gray-200 py-2 px-0 text-[#1a1a1a] text-center text-[15px] sm:text-base focus:outline-none focus:border-primary"
+                  autoFocus
+                />
+              ) : (
+                <span className="text-center text-gray-500 text-[15px] sm:text-base truncate block w-full">
+                  {email}
+                </span>
+              )}
+            </div>
+            {emailError && (
+              <p className="text-red-600 text-sm text-center w-full mt-0.5" role="alert">
+                {emailError}
+              </p>
             )}
           </div>
           <div className="w-20 sm:w-24 shrink-0 flex justify-end">

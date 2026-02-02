@@ -3,6 +3,7 @@ import Footer from '../UserComponent/Footer'
 import Copyright from '../UserComponent/Copyright'
 import Profliephotos from '../UserComponent/Profliephotos'
 import Securityform from '../UserComponent/Securityform'
+import { initialVehicles } from '../UserComponent/Vehiclesform'
 
 const ProfileSecurity = () => {
   return (
@@ -10,7 +11,7 @@ const ProfileSecurity = () => {
       <Header />
 
       <div className="mx-4 sm:mx-8 lg:mx-[80px]">
-        <Profliephotos activeTab="security" />
+        <Profliephotos activeTab="security" vehicles={initialVehicles} />
         <Securityform />
       </div>
 
