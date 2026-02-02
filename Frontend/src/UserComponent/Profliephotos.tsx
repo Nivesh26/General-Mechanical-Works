@@ -3,7 +3,13 @@ import niveshImg from "../assets/Nivesh.png";
 
 type ActiveTab = "profile" | "vehicles" | "security";
 
-const Profliephotos = ({ activeTab = "profile" }: { activeTab?: ActiveTab }) => {
+interface ProfliphotosProps {
+  activeTab?: ActiveTab;
+  firstName?: string;
+  lastName?: string;
+}
+
+const Profliephotos = ({ activeTab = "profile", firstName = "Nivesh", lastName = "Shrestha" }: ProfliphotosProps) => {
   return (
     <section className="w-full pt-8 pb-4">
       {/* Cover + Upload button; only profile photo in front */}
@@ -62,7 +68,7 @@ const Profliephotos = ({ activeTab = "profile" }: { activeTab?: ActiveTab }) => 
           {/* Name + subtitle - a little up */}
           <div className="pb-10 -mt-24 sm:-mt-25">
             <h1 className="text-primary font-bold text-xl sm:text-2xl">
-              Nivesh Shrestha
+              {firstName} {lastName}
             </h1>
             <p className="text-black text-sm sm:text-base mt-0.5 font-normal">
               Yamaha R1 (BA 01 1111)

@@ -1,15 +1,21 @@
 import { useState } from "react";
 
-const initialFields = [
-  { label: "First Name", value: "Nivesh" },
-  { label: "Last Name", value: "Shrestha" },
-  { label: "Phone Number", value: "9849925333" },
-  { label: "Date of Birth", value: "2004 - 02 - 2" },
-  { label: "Gender", value: "Male" },
-  { label: "Location", value: "Pulchowk, Lalitpur, Nepal" },
-];
+interface ProfileformProps {
+  firstName?: string;
+  lastName?: string;
+  onNameChange?: (firstName: string, lastName: string) => void;
+}
 
-const Profileform = () => {
+const Profileform = ({ firstName = "Nivesh", lastName = "Shrestha", onNameChange }: ProfileformProps) => {
+  const initialFields = [
+    { label: "First Name", value: firstName },
+    { label: "Last Name", value: lastName },
+    { label: "Phone Number", value: "9849925333" },
+    { label: "Date of Birth", value: "2004 - 02 - 2" },
+    { label: "Gender", value: "Male" },
+    { label: "Location", value: "Pulchowk, Lalitpur, Nepal" },
+  ];
+
   const [fields, setFields] = useState(initialFields);
   const [editingLabel, setEditingLabel] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState("");
@@ -21,11 +27,18 @@ const Profileform = () => {
 
   const saveEdit = () => {
     if (editingLabel === null) return;
-    setFields((prev) =>
-      prev.map((f) =>
-        f.label === editingLabel ? { ...f, value: editingValue } : f
-      )
+    const updatedFields = fields.map((f) =>
+      f.label === editingLabel ? { ...f, value: editingValue } : f
     );
+    setFields(updatedFields);
+    
+    // Notify parent if name fields changed
+    if (onNameChange && (editingLabel === "First Name" || editingLabel === "Last Name")) {
+      const newFirstName = updatedFields.find(f => f.label === "First Name")?.value || "";
+      const newLastName = updatedFields.find(f => f.label === "Last Name")?.value || "";
+      onNameChange(newFirstName, newLastName);
+    }
+    
     setEditingLabel(null);
     setEditingValue("");
   };
