@@ -1,7 +1,9 @@
 import { Link } from "react-router-dom";
 import niveshImg from "../assets/Nivesh.png";
 
-const Profliephotos = () => {
+type ActiveTab = "profile" | "vehicles" | "security";
+
+const Profliephotos = ({ activeTab = "profile" }: { activeTab?: ActiveTab }) => {
   return (
     <section className="w-full pt-8 pb-4">
       {/* Cover + Upload button; only profile photo in front */}
@@ -68,23 +70,29 @@ const Profliephotos = () => {
           </div>
         </div>
 
-        {/* Tabs: PROFILE | SECURITY | VEHICLES - far right, aligned with name */}
+        {/* Tabs: PROFILE | VEHICLES | SECURITY – active tab gets red underline */}
         <div className="flex gap-6 sm:gap-8 pb-3 border-b border-gray-200 shrink-0">
           <Link
             to="/profile"
-            className="text-black text-sm font-medium uppercase tracking-wide border-b-2 border-primary pb-3 -mb-[13px]"
+            className={`text-black text-sm font-medium uppercase tracking-wide border-b-2 pb-3 -mb-[13px] ${
+              activeTab === "profile" ? "border-primary" : "border-gray-300 hover:text-primary hover:border-primary"
+            }`}
           >
             Profile
           </Link>
           <Link
             to="/profile/vehicles"
-            className="text-black text-sm font-medium uppercase tracking-wide border-b-2 border-gray-300 pb-3 -mb-[13px] hover:text-primary hover:border-primary"
+            className={`text-black text-sm font-medium uppercase tracking-wide border-b-2 pb-3 -mb-[13px] ${
+              activeTab === "vehicles" ? "border-primary" : "border-gray-300 hover:text-primary hover:border-primary"
+            }`}
           >
             Vehicles
           </Link>
           <Link
             to="/profile/security"
-            className="text-black text-sm font-medium uppercase tracking-wide border-b-2 border-gray-300 pb-3 -mb-[13px] hover:text-primary hover:border-primary"
+            className={`text-black text-sm font-medium uppercase tracking-wide border-b-2 pb-3 -mb-[13px] ${
+              activeTab === "security" ? "border-primary" : "border-gray-300 hover:text-primary hover:border-primary"
+            }`}
           >
             Security
           </Link>
