@@ -9,6 +9,7 @@ const Products = () => {
         <Header />
         <Footer />
         <Copyright />
+        
     </div>
   )
 }
