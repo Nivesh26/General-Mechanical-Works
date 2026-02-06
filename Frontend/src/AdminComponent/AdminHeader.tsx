@@ -2,7 +2,7 @@ import React from 'react'
 
 const AdminHeader = () => {
   return (
-    <div>AdminHeader</div>
+    <div>this is admin header</div>
   )
 }
 
