@@ -8,7 +8,7 @@ const Header = () => {
     { to: '/aboutus', label: 'About Us' },
     { to: '/services', label: 'Services' },
     { to: '/products', label: 'Products' },
-    { to: '/contactus', label: 'Contact Us' },
+    { to: '/contactus', label: 'Contact' },
   ]
 
   return (
