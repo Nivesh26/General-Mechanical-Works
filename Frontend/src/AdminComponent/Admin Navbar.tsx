@@ -2,7 +2,7 @@ import React from 'react'
 
 const AdminNavbar = () => {
   return (
-    <div>This is admin  </div>
+    <div>This is admin Navbar </div>
   )
 }
 
