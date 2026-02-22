@@ -26,10 +26,10 @@ const Footer = () => {
             </p>
             <h4 className="my-5 text-base font-bold">Follow our Socials</h4>
             <div className="flex gap-3">
-              <a href="#" className="text-white hover:opacity-80 transition-opacity no-underline outline-none focus:outline-none focus:ring-0" aria-label="Facebook">
+              <a href="https://www.facebook.com/profile.php?id=61573512157547" target="_blank" rel="noopener noreferrer" className="text-white hover:opacity-80 transition-opacity no-underline outline-none focus:outline-none focus:ring-0" aria-label="Facebook">
                 <FaFacebook className="w-6 h-6" />
               </a>
-              <a href="#" className="text-white hover:opacity-80 transition-opacity no-underline outline-none focus:outline-none focus:ring-0" aria-label="Instagram">
+              <a href="https://www.instagram.com/general.mechanical.works/" target="_blank" rel="noopener noreferrer" className="text-white hover:opacity-80 transition-opacity no-underline outline-none focus:outline-none focus:ring-0" aria-label="Instagram">
                 <FaInstagram className="w-6 h-6" />
               </a>
               <a href="#" className="text-white hover:opacity-80 transition-opacity no-underline outline-none focus:outline-none focus:ring-0" aria-label="TikTok">
