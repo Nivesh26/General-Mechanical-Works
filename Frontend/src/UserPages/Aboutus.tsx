@@ -7,6 +7,7 @@ const Aboutus = () => {
   return (
     <div>
         <Header />
+        this is about us page
         <Footer />
         <Copyright />
     </div>
