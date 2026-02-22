@@ -7,6 +7,7 @@ const Products = () => {
   return (
     <div>
         <Header />
+        this is products page
         <Footer />
         <Copyright />
         

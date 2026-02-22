@@ -7,6 +7,7 @@ const Service = () => {
   return (
     <div>
         <Header />
+        this is service page
         <Footer />
         <Copyright />
     </div>
