@@ -20,12 +20,12 @@ const Userlogin = () => {
       <main className="flex-1 flex items-center justify-center py-12 px-4">
         <div className="w-full max-w-md">
           <div className="bg-white rounded-xl shadow-lg shadow-gray-200/80 p-8 md:p-10">
-            <h1 className="text-2xl md:text-3xl font-bold font-serif text-black text-center mb-2">
+            <h1 className="text-2xl md:text-3xl font-bold text-black text-center mb-2">
               Login
             </h1>
             <p className="text-sm text-black text-center mb-8">
               Don&apos;t have an account?{' '}
-              <Link to="/signup" className="text-blue-600 hover:underline font-medium">
+              <Link to="/signup" className="text-red-600 hover:underline font-medium">
                 Signup
               </Link>
             </p>
@@ -50,8 +50,8 @@ const Userlogin = () => {
                 />
                 <div className="flex justify-end mt-1">
                   <Link
-                    to="/forgot-password"
-                    className="text-sm font-bold text-primary hover:underline"
+                    to="/forgetpassword"
+                    className="text-sm text-primary hover:underline"
                   >
                     Forget Password?
                   </Link>
@@ -82,9 +82,9 @@ const Userlogin = () => {
 
             <p className="text-xs text-black mt-8 text-center">
               By joining, you agree to the{' '}
-              <Link to="/terms" className="text-blue-600 hover:underline">Terms</Link>
+              <Link to="" className="text-primary hover:underline">Terms</Link>
               {' '}and{' '}
-              <Link to="/privacy" className="text-blue-600 hover:underline">Privacy Policy.</Link>
+              <Link to="" className="text-primary hover:underline">Privacy Policy.</Link>
             </p>
           </div>
         </div>

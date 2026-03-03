@@ -5,13 +5,12 @@ import Aboutus from './UserPages/Aboutus'
 import Service from './UserPages/Service'
 import Products from './UserPages/Products'
 import Contactus from './UserPages/Contactus'
-import Adminlogin from './Logins-Signup/Adminlogin'
-import Adminsignup from './Logins-Signup/Adminsignup'
-import Userlogin from './Logins-Signup/Userlogin'
-import Usersignup from './Logins-Signup/Usersignup'
 import Profile from './UserPages/Profile'
 import Vehicles from './UserPages/ProfileVehicles'
 import ProfileSecurity from './UserPages/ProfileSecurity'
+import Login from './Logins-Signup/Login'
+import Signup from './Logins-Signup/Signup'
+import Forgetpassword from './Logins-Signup/Forgetpassword'
 
 function App() {
   return (
@@ -27,9 +26,10 @@ function App() {
     <Route path="/profile/vehicles" element={<Vehicles />} />
     <Route path="/profile/security" element={<ProfileSecurity />} />
 
-    {/* User Login and Signup */}
-    <Route path="/login" element={<Userlogin />} />
-    <Route path="/signup" element={<Usersignup />} />
+    {/* Login and Signup */}
+    <Route path="/login" element={<Login />} />
+    <Route path="/signup" element={<Signup />} />
+    <Route path="/forgetpassword" element={<Forgetpassword />} />
 
     </Routes>
     </BrowserRouter>

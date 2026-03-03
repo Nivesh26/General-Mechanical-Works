@@ -7,6 +7,7 @@ const Usersignup = () => {
   return (
     <div>
       <Header />
+
       <Footer />
       <Copyright />
     </div>
