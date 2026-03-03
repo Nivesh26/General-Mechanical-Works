@@ -31,10 +31,6 @@ function App() {
     <Route path="/login" element={<Userlogin />} />
     <Route path="/signup" element={<Usersignup />} />
 
-    {/* Admin Login and Signup */}
-    <Route path="/adminlogin" element={<Adminlogin />} />
-    <Route path="/adminsignup" element={<Adminsignup />} />
-    
     </Routes>
     </BrowserRouter>
   )
