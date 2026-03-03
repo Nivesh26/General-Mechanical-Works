@@ -26,7 +26,7 @@ function App() {
     <Route path="/profile" element={<Profile />} />
     <Route path="/profile/vehicles" element={<Vehicles />} />
     <Route path="/profile/security" element={<ProfileSecurity />} />
-    <Route path="/productdetail/:id" element={<Productdetail />} />
+    <Route path="/productdetail" element={<Productdetail />} />
 
     {/* Login and Signup */}
     <Route path="/login" element={<Login />} />
