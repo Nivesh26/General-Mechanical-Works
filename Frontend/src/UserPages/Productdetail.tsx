@@ -11,6 +11,7 @@ import Tyre from '../assets/Tyre.png'
 import { HiOutlineCheck, HiStar, HiOutlineHandThumbUp } from 'react-icons/hi2'
 
 const productImages = [EngineOil, Brakes, Battery, Tyre]
+const productSizes = ['S', 'L', 'XL', 'XXL']
 
 const reviews = [
   { name: 'Raj K.', rating: 5, comment: 'Great oil, smooth engine performance. Using it for the last 6 months with no issues. Recommended.', date: '2 days ago' },
@@ -20,6 +21,7 @@ const reviews = [
 
 const Productdetail = () => {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
+  const [selectedSize, setSelectedSize] = useState<'S' | 'L' | 'XL' | 'XXL'>('L')
   const [reviewText, setReviewText] = useState('')
   const [rating, setRating] = useState(0)
   const [likedReviews, setLikedReviews] = useState<Set<number>>(new Set())
@@ -83,10 +85,31 @@ const Productdetail = () => {
                 <p className="text-xs font-semibold text-primary uppercase tracking-[0.2em] mb-2">
                   Engine Oil
                 </p>
-                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-4 tracking-tight">
+                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-2 tracking-tight">
                   Premium Synthetic Engine Oil
                 </h1>
-                <p className="text-primary text-2xl font-semibold mb-6">Rs. 3,500</p>
+                <p className="text-primary text-2xl font-semibold mb-4">Rs. 3,500</p>
+
+                <div className="mb-6">
+                  <p className="text-sm font-medium text-gray-700 mb-2">Size</p>
+                  <div className="flex flex-wrap gap-2">
+                    {productSizes.map((size) => (
+                      <button
+                        key={size}
+                        type="button"
+                        onClick={() => setSelectedSize(size as 'S' | 'L' | 'XL' | 'XXL')}
+                        className={`px-3 py-1.5 rounded-full border text-sm font-medium transition-colors ${
+                          selectedSize === size
+                            ? 'bg-primary text-white border-primary'
+                            : 'bg-white text-gray-700 border-gray-300 hover:border-primary'
+                        }`}
+                      >
+                        {size}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <p className="text-gray-600 leading-relaxed mb-8">
                   High-quality synthetic engine oil designed for peak performance and engine longevity.
                   Ideal for modern motorcycles and ensures smooth operation in all conditions.
