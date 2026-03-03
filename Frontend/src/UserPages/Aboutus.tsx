@@ -1,15 +1,16 @@
 import React from 'react'
+import Header from '../UserComponent/Header'
 import Footer from '../UserComponent/Footer'
 import Copyright from '../UserComponent/Copyright'
-import Header from '../UserComponent/Header'
+import AboutContent from '../UserComponent/AboutContent'
 
-const Aboutus = () => {
+const Aboutus: React.FC = () => {
   return (
     <div>
-        <Header />
-        this is about us page
-        <Footer />
-        <Copyright />
+      <Header />
+      <AboutContent />
+      <Footer />
+      <Copyright />
     </div>
   )
 }
