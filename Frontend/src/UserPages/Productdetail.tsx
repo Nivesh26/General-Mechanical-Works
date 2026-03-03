@@ -45,6 +45,8 @@ const Productdetail = () => {
             <nav className="flex items-center gap-2 text-sm text-gray-500">
               <Link to="/" className="hover:text-primary transition-colors">Home</Link>
               <span aria-hidden>/</span>
+              <Link to="/products" className="hover:text-primary transition-colors">Products</Link>
+              <span aria-hidden>/</span>
               <span className="text-gray-900 font-medium">Product detail</span>
             </nav>
           </div>
