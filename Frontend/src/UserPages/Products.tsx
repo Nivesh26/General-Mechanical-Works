@@ -196,7 +196,7 @@ const Products = () => {
               {sortedProducts.map((product) => (
                 <div
                   key={product.id}
-                  className="group border border-gray-200 rounded-xl shadow-sm bg-white flex flex-col overflow-hidden transition-all duration-300 ease-out hover:shadow-lg hover:scale-[1.02] cursor-pointer"
+                  className="group border border-gray-200 rounded-xl shadow-sm bg-white flex flex-col overflow-hidden transition-all duration-300 ease-out hover:shadow-lg hover:scale-[1.02]"
                 >
                   <div className="h-48 bg-gray-50 flex items-center justify-center overflow-hidden p-2">
                     <img
@@ -215,7 +215,7 @@ const Products = () => {
                       <span className="text-primary font-semibold">{product.price}</span>
                       <button
                         type="button"
-                        className="px-4 py-2 rounded-full border border-primary text-primary text-sm font-medium hover:bg-primary hover:text-white transition-colors"
+                        className="px-4 py-2 rounded-full border border-primary text-primary text-sm font-medium hover:bg-primary hover:text-white transition-colors cursor-pointer"
                       >
                         Add to cart
                       </button>

@@ -11,6 +11,7 @@ import ProfileSecurity from './UserPages/ProfileSecurity'
 import Login from './Logins-Signup/Login'
 import Signup from './Logins-Signup/Signup'
 import Forgetpassword from './Logins-Signup/Forgetpassword'
+import Productdetail from './UserPages/Productdetail'
 
 function App() {
   return (
@@ -25,6 +26,7 @@ function App() {
     <Route path="/profile" element={<Profile />} />
     <Route path="/profile/vehicles" element={<Vehicles />} />
     <Route path="/profile/security" element={<ProfileSecurity />} />
+    <Route path="/productdetail/:id" element={<Productdetail />} />
 
     {/* Login and Signup */}
     <Route path="/login" element={<Login />} />
