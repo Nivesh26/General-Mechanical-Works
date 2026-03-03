@@ -3,8 +3,14 @@ import { Link } from 'react-router-dom'
 import Header from '../UserComponent/Header'
 import Footer from '../UserComponent/Footer'
 import Copyright from '../UserComponent/Copyright'
+import Productsuggestion from '../UserComponent/Productsuggestion'
 import EngineOil from '../assets/EngineOil.png'
+import Brakes from '../assets/Brakekit.png'
+import Battery from '../assets/Battery.png'
+import Tyre from '../assets/Tyre.png'
 import { HiOutlineCheck, HiStar, HiOutlineHandThumbUp } from 'react-icons/hi2'
+
+const productImages = [EngineOil, Brakes, Battery, Tyre]
 
 const reviews = [
   { name: 'Raj K.', rating: 5, comment: 'Great oil, smooth engine performance. Using it for the last 6 months with no issues. Recommended.', date: '2 days ago' },
@@ -13,8 +19,19 @@ const reviews = [
 ]
 
 const Productdetail = () => {
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0)
   const [reviewText, setReviewText] = useState('')
   const [rating, setRating] = useState(0)
+  const [likedReviews, setLikedReviews] = useState<Set<number>>(new Set())
+
+  const toggleLike = (index: number) => {
+    setLikedReviews((prev) => {
+      const next = new Set(prev)
+      if (next.has(index)) next.delete(index)
+      else next.add(index)
+      return next
+    })
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
@@ -34,12 +51,32 @@ const Productdetail = () => {
         <div className="mx-[80px] py-10 lg:py-14">
           <div className="max-w-6xl mx-auto">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-start">
-              <div className="aspect-square bg-gray-50 rounded-2xl flex items-center justify-center p-8 md:p-12 border border-gray-100">
-                <img
-                  src={EngineOil}
-                  alt="Premium synthetic engine oil"
-                  className="max-h-full max-w-full object-contain"
-                />
+              <div>
+                <div className="aspect-square bg-gray-50 rounded-2xl flex items-center justify-center p-8 md:p-12 border border-gray-100 mb-3">
+                  <img
+                    src={productImages[selectedImageIndex]}
+                    alt="Product view"
+                    className="max-h-full max-w-full object-contain"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  {[0, 1, 2, 3]
+                    .filter((i) => i !== selectedImageIndex)
+                    .map((index) => (
+                      <button
+                        key={index}
+                        type="button"
+                        onClick={() => setSelectedImageIndex(index)}
+                        className="flex-1 aspect-square max-w-[120px] rounded-lg border-2 border-gray-200 overflow-hidden bg-gray-50 flex items-center justify-center p-2 hover:border-primary transition-colors cursor-pointer"
+                      >
+                        <img
+                          src={productImages[index]}
+                          alt={`View ${index + 1}`}
+                          className="w-full h-full object-contain"
+                        />
+                      </button>
+                    ))}
+                </div>
               </div>
 
               <div className="lg:pt-2">
@@ -156,10 +193,13 @@ const Productdetail = () => {
                     <p className="text-gray-600 text-sm leading-relaxed mb-3">{review.comment}</p>
                     <button
                       type="button"
-                      className="inline-flex items-center gap-1.5 text-gray-500 text-sm font-medium cursor-default"
+                      onClick={() => toggleLike(index)}
+                      className={`inline-flex items-center gap-1.5 text-sm font-medium cursor-pointer transition-colors ${
+                        likedReviews.has(index) ? 'text-blue-500' : 'text-gray-500 hover:text-gray-700'
+                      }`}
                     >
                       <HiOutlineHandThumbUp className="w-4 h-4" />
-                      Like
+                      {likedReviews.has(index) ? 'Liked' : 'Like'}
                     </button>
                   </div>
                 ))}
@@ -167,6 +207,8 @@ const Productdetail = () => {
             </section>
           </div>
         </div>
+
+        <Productsuggestion />
       </main>
 
       <Footer />

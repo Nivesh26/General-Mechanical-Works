@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { Link } from 'react-router-dom'
 import Header from '../UserComponent/Header'
 import Footer from '../UserComponent/Footer'
 import Copyright from '../UserComponent/Copyright'
@@ -198,29 +199,31 @@ const Products = () => {
                   key={product.id}
                   className="group border border-gray-200 rounded-xl shadow-sm bg-white flex flex-col overflow-hidden transition-all duration-300 ease-out hover:shadow-lg hover:scale-[1.02]"
                 >
-                  <div className="h-48 bg-gray-50 flex items-center justify-center overflow-hidden p-2">
-                    <img
-                      src={product.image}
-                      alt={product.name}
-                      className="max-h-full max-w-full object-contain transition-transform duration-300 group-hover:scale-105"
-                    />
-                  </div>
-                  <div className="p-5 flex flex-col flex-1">
-                    <h2 className="text-lg font-semibold mb-1">{product.name}</h2>
-                    <p className="text-xs uppercase tracking-wide text-gray-400 mb-2">
-                      {product.category}
-                    </p>
-                    <p className="text-sm text-gray-600 mb-4 flex-1">{product.description}</p>
-                    <div className="flex items-center justify-between mt-2">
-                      <span className="text-primary font-semibold">{product.price}</span>
-                      <button
-                        type="button"
-                        className="px-4 py-2 rounded-full border border-primary text-primary text-sm font-medium hover:bg-primary hover:text-white transition-colors cursor-pointer"
-                      >
-                        Add to cart
-                      </button>
+                  <Link to="/productdetail" className="flex flex-col flex-1">
+                    <div className="h-48 bg-gray-50 flex items-center justify-center overflow-hidden p-2">
+                      <img
+                        src={product.image}
+                        alt={product.name}
+                        className="max-h-full max-w-full object-contain transition-transform duration-300 group-hover:scale-105"
+                      />
                     </div>
-                  </div>
+                    <div className="p-5 flex flex-col flex-1">
+                      <h2 className="text-lg font-semibold mb-1">{product.name}</h2>
+                      <p className="text-xs uppercase tracking-wide text-gray-400 mb-2">
+                        {product.category}
+                      </p>
+                      <p className="text-sm text-gray-600 mb-4 flex-1">{product.description}</p>
+                      <div className="flex items-center justify-between mt-2">
+                        <span className="text-primary font-semibold">{product.price}</span>
+                        <button
+                          type="button"
+                          className="px-4 py-2 rounded-full border border-primary text-primary text-sm font-medium hover:bg-primary hover:text-white transition-colors cursor-pointer"
+                        >
+                          Add to cart
+                        </button>
+                      </div>
+                    </div>
+                  </Link>
                 </div>
               ))}
             </div>
