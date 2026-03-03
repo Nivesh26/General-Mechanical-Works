@@ -4,10 +4,17 @@ import Header from '../UserComponent/Header'
 import Footer from '../UserComponent/Footer'
 import Copyright from '../UserComponent/Copyright'
 import EngineOil from '../assets/EngineOil.png'
-import { HiOutlineCheck, HiOutlineTruck, HiOutlineShieldCheck } from 'react-icons/hi2'
+import { HiOutlineCheck, HiStar, HiOutlineHandThumbUp } from 'react-icons/hi2'
+
+const reviews = [
+  { name: 'Raj K.', rating: 5, comment: 'Great oil, smooth engine performance. Using it for the last 6 months with no issues. Recommended.', date: '2 days ago' },
+  { name: 'Sita M.', rating: 5, comment: 'Quality product. Bike runs much smoother after the change. Will buy again.', date: '1 week ago' },
+  { name: 'Amit P.', rating: 4, comment: 'Good value for money. No complaints so far.', date: '2 weeks ago' },
+]
 
 const Productdetail = () => {
-  const [addedToCart, setAddedToCart] = useState(false)
+  const [reviewText, setReviewText] = useState('')
+  const [rating, setRating] = useState(0)
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
@@ -39,7 +46,7 @@ const Productdetail = () => {
                 <p className="text-xs font-semibold text-primary uppercase tracking-[0.2em] mb-2">
                   Engine Oil
                 </p>
-                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-4 font-sec tracking-tight">
+                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-4 tracking-tight">
                   Premium Synthetic Engine Oil
                 </h1>
                 <p className="text-primary text-2xl font-semibold mb-6">Rs. 3,500</p>
@@ -65,18 +72,12 @@ const Productdetail = () => {
                 <div className="flex flex-col sm:flex-row gap-4">
                   <button
                     type="button"
-                    onClick={() => setAddedToCart(true)}
-                    disabled={addedToCart}
-                    className={`flex-1 sm:flex-none px-8 py-3.5 rounded-lg text-sm font-semibold transition-colors cursor-pointer ${
-                      addedToCart
-                        ? 'bg-gray-200 text-gray-500 cursor-default'
-                        : 'bg-primary text-white hover:opacity-90'
-                    }`}
+                    className="flex-1 sm:flex-none px-8 py-3.5 rounded-lg text-sm font-semibold transition-colors cursor-pointer bg-primary text-white hover:opacity-90"
                   >
-                    {addedToCart ? 'Added to cart' : 'Add to cart'}
+                    Add to cart
                   </button>
                   <Link
-                    to="/contactus"
+                    to="/"
                     className="flex-1 sm:flex-none px-8 py-3.5 rounded-lg border border-gray-300 text-gray-700 text-sm font-semibold text-center hover:bg-gray-50 transition-colors"
                   >
                     Enquire now
@@ -85,28 +86,85 @@ const Productdetail = () => {
               </div>
             </div>
 
-            <div className="mt-16 pt-10 border-t border-gray-100">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div className="flex items-center gap-4 p-4 rounded-xl bg-gray-50/80">
-                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                    <HiOutlineTruck className="w-6 h-6 text-primary" />
+            {/* Reviews */}
+            <section className="mt-16 pt-10 border-t border-gray-100">
+              <h2 className="text-xl font-bold text-gray-900 mb-6">Reviews</h2>
+
+              {/* Rate and review — login required */}
+              <div className="mb-10 p-6 rounded-xl bg-gray-50 border border-gray-100">
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Rating</label>
+                    <div className="flex items-center gap-1">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          type="button"
+                          onClick={() => setRating(star)}
+                          className="p-0.5 focus:outline-none focus:ring-0"
+                          aria-label={`${star} star${star > 1 ? 's' : ''}`}
+                        >
+                          <HiStar
+                            className={`w-8 h-8 transition-colors ${
+                              star <= rating ? 'text-amber-400 fill-amber-400' : 'text-gray-200'
+                            }`}
+                          />
+                        </button>
+                      ))}
+                    </div>
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900">Available at workshop</h3>
-                    <p className="text-sm text-gray-600">Pick up or get it fitted by our technicians.</p>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Review</label>
+                    <textarea
+                      rows={4}
+                      value={reviewText}
+                      onChange={(e) => setReviewText(e.target.value)}
+                      placeholder="Write your review..."
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary resize-y"
+                    />
                   </div>
-                </div>
-                <div className="flex items-center gap-4 p-4 rounded-xl bg-gray-50/80">
-                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                    <HiOutlineShieldCheck className="w-6 h-6 text-primary" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900">Genuine product</h3>
-                    <p className="text-sm text-gray-600">Quality assured for your vehicle.</p>
-                  </div>
+                  <button
+                    type="button"
+                    className="inline-block px-5 py-2.5 rounded-lg bg-primary text-white text-sm font-semibold hover:opacity-90 transition-opacity"
+                  >
+                 Post
+                  </button>
                 </div>
               </div>
-            </div>
+
+              {/* Review list */}
+              <div className="space-y-6">
+                {reviews.map((review, index) => (
+                  <div key={index} className="p-5 rounded-xl bg-gray-50 border border-gray-100">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-semibold">
+                        {review.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-900">{review.name}</p>
+                        <div className="flex items-center gap-1 mt-0.5">
+                          {[1, 2, 3, 4, 5].map((i) => (
+                            <HiStar
+                              key={i}
+                              className={`w-4 h-4 ${i <= review.rating ? 'text-amber-400 fill-amber-400' : 'text-gray-200'}`}
+                            />
+                          ))}
+                          <span className="text-xs text-gray-500 ml-1">{review.date}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <p className="text-gray-600 text-sm leading-relaxed mb-3">{review.comment}</p>
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1.5 text-gray-500 text-sm font-medium cursor-default"
+                    >
+                      <HiOutlineHandThumbUp className="w-4 h-4" />
+                      Like
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </section>
           </div>
         </div>
       </main>
