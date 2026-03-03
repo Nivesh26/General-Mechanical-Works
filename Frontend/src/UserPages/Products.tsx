@@ -2,9 +2,14 @@ import React, { useState } from 'react'
 import Header from '../UserComponent/Header'
 import Footer from '../UserComponent/Footer'
 import Copyright from '../UserComponent/Copyright'
-import productImage from '../assets/TRX.png'
+import EngineOil from '../assets/EngineOil.png'
+import Brakes from '../assets/Brakekit.png'
+import Battery from '../assets/Battery.png'
+import Tyre from '../assets/Tyre.png'
+import Clutch from '../assets/Clutch.png'
+import Detailing from '../assets/cleaner.png'
 
-type ProductCategory = 'All' | 'Service' | 'Brakes' | 'Tyres' | 'Electrical' | 'Detailing'
+type ProductCategory = 'All' | 'EngineOil' | 'Brakes' | 'Tyres' | 'Electrical' | 'Detailing'
 
 const PRICE_MIN = 0
 const PRICE_MAX = 15000
@@ -13,12 +18,12 @@ const PRICE_STEP = 500
 const products = [
   {
     id: 1,
-    name: 'Engine Oil Change Package',
-    description: 'Premium synthetic oil with filter change and basic inspection.',
+    name: 'Engine Oil',
+    description: 'Premium synthetic oil.',
     price: 'Rs. 3,500',
     priceValue: 3500,
-    category: 'Brakes' as ProductCategory,
-    image: productImage,
+    category: 'EngineOil' as ProductCategory,
+    image: EngineOil,
   },
   {
     id: 2,
@@ -27,74 +32,50 @@ const products = [
     price: 'Rs. 5,200',
     priceValue: 5200,
     category: 'Brakes' as ProductCategory,
-    image: productImage,
+    image: Brakes,
   },
   {
     id: 3,
-    name: 'Battery Replacement',
-    description: 'High-performance battery with installation and testing.',
+    name: 'Battery',
+    description: 'High-performance battery.',
     price: 'Rs. 6,800',
     priceValue: 6800,
     category: 'Electrical' as ProductCategory,
-    image: productImage,
+    image: Battery,
   },
+
   {
     id: 4,
-    name: 'Full Service Package',
-    description: 'Complete 40-point check, fluids top-up, and wash.',
-    price: 'Rs. 7,500',
-    priceValue: 7500,
-    category: 'Brakes' as ProductCategory,
-    image: productImage,
-  },
-  {
-    id: 5,
-    name: 'Tyre & Alignment Combo',
+    name: 'Tyre',
     description: 'Wheel alignment, balancing, and tyre rotation.',
     price: 'Rs. 3,200',
     priceValue: 3200,
     category: 'Tyres' as ProductCategory,
-    image: productImage,
+    image: Tyre,
   },
+
   {
-    id: 6,
-    name: 'AC Service',
-    description: 'AC gas refill, leak check, and cabin filter replacement.',
-    price: 'Rs. 4,900',
-    priceValue: 4900,
-    category: 'Service' as ProductCategory,
-    image: productImage,
-  },
-  {
-    id: 7,
+    id: 5,
     name: 'Clutch Overhaul Kit',
     description: 'Clutch plate, pressure plate, and release bearing replacement.',
     price: 'Rs. 12,000',
     priceValue: 12000,
     category: 'Brakes' as ProductCategory,
-    image: productImage,
+    image: Clutch,
   },
   {
-    id: 8,
+    id: 6,
     name: 'Detailing & Polishing',
     description: 'Interior deep clean with exterior polish and wax.',
     price: 'Rs. 5,800',
     priceValue: 5800,
     category: 'Detailing' as ProductCategory,
-    image: productImage,
+    image: Detailing,
   },
-  {
-    id: 9,
-    name: 'Electrical Diagnosis',
-    description: 'Computerized scan and diagnosis of electrical issues.',
-    price: 'Rs. 2,500',
-    priceValue: 2500,
-    category: 'Electrical' as ProductCategory,
-    image: productImage,
-  },
+
 ]
 
-const categories: ProductCategory[] = ['All', 'Brakes', 'Tyres', 'Electrical', 'Detailing']
+const categories: ProductCategory[] = ['All', 'EngineOil', 'Brakes', 'Tyres', 'Electrical', 'Detailing']
 
 const formatPrice = (n: number) => `Rs. ${n.toLocaleString('en-IN')}`
 
@@ -129,12 +110,13 @@ const Products = () => {
       <Header />
 
       <main className="flex-1 mx-[80px] py-10">
-        <div className="mb-8">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">Workshop Products</h1>
-            <p className="text-gray-600 text-sm max-w-2xl">
-              Browse our most popular service packages and workshop products. Use the filters to
-              quickly find what you need, then proceed to booking in the next steps.
+        <div className="mb-8 flex justify-center">
+          <div className="text-center">
+            <h1 className="text-3xl font-bold mb-2">
+              <span className="text-primary font-sec">Products</span>
+            </h1>
+            <p className="text-gray-600 text-sm max-w-2xl mx-auto">
+              Browse our most popular workshop products. 
             </p>
           </div>
         </div>
@@ -214,13 +196,13 @@ const Products = () => {
               {sortedProducts.map((product) => (
                 <div
                   key={product.id}
-                  className="border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-shadow bg-white flex flex-col overflow-hidden"
+                  className="group border border-gray-200 rounded-xl shadow-sm bg-white flex flex-col overflow-hidden transition-all duration-300 ease-out hover:shadow-lg hover:scale-[1.02] cursor-pointer"
                 >
-                  <div className="h-40 bg-gray-50 flex items-center justify-center overflow-hidden">
+                  <div className="h-48 bg-gray-50 flex items-center justify-center overflow-hidden p-2">
                     <img
                       src={product.image}
                       alt={product.name}
-                      className="h-full w-full object-cover"
+                      className="max-h-full max-w-full object-contain transition-transform duration-300 group-hover:scale-105"
                     />
                   </div>
                   <div className="p-5 flex flex-col flex-1">
