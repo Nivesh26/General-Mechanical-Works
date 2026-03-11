@@ -30,13 +30,24 @@ const timeSlots = [
 // Mock saved bikes (would come from user profile/API when logged in)
 const savedBikes = [
   { id: '1', label: 'Honda CB 350 - 1234' },
-  { id: '2', label: 'Yamaha FZ - 5678' },
-  { id: '3', label: 'KTM Duke 390 - 9012' },
+
 ]
 const ADD_NEW_BIKE = 'new'
 
 const BIKE_COMPANIES = ['Honda', 'Yamaha', 'KTM', 'Triumph', 'Suzuki', 'Bajaj', 'Royal Enfield', 'Hero', 'TVS']
 const BIKE_COLORS = ['Black', 'Red', 'Blue', 'White', 'Silver', 'Green', 'Yellow', 'Orange', 'Grey']
+
+const MODELS_BY_COMPANY: Record<string, string[]> = {
+  Honda: ['CBR 650R', 'CB 350', 'Activa', 'Shine', 'Dio', 'Hornet', 'CB Unicorn', 'X-Blade', 'Livo', 'CB Shine SP'],
+  Yamaha: ['R15', 'MT-15', 'FZ', 'FZ-S', 'RayZR', 'R3', 'Fascino', 'Aerox', 'FZ-X', 'R15 V4'],
+  KTM: ['Duke 390', 'RC 390', 'Duke 250', 'RC 200', 'Adventure 390', 'Duke 125', 'RC 125', 'Adventure 250', 'Duke 200', 'RC 125 (India)'],
+  Triumph: ['Street Triple', 'Bonneville', 'Tiger 900', 'Speed Triple', 'Trident 660', 'Scrambler', 'Rocket 3', 'Tiger 1200', 'Thruxton', 'Speed 400'],
+  Suzuki: ['GSX-R', 'Gixxer', 'Gixxer SF', 'Access', 'Burgman', 'V-Strom', 'Intruder', 'Avenis', 'Gixxer 250', 'V-Strom 250'],
+  Bajaj: ['Pulsar 150', 'Pulsar 220', 'Dominar', 'Avenger', 'CT 100', 'Platina', 'Pulsar NS', 'Pulsar RS', 'Pulsar N160', 'Chetak'],
+  'Royal Enfield': ['Classic 350', 'Hunter 350', 'Meteor 350', 'Himalayan', 'Scram 411', 'Interceptor 650', 'Continental GT', 'Bullet 350', 'Shotgun 650', 'Himalayan 450'],
+  Hero: ['Splendor', 'Passion', 'Xtreme', 'Xtec', 'Glamour', 'Super Splendor', 'HF Deluxe', 'Pleasure', 'Maestro', 'Destini'],
+  TVS: ['Apache', 'Jupiter', 'Sport', 'Raider', 'Ronin', 'iQube', 'NTorq', 'Apache RTR', 'Scooty', 'XL'],
+}
 
 const Service = () => {
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null)
@@ -53,6 +64,10 @@ const Service = () => {
     e.preventDefault()
     // Static submit - no API for now
   }
+
+  const today = new Date()
+  const minDate = today.toISOString().slice(0, 10)
+  const maxDate = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
@@ -111,6 +126,8 @@ const Service = () => {
                   <input
                     id="booking-date"
                     type="date"
+                    min={minDate}
+                    max={maxDate}
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-gray-900 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
@@ -184,14 +201,18 @@ const Service = () => {
                         <label htmlFor="new-bike-model" className="block text-xs font-medium text-gray-600 mb-1">
                           Model
                         </label>
-                        <input
+                        <select
                           id="new-bike-model"
-                          type="text"
                           value={newBikeModel}
                           onChange={(e) => setNewBikeModel(e.target.value)}
-                          placeholder="e.g. CB 350, FZ, Duke 390"
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-                        />
+                          disabled={!newBikeCompany}
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary bg-white disabled:bg-gray-100 disabled:text-gray-500"
+                        >
+                          <option value="">Select model</option>
+                          {newBikeCompany && (MODELS_BY_COMPANY[newBikeCompany] ?? []).map((m) => (
+                            <option key={m} value={m}>{m}</option>
+                          ))}
+                        </select>
                       </div>
                       <div>
                         <label htmlFor="new-bike-plate" className="block text-xs font-medium text-gray-600 mb-1">
@@ -223,6 +244,12 @@ const Service = () => {
                         </select>
                       </div>
                     </div>
+                    <button
+                      type="button"
+                      className="px-4 py-2 rounded-lg text-sm font-medium border border-primary text-primary bg-white cursor-default"
+                    >
+                      Add bike
+                    </button>
                   </div>
                 )}
               </div>
