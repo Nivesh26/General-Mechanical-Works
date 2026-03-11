@@ -33,6 +33,8 @@ function App() {
     <Route path="/signup" element={<Signup />} />
     <Route path="/forgetpassword" element={<Forgetpassword />} />
 
+    {/* Admin */}
+
     </Routes>
     </BrowserRouter>
   )
