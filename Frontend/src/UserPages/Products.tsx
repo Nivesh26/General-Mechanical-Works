@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import Header from '../UserComponent/Header'
 import Footer from '../UserComponent/Footer'
@@ -20,7 +20,7 @@ const products = [
   {
     id: 1,
     name: 'Engine Oil',
-    description: 'Premium synthetic oil.',
+    description: '',
     price: 'Rs. 3,500',
     priceValue: 3500,
     category: 'EngineOil' as ProductCategory,
@@ -29,7 +29,7 @@ const products = [
   {
     id: 2,
     name: 'Brake Service Kit',
-    description: 'Front and rear brake pads with rotor resurfacing.',
+    description: '',
     price: 'Rs. 5,200',
     priceValue: 5200,
     category: 'Brakes' as ProductCategory,
@@ -38,7 +38,7 @@ const products = [
   {
     id: 3,
     name: 'Battery',
-    description: 'High-performance battery.',
+    description: '',
     price: 'Rs. 6,800',
     priceValue: 6800,
     category: 'Electrical' as ProductCategory,
@@ -48,7 +48,7 @@ const products = [
   {
     id: 4,
     name: 'Tyre',
-    description: 'Wheel alignment, balancing, and tyre rotation.',
+    description: '',
     price: 'Rs. 3,200',
     priceValue: 3200,
     category: 'Tyres' as ProductCategory,
@@ -58,7 +58,7 @@ const products = [
   {
     id: 5,
     name: 'Clutch Overhaul Kit',
-    description: 'Clutch plate, pressure plate, and release bearing replacement.',
+    description: '',
     price: 'Rs. 12,000',
     priceValue: 12000,
     category: 'Brakes' as ProductCategory,
@@ -67,7 +67,7 @@ const products = [
   {
     id: 6,
     name: 'Detailing & Polishing',
-    description: 'Interior deep clean with exterior polish and wax.',
+    description: '',
     price: 'Rs. 5,800',
     priceValue: 5800,
     category: 'Detailing' as ProductCategory,
@@ -212,7 +212,7 @@ const Products = () => {
                       <p className="text-xs uppercase tracking-wide text-gray-400 mb-2">
                         {product.category}
                       </p>
-                      <p className="text-sm text-gray-600 mb-4 flex-1">{product.description}</p>
+                      <div className="flex-1" />
                       <div className="flex items-center justify-between mt-2">
                         <span className="text-primary font-semibold">{product.price}</span>
                         <button
