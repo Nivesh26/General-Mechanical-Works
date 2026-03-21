@@ -1,5 +1,5 @@
-import React from 'react'
-import { BrowserRouter,Route, Routes } from 'react-router-dom'
+import { type ReactNode, useEffect, useState } from 'react'
+import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom'
 import Home from './UserPages/Home'
 import Aboutus from './UserPages/Aboutus'
 import Service from './UserPages/Service'
@@ -15,33 +15,59 @@ import Productdetail from './UserPages/Productdetail'
 import Cart from './UserPages/Cart'
 import Ordertracking from './UserPages/Ordertracking'
 import Blogs from './UserPages/Blogsdetail'
+import './App.css'
+
+const PageTransition = ({ children }: { children: ReactNode }) => {
+  const location = useLocation()
+  const [visible, setVisible] = useState(false)
+
+  useEffect(() => {
+    setVisible(false)
+    const frame = requestAnimationFrame(() => setVisible(true))
+    return () => cancelAnimationFrame(frame)
+  }, [location.pathname])
+
+  return (
+    <div className={`page-fade ${visible ? 'page-fade-in' : ''}`}>
+      {children}
+    </div>
+  )
+}
+
+function AppRoutes() {
+  const withFade = (node: ReactNode) => <PageTransition>{node}</PageTransition>
+
+  return (
+    <Routes>
+      {/* User */}
+      <Route path="/" element={withFade(<Home />)} />
+      <Route path="/aboutus" element={withFade(<Aboutus />)} />
+      <Route path="/services" element={withFade(<Service />)} />
+      <Route path="/products" element={withFade(<Products />)} />
+      <Route path="/contactus" element={withFade(<Contactus />)} />
+      <Route path="/profile" element={withFade(<Profile />)} />
+      <Route path="/profile/vehicles" element={withFade(<Vehicles />)} />
+      <Route path="/profile/security" element={withFade(<ProfileSecurity />)} />
+      <Route path="/productdetail" element={withFade(<Productdetail />)} />
+      <Route path="/cart" element={withFade(<Cart />)} />
+      <Route path="/ordertracking" element={withFade(<Ordertracking />)} />
+      <Route path="/blogs" element={withFade(<Blogs />)} />
+
+      {/* Login and Signup */}
+      <Route path="/login" element={withFade(<Login />)} />
+      <Route path="/signup" element={withFade(<Signup />)} />
+      <Route path="/forgetpassword" element={withFade(<Forgetpassword />)} />
+
+      {/* Admin */}
+
+    </Routes>
+  )
+}
 
 function App() {
   return (
     <BrowserRouter>
-    <Routes>
-      {/* User */}
-    <Route path="/" element={<Home />} />
-    <Route path="/aboutus" element={<Aboutus />} />
-    <Route path="/services" element={<Service />} />
-    <Route path="/products" element={<Products />} />
-    <Route path="/contactus" element={<Contactus />} />
-    <Route path="/profile" element={<Profile />} />
-    <Route path="/profile/vehicles" element={<Vehicles />} />
-    <Route path="/profile/security" element={<ProfileSecurity />} />
-    <Route path="/productdetail" element={<Productdetail />} />
-    <Route path="/cart" element={<Cart />} />
-    <Route path="/ordertracking" element={<Ordertracking />} />
-    <Route path="/blogs" element={<Blogs />} />
-
-    {/* Login and Signup */}
-    <Route path="/login" element={<Login />} />
-    <Route path="/signup" element={<Signup />} />
-    <Route path="/forgetpassword" element={<Forgetpassword />} />
-
-    {/* Admin */}
-
-    </Routes>
+      <AppRoutes />
     </BrowserRouter>
   )
 }

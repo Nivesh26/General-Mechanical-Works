@@ -1,0 +1,11 @@
+.page-fade {
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 420ms ease, transform 420ms ease;
+  will-change: opacity, transform;
+}
+
+.page-fade-in {
+  opacity: 1;
+  transform: translateY(0);
+}
