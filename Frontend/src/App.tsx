@@ -12,6 +12,7 @@ import Login from './Logins-Signup/Login'
 import Signup from './Logins-Signup/Signup'
 import Forgetpassword from './Logins-Signup/Forgetpassword'
 import Productdetail from './UserPages/Productdetail'
+import Cart from './UserPages/Cart'
 
 function App() {
   return (
@@ -27,6 +28,7 @@ function App() {
     <Route path="/profile/vehicles" element={<Vehicles />} />
     <Route path="/profile/security" element={<ProfileSecurity />} />
     <Route path="/productdetail" element={<Productdetail />} />
+    <Route path="/cart" element={<Cart />} />
 
     {/* Login and Signup */}
     <Route path="/login" element={<Login />} />

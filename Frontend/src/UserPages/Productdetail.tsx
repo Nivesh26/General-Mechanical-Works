@@ -12,6 +12,8 @@ import { HiOutlineCheck, HiStar, HiOutlineHandThumbUp } from 'react-icons/hi2'
 
 const productImages = [EngineOil, Brakes, Battery, Tyre]
 const productSizes = ['S', 'L', 'XL', 'XXL']
+/** Units available for this product (replace with API data when wired). */
+const PRODUCT_STOCK = 24
 
 const reviews = [
   { name: 'Raj K.', rating: 5, comment: 'Great oil, smooth engine performance. Using it for the last 6 months with no issues. Recommended.', date: '2 days ago' },
@@ -90,7 +92,12 @@ const Productdetail = () => {
                 <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-2 tracking-tight">
                   Premium Synthetic Engine Oil
                 </h1>
-                <p className="text-primary text-2xl font-semibold mb-4">Rs. 3,500</p>
+                <p className="text-primary text-2xl font-semibold mb-2">Rs. 3,500</p>
+                <p className="text-sm font-normal text-gray-600 mb-4">
+                  <span className="text-gray-800">Stock:</span>{' '}
+                  <span className="text-gray-900 tabular-nums">{PRODUCT_STOCK}</span>
+                  <span className="text-gray-500"> units available</span>
+                </p>
 
                 <div className="mb-6">
                   <p className="text-sm font-medium text-gray-700 mb-2">Size</p>
