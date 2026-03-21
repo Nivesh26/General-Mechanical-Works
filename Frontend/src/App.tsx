@@ -17,6 +17,19 @@ import Ordertracking from './UserPages/Ordertracking'
 import Blogs from './UserPages/Blogsdetail'
 import './App.css'
 
+/** Scroll to top on every navigation so new pages don’t open mid-page. */
+function ScrollToTop() {
+  const { pathname, search } = useLocation()
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+    document.documentElement.scrollTop = 0
+    document.body.scrollTop = 0
+  }, [pathname, search])
+
+  return null
+}
+
 const PageTransition = ({ children }: { children: ReactNode }) => {
   const location = useLocation()
   const [visible, setVisible] = useState(false)
@@ -67,6 +80,7 @@ function AppRoutes() {
 function App() {
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <AppRoutes />
     </BrowserRouter>
   )
