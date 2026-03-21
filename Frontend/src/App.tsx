@@ -14,6 +14,7 @@ import Forgetpassword from './Logins-Signup/Forgetpassword'
 import Productdetail from './UserPages/Productdetail'
 import Cart from './UserPages/Cart'
 import Ordertracking from './UserPages/Ordertracking'
+import Blogs from './UserPages/Blogsdetail'
 
 function App() {
   return (
@@ -31,7 +32,8 @@ function App() {
     <Route path="/productdetail" element={<Productdetail />} />
     <Route path="/cart" element={<Cart />} />
     <Route path="/ordertracking" element={<Ordertracking />} />
-    
+    <Route path="/blogs" element={<Blogs />} />
+
     {/* Login and Signup */}
     <Route path="/login" element={<Login />} />
     <Route path="/signup" element={<Signup />} />

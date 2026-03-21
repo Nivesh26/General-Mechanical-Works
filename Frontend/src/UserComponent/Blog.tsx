@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom'
 import { HiOutlineArrowRight } from "react-icons/hi2";
 import Blog1Img from "../assets/Blog1.png";
 import Blog2Img from "../assets/Blog2.png";
@@ -31,6 +32,11 @@ const blogPosts = [
 ];
 
 const Blog = () => {
+  const navigate = useNavigate()
+  const openBlogDetail = (blogId: number) => {
+    navigate('/blogs', { state: { blogId } })
+  }
+
   return (
     <section className="w-full py-12 sm:py-16 bg-white overflow-hidden">
       <h2 className="text-center text-primary text-2xl sm:text-3xl font-sec font-bold tracking-[4px] uppercase mb-10 sm:mb-12">
@@ -75,6 +81,12 @@ const Blog = () => {
             <article
               key={post.id}
               className="rounded-2xl overflow-hidden border border-gray-200 bg-white shadow-lg flex flex-col"
+              role="button"
+              tabIndex={0}
+              onClick={() => openBlogDetail(post.id)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') openBlogDetail(post.id)
+              }}
             >
               <p className="text-gray-500 text-sm px-4 pt-4 pb-1">{post.date}</p>
               <h3 className="text-primary font-bold text-sm sm:text-base uppercase px-4 pb-3 leading-tight">
