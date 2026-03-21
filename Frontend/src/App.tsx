@@ -13,6 +13,7 @@ import Signup from './Logins-Signup/Signup'
 import Forgetpassword from './Logins-Signup/Forgetpassword'
 import Productdetail from './UserPages/Productdetail'
 import Cart from './UserPages/Cart'
+import Ordertracking from './UserPages/Ordertracking'
 
 function App() {
   return (
@@ -29,7 +30,8 @@ function App() {
     <Route path="/profile/security" element={<ProfileSecurity />} />
     <Route path="/productdetail" element={<Productdetail />} />
     <Route path="/cart" element={<Cart />} />
-
+    <Route path="/ordertracking" element={<Ordertracking />} />
+    
     {/* Login and Signup */}
     <Route path="/login" element={<Login />} />
     <Route path="/signup" element={<Signup />} />

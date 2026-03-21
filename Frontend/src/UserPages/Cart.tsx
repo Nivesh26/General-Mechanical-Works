@@ -33,6 +33,9 @@ const initialCartItems: CartItem[] = [
 
 const formatRs = (n: number) => `Rs. ${n.toLocaleString('en-IN')}`
 
+/** "1 item" for one row, "2 items" for zero or multiple */
+const itemCountLabel = (n: number) => `${n} ${n === 1 ? 'item' : 'items'}`
+
 const TAX_RATE = 0.13
 
 const MIN_QTY = 1
@@ -112,6 +115,10 @@ const Cart = () => {
                   className="w-4 h-4 rounded text-primary border-gray-300 focus:ring-primary shrink-0 disabled:opacity-50"
                 />
                 Select all
+                <span className="text-gray-500 font-normal">
+                  {' '}
+                  ({itemCountLabel(items.length)})
+                </span>
               </label>
               <button
                 type="button"
@@ -222,7 +229,7 @@ const Cart = () => {
                       ? '—'
                       : selectedItems.length === 1
                         ? selectedItems[0].name
-                        : `${selectedItems.length} items`}
+                        : itemCountLabel(selectedItems.length)}
                   </span>
                 </div>
                 {selectedItems.length > 1 && (
