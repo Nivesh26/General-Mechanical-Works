@@ -29,6 +29,7 @@ import AdminBlog from './AdminPages/AdminBlog'
 import AdminOffer from './AdminPages/AdminOffer'
 import AdminServiceReviews from './AdminPages/AdminServiceReviews'
 import AdminPayments from './AdminPages/AdminPayments'
+import ChatbotWidget from './UserComponent/ChatbotWidget'
 
 
 
@@ -104,11 +105,20 @@ function AppRoutes() {
   )
 }
 
+function ChatbotOnUserPages() {
+  const { pathname } = useLocation()
+  const isAdminPage = pathname.startsWith('/admin')
+
+  if (isAdminPage) return null
+  return <ChatbotWidget />
+}
+
 function App() {
   return (
     <BrowserRouter>
       <ScrollToTop />
       <AppRoutes />
+      <ChatbotOnUserPages />
     </BrowserRouter>
   )
 }

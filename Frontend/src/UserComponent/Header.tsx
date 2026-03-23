@@ -1,7 +1,6 @@
 import { NavLink } from 'react-router-dom'
 import { HiOutlineMagnifyingGlass } from 'react-icons/hi2'
 import GMWlogo from '../assets/GMWlogo.png'
-import ChatbotIcon from './ChatbotIcon'
 
 const Header = () => {
   const navLinks = [
@@ -65,7 +64,6 @@ const Header = () => {
           </NavLink>
         </div>
       </div>
-      <ChatbotIcon />
     </header>
   )
 }
