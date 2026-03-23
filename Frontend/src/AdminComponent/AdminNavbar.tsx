@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import {
   FiBox,
@@ -10,10 +11,12 @@ import {
 import GMWLogo from '../assets/GMWlogo.png'
 
 const AdminNavbar = () => {
+  const [isLogoutHovered, setIsLogoutHovered] = useState(false)
+
   const navItems = [
     { label: 'Dashboard', to: '/admindashboard', icon: FiGrid },
-    { label: 'Orders', to: '/admin/orders', icon: FiPackage },
     { label: 'Products', to: '/admin/products', icon: FiBox },
+    { label: 'Orders', to: '/admin/orders', icon: FiPackage },
     { label: 'Users', to: '/admin/users', icon: FiUsers },
     { label: 'Settings', to: '/admin/settings', icon: FiSettings },
   ]
@@ -28,11 +31,11 @@ const AdminNavbar = () => {
         position: 'fixed',
         top: 0,
         left: 0,
-        backgroundColor: '#ffffff',
+        backgroundColor: '#f1f5f9',
         color: '#111827',
         padding: '20px 14px 16px',
         boxSizing: 'border-box',
-        borderRight: '1px solid #e5e7eb',
+        borderRight: '1px solid #dbe2ea',
       }}
     >
       <div
@@ -59,7 +62,7 @@ const AdminNavbar = () => {
             marginTop: '4px',
             fontSize: '12px',
             textAlign: 'center',
-            color: '#374151',
+            color: '#475569',
           }}
         >
           General Mechanical Works Admin
@@ -79,8 +82,8 @@ const AdminNavbar = () => {
               marginBottom: '6px',
               borderRadius: '8px',
               textDecoration: 'none',
-              color: isActive ? '#1d4ed8' : '#374151',
-              backgroundColor: isActive ? '#eff6ff' : 'transparent',
+              color: isActive ? '#b91c1c' : '#334155',
+              backgroundColor: isActive ? '#fee2e2' : 'transparent',
               transition: 'background-color 0.2s ease',
             })}
           >
@@ -92,16 +95,18 @@ const AdminNavbar = () => {
 
       <button
         type="button"
+        onMouseEnter={() => setIsLogoutHovered(true)}
+        onMouseLeave={() => setIsLogoutHovered(false)}
         style={{
           width: '100%',
           padding: '10px 12px',
           borderRadius: '8px',
-          border: '1px solid #d1d5db',
-          backgroundColor: 'transparent',
-          color: '#374151',
+          border: isLogoutHovered ? '1px solid #b91c1c' : '1px solid #cbd5e1',
+          backgroundColor: isLogoutHovered ? '#fee2e2' : 'transparent',
+          color: isLogoutHovered ? '#b91c1c' : '#334155',
           fontWeight: 500,
           cursor: 'pointer',
-          transition: 'background-color 0.2s ease',
+          transition: 'all 0.2s ease',
         }}
       >
         <span

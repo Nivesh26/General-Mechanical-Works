@@ -17,6 +17,12 @@ import Ordertracking from './UserPages/Ordertracking'
 import Blogs from './UserPages/Blogsdetail'
 import './App.css'
 import AdminDashboard from './AdminPages/AdminDashboard'
+import AdminOrders from './AdminPages/AdminOrders'
+import AdminProducts from './AdminPages/AdminProducts'
+import AdminUsers from './AdminPages/AdminUsers'
+import AdminSetting from './AdminPages/AdminSetting'
+
+
 
 /** Scroll to top on every navigation so new pages don’t open mid-page. */
 function ScrollToTop() {
@@ -74,6 +80,10 @@ function AppRoutes() {
 
       {/* Admin */}
       <Route path="/admindashboard" element={withFade(<AdminDashboard />)} />
+      <Route path="/admin/orders" element={withFade(<AdminOrders />)} />
+      <Route path="/admin/products" element={withFade(<AdminProducts />)} />
+      <Route path="/admin/users" element={withFade(<AdminUsers />)} />
+      <Route path="/admin/settings" element={withFade(<AdminSetting />)} />
     </Routes>
   )
 }
