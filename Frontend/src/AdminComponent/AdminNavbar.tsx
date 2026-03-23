@@ -1,14 +1,18 @@
 import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import {
+  FiBookOpen,
   FiBox,
   FiCalendar,
   FiGrid,
   FiLogOut,
   FiMessageSquare,
+  FiTag,
   FiPackage,
   FiCreditCard,
   FiSettings,
+  FiStar,
+  FiThumbsUp,
   FiTool,
   FiUsers,
 } from 'react-icons/fi'
@@ -19,11 +23,15 @@ const AdminNavbar = () => {
 
   const navItems = [
     { label: 'Dashboard', to: '/admindashboard', icon: FiGrid },
+    { label: 'Messages', to: '/adminmessages', icon: FiMessageSquare },
     { label: 'Products', to: '/adminproducts', icon: FiBox },
     { label: 'Orders', to: '/adminorders', icon: FiPackage },
+    { label: 'Reviews', to: '/adminreviews', icon: FiStar },
     { label: 'Appointments', to: '/adminappointments', icon: FiCalendar },
     { label: 'Services', to: '/adminservices', icon: FiTool },
-    { label: 'Messages', to: '/adminmessages', icon: FiMessageSquare },
+    { label: 'Blogs', to: '/adminblogs', icon: FiBookOpen },
+    { label: 'Offers', to: '/adminoffers', icon: FiTag },
+    { label: 'Service Reviews', to: '/adminservicereviews', icon: FiThumbsUp },
     { label: 'Payments & Invoices', to: '/adminpaymentsinvoices', icon: FiCreditCard },
     { label: 'Users', to: '/adminusers', icon: FiUsers },
     { label: 'Settings', to: '/adminsettings', icon: FiSettings },
@@ -32,8 +40,8 @@ const AdminNavbar = () => {
   return (
     <aside
       style={{
-        width: '240px',
-        minHeight: '100vh',
+        width: '280px',
+        height: '100vh',
         display: 'flex',
         flexDirection: 'column',
         position: 'fixed',
@@ -44,6 +52,7 @@ const AdminNavbar = () => {
         padding: '20px 14px 16px',
         boxSizing: 'border-box',
         borderRight: '1px solid #dbe2ea',
+        overflow: 'hidden',
       }}
     >
       <div
@@ -77,7 +86,7 @@ const AdminNavbar = () => {
         </p>
       </div>
 
-      <nav style={{ flex: 1 }}>
+      <nav style={{ flex: 1, overflowY: 'auto', paddingRight: '4px', scrollbarWidth: 'thin' }}>
         {navItems.map((item) => (
           <NavLink
             key={item.to}
