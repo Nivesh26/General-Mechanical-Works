@@ -2,10 +2,14 @@ import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import {
   FiBox,
+  FiCalendar,
   FiGrid,
   FiLogOut,
+  FiMessageSquare,
   FiPackage,
+  FiCreditCard,
   FiSettings,
+  FiTool,
   FiUsers,
 } from 'react-icons/fi'
 import GMWLogo from '../assets/GMWlogo.png'
@@ -15,10 +19,14 @@ const AdminNavbar = () => {
 
   const navItems = [
     { label: 'Dashboard', to: '/admindashboard', icon: FiGrid },
-    { label: 'Products', to: '/admin/products', icon: FiBox },
-    { label: 'Orders', to: '/admin/orders', icon: FiPackage },
-    { label: 'Users', to: '/admin/users', icon: FiUsers },
-    { label: 'Settings', to: '/admin/settings', icon: FiSettings },
+    { label: 'Products', to: '/adminproducts', icon: FiBox },
+    { label: 'Orders', to: '/adminorders', icon: FiPackage },
+    { label: 'Appointments', to: '/adminappointments', icon: FiCalendar },
+    { label: 'Services', to: '/adminservices', icon: FiTool },
+    { label: 'Messages', to: '/adminmessages', icon: FiMessageSquare },
+    { label: 'Payments & Invoices', to: '/adminpaymentsinvoices', icon: FiCreditCard },
+    { label: 'Users', to: '/adminusers', icon: FiUsers },
+    { label: 'Settings', to: '/adminsettings', icon: FiSettings },
   ]
 
   return (

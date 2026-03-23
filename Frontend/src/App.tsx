@@ -80,10 +80,10 @@ function AppRoutes() {
 
       {/* Admin */}
       <Route path="/admindashboard" element={withFade(<AdminDashboard />)} />
-      <Route path="/admin/orders" element={withFade(<AdminOrders />)} />
-      <Route path="/admin/products" element={withFade(<AdminProducts />)} />
-      <Route path="/admin/users" element={withFade(<AdminUsers />)} />
-      <Route path="/admin/settings" element={withFade(<AdminSetting />)} />
+      <Route path="/adminorders" element={withFade(<AdminOrders />)} />
+      <Route path="/adminproducts" element={withFade(<AdminProducts />)} />
+      <Route path="/adminusers" element={withFade(<AdminUsers />)} />
+      <Route path="/adminsettings" element={withFade(<AdminSetting />)} />
     </Routes>
   )
 }
