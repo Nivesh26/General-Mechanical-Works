@@ -21,6 +21,14 @@ import AdminOrders from './AdminPages/AdminOrders'
 import AdminProducts from './AdminPages/AdminProducts'
 import AdminUsers from './AdminPages/AdminUsers'
 import AdminSetting from './AdminPages/AdminSetting'
+import AdminReviews from './AdminPages/AdminReviews'
+import AdminMessage from './AdminPages/AdminMessage'
+import AdminAppointments from './AdminPages/AdminAppointments'
+import AdminService from './AdminPages/AdminService'
+import AdminBlog from './AdminPages/AdminBlog'
+import AdminOffer from './AdminPages/AdminOffer'
+import AdminServiceReviews from './AdminPages/AdminServiceReviews'
+import AdminPayments from './AdminPages/AdminPayments'
 
 
 
@@ -84,6 +92,14 @@ function AppRoutes() {
       <Route path="/adminproducts" element={withFade(<AdminProducts />)} />
       <Route path="/adminusers" element={withFade(<AdminUsers />)} />
       <Route path="/adminsettings" element={withFade(<AdminSetting />)} />
+      <Route path="/adminreviews" element={withFade(<AdminReviews />)} />
+      <Route path="/adminmessages" element={withFade(<AdminMessage />)} />
+      <Route path="/adminappointments" element={withFade(<AdminAppointments />)} />
+      <Route path="/adminservices" element={withFade(<AdminService />)} />
+      <Route path="/adminblogs" element={withFade(<AdminBlog />)} />
+      <Route path="/adminoffers" element={withFade(<AdminOffer />)} />
+      <Route path="/adminservicereviews" element={withFade(<AdminServiceReviews />)} />
+      <Route path="/adminpaymentsinvoices" element={withFade(<AdminPayments />)} />
     </Routes>
   )
 }
