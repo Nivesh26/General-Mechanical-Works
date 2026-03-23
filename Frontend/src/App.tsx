@@ -16,6 +16,7 @@ import Cart from './UserPages/Cart'
 import Ordertracking from './UserPages/Ordertracking'
 import Blogs from './UserPages/Blogsdetail'
 import './App.css'
+import AdminDashboard from './AdminPages/AdminDashboard'
 
 /** Scroll to top on every navigation so new pages don’t open mid-page. */
 function ScrollToTop() {
@@ -72,7 +73,7 @@ function AppRoutes() {
       <Route path="/forgetpassword" element={withFade(<Forgetpassword />)} />
 
       {/* Admin */}
-
+      <Route path="/admindashboard" element={withFade(<AdminDashboard />)} />
     </Routes>
   )
 }
