@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import {
   FiBookOpen,
@@ -20,10 +20,12 @@ import GMWLogo from '../assets/GMWlogo.png'
 
 const AdminNavbar = () => {
   const [isLogoutHovered, setIsLogoutHovered] = useState(false)
+  const navScrollRef = useRef<HTMLElement | null>(null)
+  const navScrollStorageKey = 'admin-navbar-scroll-top'
 
   const navItems = [
     { label: 'Dashboard', to: '/admindashboard', icon: FiGrid },
-    { label: 'Messages', to: '/adminmessages', icon: FiMessageSquare },
+    { label: 'Messages', to: '/adminmessages', icon: FiMessageSquare, badge: '1' },
     { label: 'Products', to: '/adminproducts', icon: FiBox },
     { label: 'Orders', to: '/adminorders', icon: FiPackage },
     { label: 'Reviews', to: '/adminreviews', icon: FiStar },
@@ -36,6 +38,16 @@ const AdminNavbar = () => {
     { label: 'Users', to: '/adminusers', icon: FiUsers },
     { label: 'Settings', to: '/adminsettings', icon: FiSettings },
   ]
+
+  useEffect(() => {
+    const navElement = navScrollRef.current
+    if (!navElement) return
+
+    const savedScrollTop = window.sessionStorage.getItem(navScrollStorageKey)
+    if (savedScrollTop) {
+      navElement.scrollTop = Number(savedScrollTop)
+    }
+  }, [])
 
   return (
     <aside
@@ -86,7 +98,16 @@ const AdminNavbar = () => {
         </p>
       </div>
 
-      <nav style={{ flex: 1, overflowY: 'auto', paddingRight: '4px', scrollbarWidth: 'thin' }}>
+      <nav
+        ref={navScrollRef}
+        onScroll={(event) => {
+          window.sessionStorage.setItem(
+            navScrollStorageKey,
+            String((event.currentTarget as HTMLElement).scrollTop)
+          )
+        }}
+        style={{ flex: 1, overflowY: 'auto', paddingRight: '4px', scrollbarWidth: 'thin' }}
+      >
         {navItems.map((item) => (
           <NavLink
             key={item.to}
@@ -105,7 +126,26 @@ const AdminNavbar = () => {
             })}
           >
             <item.icon size={16} />
-            <span style={{ fontSize: '14px', fontWeight: 500 }}>{item.label}</span>
+            <span style={{ fontSize: '14px', fontWeight: 500, flex: 1 }}>{item.label}</span>
+            {item.badge ? (
+              <span
+                style={{
+                  minWidth: '18px',
+                  height: '18px',
+                  borderRadius: '999px',
+                  backgroundColor: '#dc2626',
+                  color: '#ffffff',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '0 6px',
+                }}
+              >
+                {item.badge}
+              </span>
+            ) : null}
           </NavLink>
         ))}
       </nav>
