@@ -36,6 +36,17 @@ const lineTotal = (line: OrderLine) => line.quantity * line.unitPrice
 
 const orderTotal = (order: Order) => order.items.reduce((sum, line) => sum + lineTotal(line), 0)
 
+const ORDER_TAX_RATE = 0.13
+
+function orderTaxAmount(subtotal: number) {
+  return Math.round(subtotal * ORDER_TAX_RATE)
+}
+
+function orderGrandTotal(order: Order) {
+  const sub = orderTotal(order)
+  return sub + orderTaxAmount(sub)
+}
+
 const initialOrders: Order[] = [
   {
     id: 'o1',
@@ -148,7 +159,32 @@ const initialOrders: Order[] = [
   },
 ]
 
-const statusOptions: OrderStatus[] = ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled']
+/** Statuses admins may assign — never `cancelled` (only the customer can cancel). */
+const ADMIN_STATUS_OPTIONS: Exclude<OrderStatus, 'cancelled'>[] = [
+  'pending',
+  'confirmed',
+  'shipped',
+  'delivered',
+]
+
+const STATUS_ORDER: Record<Exclude<OrderStatus, 'cancelled'>, number> = {
+  pending: 0,
+  confirmed: 1,
+  shipped: 2,
+  delivered: 3,
+}
+
+function statusRank(status: OrderStatus): number | null {
+  if (status === 'cancelled') return null
+  return STATUS_ORDER[status]
+}
+
+/** Forward-only: same stage or later. No reverting to earlier stages. Cancelled is read-only. */
+function statusChoicesForOrder(current: OrderStatus): OrderStatus[] {
+  if (current === 'cancelled') return []
+  const rank = statusRank(current)!
+  return ADMIN_STATUS_OPTIONS.filter((s) => STATUS_ORDER[s] >= rank)
+}
 
 function StatusBadge({ status }: { status: OrderStatus }) {
   const map: Record<OrderStatus, { label: string; bg: string; color: string }> = {
@@ -215,8 +251,19 @@ const AdminOrders = () => {
     return c
   }, [orders])
 
-  const updateStatus = (orderId: string, status: OrderStatus) => {
-    setOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, status } : o)))
+  const updateStatus = (orderId: string, nextStatus: OrderStatus) => {
+    const current = orders.find((o) => o.id === orderId)?.status
+    if (current == null) return
+    if (nextStatus === 'cancelled') return
+    if (current === 'cancelled') return
+    const rCur = statusRank(current)
+    const rNext = statusRank(nextStatus)
+    if (rCur == null || rNext == null) return
+    if (rNext < rCur) return
+    setOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, status: nextStatus } : o)))
+    if (statusFilter !== 'all' && nextStatus !== statusFilter) {
+      setStatusFilter(nextStatus)
+    }
   }
 
   const onSearchSubmit = (e: React.FormEvent) => {
@@ -240,7 +287,7 @@ const AdminOrders = () => {
           <div style={{ minWidth: 0, flex: '1 1 auto' }}>
             <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 700, color: '#1e293b' }}>Orders</h1>
             <p style={{ margin: '6px 0 0', fontSize: '14px', color: '#64748b' }}>
-              Customer product orders — search, filter by status, and update order status.
+              Customer orders — search and update fulfilment status. Cancellations are done by customers only.
             </p>
           </div>
           <form
@@ -349,7 +396,9 @@ const AdminOrders = () => {
               </thead>
               <tbody>
                 {filteredOrders.map((order) => {
-                  const total = orderTotal(order)
+                  const subtotal = orderTotal(order)
+                  const tax = orderTaxAmount(subtotal)
+                  const grandTotal = orderGrandTotal(order)
                   const itemsSummary =
                     order.items.length === 1
                       ? `${order.items[0].productName} ×${order.items[0].quantity}`
@@ -374,7 +423,7 @@ const AdminOrders = () => {
                           <span style={{ fontSize: '13px', color: '#475569' }}>{order.placedAt}</span>
                         </td>
                         <td style={tdStyle}>
-                          <span style={{ fontWeight: 600, color: '#0f172a' }}>{formatRs(total)}</span>
+                          <span style={{ fontWeight: 600, color: '#0f172a' }}>{formatRs(grandTotal)}</span>
                         </td>
                         <td style={tdStyle}>
                           <StatusBadge status={order.status} />
@@ -397,26 +446,29 @@ const AdminOrders = () => {
                             >
                               {isOpen ? 'Hide details' : 'View details'}
                             </button>
-                            <select
-                              value={order.status}
-                              onChange={(e) => updateStatus(order.id, e.target.value as OrderStatus)}
-                              aria-label={`Update status for ${order.orderNumber}`}
-                              style={{
-                                padding: '6px 8px',
-                                fontSize: '12px',
-                                borderRadius: '6px',
-                                border: '1px solid #cbd5e1',
-                                backgroundColor: '#fff',
-                                cursor: 'pointer',
-                                maxWidth: '140px',
-                              }}
-                            >
-                              {statusOptions.map((s) => (
-                                <option key={s} value={s}>
-                                  {s.charAt(0).toUpperCase() + s.slice(1)}
-                                </option>
-                              ))}
-                            </select>
+                            {order.status !== 'cancelled' && order.status !== 'delivered' && (
+                              <select
+                                key={`${order.id}-${order.status}`}
+                                value={order.status}
+                                onChange={(e) => updateStatus(order.id, e.target.value as OrderStatus)}
+                                aria-label={`Update status for ${order.orderNumber}`}
+                                style={{
+                                  padding: '6px 10px',
+                                  fontSize: '12px',
+                                  borderRadius: '6px',
+                                  border: '1px solid #cbd5e1',
+                                  backgroundColor: '#fff',
+                                  cursor: 'pointer',
+                                  minWidth: '132px',
+                                }}
+                              >
+                                {statusChoicesForOrder(order.status).map((s) => (
+                                  <option key={s} value={s}>
+                                    {s.charAt(0).toUpperCase() + s.slice(1)}
+                                  </option>
+                                ))}
+                              </select>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -424,17 +476,13 @@ const AdminOrders = () => {
                         <tr style={{ backgroundColor: '#f8fafc' }}>
                           <td colSpan={7} style={{ padding: '0', borderTop: '1px solid #e2e8f0' }}>
                             <div style={{ padding: '16px 20px' }}>
-                              <p style={{ margin: '0 0 10px', fontSize: '12px', fontWeight: 700, color: '#64748b' }}>
-                                Line items &amp; delivery
-                              </p>
                               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px',
                                 marginBottom: '14px' }}>
                                 <div>
                                   <div style={{ fontSize: '14px', fontWeight: 600, color: '#1e293b' }}>Shipping address</div>
                                   <p style={{ margin: '6px 0 0', fontSize: '13px', color: '#475569', lineHeight: 1.5 }}>
-                                    {order.address}
+                                    {order.address}, {order.phone}
                                   </p>
-                                  <p style={{ margin: '8px 0 0', fontSize: '13px', color: '#475569' }}>{order.phone}</p>
                                 </div>
                               </div>
                               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
@@ -489,9 +537,24 @@ const AdminOrders = () => {
                                   ))}
                                 </tbody>
                               </table>
-                              <p style={{ margin: '12px 0 0', textAlign: 'right', fontSize: '15px', fontWeight: 700, color: '#0f172a' }}>
-                                Order total: {formatRs(total)}
-                              </p>
+                              <div
+                                style={{
+                                  margin: '12px 0 0',
+                                  textAlign: 'right',
+                                  fontSize: '14px',
+                                  color: '#475569',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  alignItems: 'flex-end',
+                                  gap: '6px',
+                                }}
+                              >
+                                <div>Subtotal: {formatRs(subtotal)}</div>
+                                <div>Tax (13%): {formatRs(tax)}</div>
+                                <div style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a', paddingTop: '4px' }}>
+                                  Order total: {formatRs(grandTotal)}
+                                </div>
+                              </div>
                             </div>
                           </td>
                         </tr>
