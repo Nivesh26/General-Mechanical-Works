@@ -10,6 +10,6 @@ const AdminDashboard = () => {
       </main>
     </div>
   )
-}
+} 
 
 export default AdminDashboard
