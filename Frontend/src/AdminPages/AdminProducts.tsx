@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react'
 import { useMemo, useState } from 'react'
 import AdminNavbar from '../AdminComponent/AdminNavbar'
 import { ADMIN_MAIN_SCROLL } from '../AdminComponent/adminMainStyles'
@@ -649,35 +650,11 @@ const AdminProducts = () => {
             </div>
 
             <div style={{ display: 'flex', gap: '10px', marginTop: '14px' }}>
-              <button
-                type="submit"
-                style={{
-                  border: 0,
-                  borderRadius: '999px',
-                  padding: '11px 20px',
-                  fontWeight: 700,
-                  color: '#fff',
-                  background: '#bd162c',
-                  letterSpacing: '0.2px',
-                  cursor: 'pointer',
-                }}
-              >
+              <button type="submit" style={btnPrimary}>
                 {editingId !== null ? 'Update product' : 'Add product'}
               </button>
               {editingId !== null && (
-                <button
-                  type="button"
-                  onClick={resetForm}
-                  style={{
-                    border: '1px solid #d1d5db',
-                    borderRadius: '10px',
-                    padding: '10px 16px',
-                    fontWeight: 600,
-                    color: '#374151',
-                    background: '#fff',
-                    cursor: 'pointer',
-                  }}
-                >
+                <button type="button" onClick={resetForm} style={btnGhost}>
                   Cancel edit
                 </button>
               )}
@@ -719,19 +696,7 @@ const AdminProducts = () => {
                   fontSize: '14px',
                 }}
               />
-              <button
-                type="submit"
-                style={{
-                  padding: '10px 14px',
-                  fontSize: '14px',
-                  fontWeight: 600,
-                  color: '#ffffff',
-                  backgroundColor: '#bd162c',
-                  border: '1px solid #991b1b',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                }}
-              >
+              <button type="submit" style={btnPrimary}>
                 Search
               </button>
             </form>
@@ -875,6 +840,29 @@ const AdminProducts = () => {
       </main>
     </div>
   )
+}
+
+/** Same as Admin Blog Publish / primary actions */
+const btnPrimary: CSSProperties = {
+  padding: '10px 18px',
+  fontSize: '14px',
+  fontWeight: 600,
+  color: '#fff',
+  backgroundColor: '#bd162c',
+  border: '1px solid #991b1b',
+  borderRadius: '8px',
+  cursor: 'pointer',
+}
+
+const btnGhost: CSSProperties = {
+  padding: '10px 18px',
+  fontSize: '14px',
+  fontWeight: 600,
+  color: '#475569',
+  backgroundColor: '#f1f5f9',
+  border: '1px solid #e2e8f0',
+  borderRadius: '8px',
+  cursor: 'pointer',
 }
 
 export default AdminProducts
