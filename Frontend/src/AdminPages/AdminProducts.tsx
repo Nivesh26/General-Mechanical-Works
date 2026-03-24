@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import AdminNavbar from '../AdminComponent/AdminNavbar'
+import { ADMIN_MAIN_SCROLL } from '../AdminComponent/adminMainStyles'
 import EngineOil from '../assets/EngineOil.png'
 import Brakes from '../assets/Brakekit.png'
 import Tyre from '../assets/Tyre.png'
@@ -243,6 +244,7 @@ const AdminProducts = () => {
     }
 
     setProducts((prev) => [
+      ...prev,
       {
         id: prev.length > 0 ? Math.max(...prev.map((p) => p.id)) + 1 : 1,
         sku: trimmedSku,
@@ -253,7 +255,6 @@ const AdminProducts = () => {
         stock: parsedStock,
         images: finalImageUrls,
       },
-      ...prev,
     ])
     resetForm()
   }
@@ -302,7 +303,7 @@ const AdminProducts = () => {
     <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
       <AdminNavbar />
 
-      <main style={{ marginLeft: '280px', padding: '24px 24px 32px' }}>
+      <main style={ADMIN_MAIN_SCROLL}>
         <h1 style={{ fontSize: '28px', fontWeight: 700, color: '#111827', marginBottom: '6px' }}>
           Admin Products
         </h1>
@@ -767,36 +768,19 @@ const AdminProducts = () => {
                       </td>
                       <td style={{ padding: '10px 14px', borderBottom: '1px solid #f3f4f6', verticalAlign: 'middle' }}>
                         {product.images.length > 0 ? (
-                          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px' }}>
-                            {product.images.slice(0, 4).map((src, index) => (
-                              <img
-                                key={`${product.id}-img-${index}`}
-                                src={src}
-                                alt={`${product.name} preview ${index + 1}`}
-                                style={{
-                                  width: '44px',
-                                  height: '44px',
-                                  objectFit: 'cover',
-                                  borderRadius: '8px',
-                                  border: '1px solid #e5e7eb',
-                                  background: '#f9fafb',
-                                  display: 'block',
-                                }}
-                              />
-                            ))}
-                            {product.images.length > 4 && (
-                              <span
-                                style={{
-                                  fontSize: '12px',
-                                  fontWeight: 600,
-                                  color: '#6b7280',
-                                  padding: '0 4px',
-                                }}
-                              >
-                                +{product.images.length - 4}
-                              </span>
-                            )}
-                          </div>
+                          <img
+                            src={product.images[0]}
+                            alt={`${product.name} preview`}
+                            style={{
+                              width: '44px',
+                              height: '44px',
+                              objectFit: 'cover',
+                              borderRadius: '8px',
+                              border: '1px solid #e5e7eb',
+                              background: '#f9fafb',
+                              display: 'block',
+                            }}
+                          />
                         ) : (
                           <span style={{ color: '#9ca3af', fontSize: '13px' }}>—</span>
                         )}

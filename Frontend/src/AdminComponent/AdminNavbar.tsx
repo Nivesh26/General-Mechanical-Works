@@ -106,7 +106,13 @@ const AdminNavbar = () => {
             String((event.currentTarget as HTMLElement).scrollTop)
           )
         }}
-        style={{ flex: 1, overflowY: 'auto', paddingRight: '4px', scrollbarWidth: 'thin' }}
+        style={{
+          flex: 1,
+          minHeight: 0,
+          overflowY: 'auto',
+          paddingRight: '4px',
+          scrollbarWidth: 'thin',
+        }}
       >
         {navItems.map((item) => (
           <NavLink

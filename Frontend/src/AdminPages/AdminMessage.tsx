@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { FiImage } from 'react-icons/fi'
 import { HiOutlineMagnifyingGlass } from 'react-icons/hi2'
 import AdminNavbar from '../AdminComponent/AdminNavbar'
+import { ADMIN_MAIN_MESSAGES } from '../AdminComponent/adminMainStyles'
 import GMWLogo from '../assets/GMWlogo.png'
 
 type ChatUser = {
@@ -118,17 +119,7 @@ const AdminMessage = () => {
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
       <AdminNavbar />
-      <main
-        style={{
-          marginLeft: '280px',
-          padding: '24px',
-          height: '100vh',
-          boxSizing: 'border-box',
-          overflow: 'hidden',
-          display: 'flex',
-          flexDirection: 'column',
-        }}
-      >
+      <main style={ADMIN_MAIN_MESSAGES}>
         <h1 style={{ margin: '0 0 14px 0', fontSize: '24px', color: '#1e293b' }}>Messages</h1>
 
         <div
@@ -143,13 +134,30 @@ const AdminMessage = () => {
             overflow: 'hidden',
           }}
         >
-          <aside style={{ borderRight: '1px solid #e2e8f0', backgroundColor: '#f8fafc' }}>
-            <div style={{ padding: '12px 14px', borderBottom: '1px solid #e2e8f0', fontWeight: 600 }}>
+          <aside
+            style={{
+              borderRight: '1px solid #e2e8f0',
+              backgroundColor: '#f8fafc',
+              display: 'flex',
+              flexDirection: 'column',
+              minHeight: 0,
+              overflow: 'hidden',
+            }}
+          >
+            <div
+              style={{
+                flexShrink: 0,
+                padding: '12px 14px',
+                borderBottom: '1px solid #e2e8f0',
+                fontWeight: 600,
+              }}
+            >
               User Conversations
             </div>
 
             <div
               style={{
+                flexShrink: 0,
                 padding: '10px 12px',
                 borderBottom: '1px solid #e2e8f0',
                 position: 'relative',
@@ -183,54 +191,86 @@ const AdminMessage = () => {
               />
             </div>
 
-            {filteredUsers.map((user) => {
-              const isActive = user.id === selectedUserId
-              return (
-                <button
-                  key={user.id}
-                  type="button"
-                  onClick={() => setSelectedUserId(user.id)}
-                  style={{
-                    display: 'block',
-                    width: '100%',
-                    textAlign: 'left',
-                    border: 'none',
-                    borderBottom: '1px solid #e2e8f0',
-                    backgroundColor: isActive ? '#fee2e2' : 'transparent',
-                    padding: '12px 14px',
-                    cursor: 'pointer',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div
-                      style={{
-                        width: '34px',
-                        height: '34px',
-                        borderRadius: '999px',
-                        backgroundColor: user.avatarColor,
-                        color: '#ffffff',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '12px',
-                        fontWeight: 700,
-                        flexShrink: 0,
-                      }}
-                    >
-                      {getInitials(user.name)}
-                    </div>
+            <div
+              style={{
+                flex: 1,
+                minHeight: 0,
+                overflowY: 'auto',
+                overflowX: 'hidden',
+                scrollbarWidth: 'thin',
+              }}
+            >
+              {filteredUsers.map((user) => {
+                const isActive = user.id === selectedUserId
+                return (
+                  <button
+                    key={user.id}
+                    type="button"
+                    onClick={() => setSelectedUserId(user.id)}
+                    style={{
+                      display: 'block',
+                      width: '100%',
+                      textAlign: 'left',
+                      border: 'none',
+                      borderBottom: '1px solid #e2e8f0',
+                      backgroundColor: isActive ? '#fee2e2' : 'transparent',
+                      padding: '12px 14px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div
+                        style={{
+                          width: '34px',
+                          height: '34px',
+                          borderRadius: '999px',
+                          backgroundColor: user.avatarColor,
+                          color: '#ffffff',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '12px',
+                          fontWeight: 700,
+                          flexShrink: 0,
+                        }}
+                      >
+                        {getInitials(user.name)}
+                      </div>
 
-                    <div>
-                      <div style={{ fontSize: '14px', fontWeight: 600, color: '#1e293b' }}>{user.name}</div>
-                      <div style={{ fontSize: '12px', color: '#64748b', marginTop: '3px' }}>{user.lastMessage}</div>
+                      <div style={{ minWidth: 0 }}>
+                        <div
+                          style={{
+                            fontSize: '14px',
+                            fontWeight: 600,
+                            color: '#1e293b',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {user.name}
+                        </div>
+                        <div
+                          style={{
+                            fontSize: '12px',
+                            color: '#64748b',
+                            marginTop: '3px',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {user.lastMessage}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </button>
-              )
-            })}
-            {filteredUsers.length === 0 ? (
-              <div style={{ padding: '12px', fontSize: '12px', color: '#64748b' }}>No users found.</div>
-            ) : null}
+                  </button>
+                )
+              })}
+              {filteredUsers.length === 0 ? (
+                <div style={{ padding: '12px', fontSize: '12px', color: '#64748b' }}>No users found.</div>
+              ) : null}
+            </div>
           </aside>
 
           <section style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
