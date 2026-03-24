@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { HiEye, HiEyeSlash } from 'react-icons/hi2'
 import Header from '../UserComponent/Header'
@@ -6,15 +6,35 @@ import Footer from '../UserComponent/Footer'
 import Copyright from '../UserComponent/Copyright'
 import googleIcon from '../assets/google.png'
 
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
 const Userlogin = () => {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [errors, setErrors] = useState<Partial<Record<'email' | 'password', string>>>({})
+
+  const validate = () => {
+    const next: Partial<Record<'email' | 'password', string>> = {}
+    const trimmed = email.trim()
+    if (!trimmed) next.email = 'Email is required.'
+    else if (!emailRegex.test(trimmed)) next.email = 'Enter a valid email address.'
+    if (!password) next.password = 'Password is required.'
+    else if (password.length < 6) next.password = 'Password must be at least 6 characters.'
+    setErrors(next)
+    return Object.keys(next).length === 0
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    if (!validate()) return
     // TODO: wire to auth API
   }
+
+  const inputBorder = (hasError: boolean) =>
+    `w-full bg-transparent border-0 border-b px-0 py-2 text-gray-800 placeholder-gray-400 focus:outline-none transition-colors ${
+      hasError ? 'border-red-500 focus:border-red-500' : 'border-gray-300 focus:border-primary'
+    }`
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-100">
@@ -32,24 +52,53 @@ const Userlogin = () => {
               </Link>
             </p>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-6" noValidate>
               <div>
                 <input
                   type="email"
+                  name="email"
+                  autoComplete="email"
                   placeholder="Email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-transparent border-0 border-b border-gray-300 px-0 py-2 text-gray-800 placeholder-gray-400 focus:outline-none focus:border-primary transition-colors"
+                  onChange={(e) => {
+                    setEmail(e.target.value)
+                    setErrors((prev) => {
+                      if (!prev.email) return prev
+                      const n = { ...prev }
+                      delete n.email
+                      return n
+                    })
+                  }}
+                  aria-invalid={Boolean(errors.email)}
+                  aria-describedby={errors.email ? 'login-email-error' : undefined}
+                  className={inputBorder(Boolean(errors.email))}
                 />
+                {errors.email && (
+                  <p id="login-email-error" className="mt-1 text-sm text-red-600" role="alert">
+                    {errors.email}
+                  </p>
+                )}
               </div>
               <div>
                 <div className="relative">
                   <input
                     type={showPassword ? 'text' : 'password'}
+                    name="password"
+                    autoComplete="current-password"
                     placeholder="Password"
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full bg-transparent border-0 border-b border-gray-300 px-0 py-2 pr-9 text-gray-800 placeholder-gray-400 focus:outline-none focus:border-primary transition-colors"
+                    onChange={(e) => {
+                      setPassword(e.target.value)
+                      setErrors((prev) => {
+                        if (!prev.password) return prev
+                        const n = { ...prev }
+                        delete n.password
+                        return n
+                      })
+                    }}
+                    aria-invalid={Boolean(errors.password)}
+                    aria-describedby={errors.password ? 'login-password-error' : undefined}
+                    className={`${inputBorder(Boolean(errors.password))} pr-9`}
                   />
                   <button
                     type="button"
@@ -60,6 +109,11 @@ const Userlogin = () => {
                     {showPassword ? <HiEyeSlash className="w-5 h-5" /> : <HiEye className="w-5 h-5" />}
                   </button>
                 </div>
+                {errors.password && (
+                  <p id="login-password-error" className="mt-1 text-sm text-red-600" role="alert">
+                    {errors.password}
+                  </p>
+                )}
                 <div className="flex justify-end mt-1">
                   <Link
                     to="/forgetpassword"
@@ -82,7 +136,7 @@ const Userlogin = () => {
               <span className="flex-1 h-px bg-gray-300" />
               <span className="text-sm text-gray-500 font-medium">OR</span>
               <span className="flex-1 h-px bg-gray-300" />
-            </div>  
+            </div>
 
             <button
               type="button"

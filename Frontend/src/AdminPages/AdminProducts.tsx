@@ -76,11 +76,52 @@ const emptyForm: ProductForm = {
 
 const formatRs = (value: number) => `Rs. ${value.toLocaleString('en-IN')}`
 
+type ProductFieldKey = 'name' | 'sku' | 'category' | 'price' | 'stock' | 'images'
+
+const borderNormal = '1px solid #d1d5db'
+const borderError = '1px solid #dc2626'
+
+const validateProductForm = (
+  form: ProductForm,
+  products: Product[],
+  editingId: number | null,
+  uploadFiles: File[],
+  existingImageCount: number
+): Partial<Record<ProductFieldKey, string>> => {
+  const e: Partial<Record<ProductFieldKey, string>> = {}
+  const trimmedSku = form.sku.trim().toUpperCase()
+  const trimmedName = form.name.trim()
+  const trimmedCategory = form.category.trim()
+  const parsedPrice = Number(form.price)
+  const parsedStock = Number(form.stock)
+
+  if (!trimmedName) e.name = 'Product name is required.'
+  if (!trimmedSku) e.sku = 'SKU is required.'
+  else if (products.some((p) => p.sku === trimmedSku && p.id !== editingId)) {
+    e.sku = 'This SKU is already in use.'
+  }
+
+  if (!trimmedCategory) e.category = 'Category is required.'
+
+  if (form.price.trim() === '' || !Number.isFinite(parsedPrice) || parsedPrice <= 0) {
+    e.price = 'Enter a valid price greater than 0.'
+  }
+
+  if (form.stock.trim() === '' || !Number.isFinite(parsedStock) || parsedStock < 0 || !Number.isInteger(parsedStock)) {
+    e.stock = 'Enter a whole number (0 or more).'
+  }
+
+  const imageCount = uploadFiles.length > 0 ? uploadFiles.length : existingImageCount
+  if (imageCount > 4) e.images = 'You can upload at most 4 images.'
+
+  return e
+}
+
 const AdminProducts = () => {
   const [products, setProducts] = useState<Product[]>(initialProducts)
   const [form, setForm] = useState<ProductForm>(emptyForm)
   const [editingId, setEditingId] = useState<number | null>(null)
-  const [error, setError] = useState('')
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<ProductFieldKey, string>>>({})
   const [searchInput, setSearchInput] = useState('')
   const [uploadFiles, setUploadFiles] = useState<File[]>([])
   const [fileInputKey, setFileInputKey] = useState(0)
@@ -98,10 +139,24 @@ const AdminProducts = () => {
     return categoryChoices.filter((c) => c.toLowerCase().includes(q))
   }, [categoryChoices, form.category])
 
+  const clearFieldError = (key: ProductFieldKey) => {
+    setFieldErrors((prev) => {
+      if (!prev[key]) return prev
+      const next = { ...prev }
+      delete next[key]
+      return next
+    })
+  }
+
   const onInputChange =
     (field: keyof ProductForm) =>
     (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
       setForm((prev) => ({ ...prev, [field]: event.target.value }))
+      const errKey: ProductFieldKey | undefined =
+        field === 'name' || field === 'sku' || field === 'category' || field === 'price' || field === 'stock'
+          ? field
+          : undefined
+      if (errKey) clearFieldError(errKey)
     }
 
   const resetForm = () => {
@@ -110,7 +165,7 @@ const AdminProducts = () => {
     setUploadFiles([])
     setFileInputKey((k) => k + 1)
     setCategorySuggestionsOpen(false)
-    setError('')
+    setFieldErrors({})
   }
 
   const onFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -118,7 +173,7 @@ const AdminProducts = () => {
     if (!nextFile) return
 
     if (uploadFiles.length >= 4) {
-      setError('You can upload maximum 4 images.')
+      setFieldErrors((prev) => ({ ...prev, images: 'You can upload maximum 4 images.' }))
       return
     }
 
@@ -126,21 +181,32 @@ const AdminProducts = () => {
       (f) => f.name === nextFile.name && f.size === nextFile.size && f.lastModified === nextFile.lastModified
     )
     if (alreadyAdded) {
-      setError('This image is already selected.')
+      setFieldErrors((prev) => ({ ...prev, images: 'This image is already selected.' }))
       return
     }
 
-    setError('')
+    setFieldErrors((prev) => {
+      const next = { ...prev }
+      delete next.images
+      return next
+    })
     setUploadFiles((prev) => [...prev, nextFile])
   }
 
   const removeUploadFile = (indexToRemove: number) => {
     setUploadFiles((prev) => prev.filter((_, index) => index !== indexToRemove))
-    setError('')
+    clearFieldError('images')
   }
 
   const onSubmit = (event: React.FormEvent) => {
     event.preventDefault()
+
+    const editingProduct = editingId !== null ? products.find((p) => p.id === editingId) : null
+    const existingImageCount = editingProduct?.images.length ?? 0
+
+    const errors = validateProductForm(form, products, editingId, uploadFiles, existingImageCount)
+    setFieldErrors(errors)
+    if (Object.keys(errors).length > 0) return
 
     const trimmedSku = form.sku.trim().toUpperCase()
     const trimmedName = form.name.trim()
@@ -149,43 +215,11 @@ const AdminProducts = () => {
     const parsedPrice = Number(form.price)
     const parsedStock = Number(form.stock)
 
-    if (!trimmedSku || !trimmedName || !trimmedCategory) {
-      setError('SKU, name, and category are required.')
-      return
-    }
-
-    const duplicateSku = products.some((p) => p.sku === trimmedSku && p.id !== editingId)
-    if (duplicateSku) {
-      setError('SKU already exists. Use a unique SKU.')
-      return
-    }
-
-    if (!Number.isFinite(parsedPrice) || parsedPrice <= 0) {
-      setError('Price must be a valid number greater than 0.')
-      return
-    }
-
-    if (!Number.isFinite(parsedStock) || parsedStock < 0 || !Number.isInteger(parsedStock)) {
-      setError('Stock must be a whole number (0 or more).')
-      return
-    }
-
-    const editingProduct = editingId !== null ? products.find((p) => p.id === editingId) : null
     const existingImages = editingProduct?.images ?? []
     const finalImageUrls =
       uploadFiles.length > 0
         ? uploadFiles.map((file) => URL.createObjectURL(file))
         : existingImages
-
-    if (finalImageUrls.length < 1) {
-      setError('Minimum 1 image is required.')
-      return
-    }
-
-    if (finalImageUrls.length > 4) {
-      setError('Maximum 4 images allowed.')
-      return
-    }
 
     if (editingId !== null) {
       setProducts((prev) =>
@@ -237,7 +271,7 @@ const AdminProducts = () => {
     setCategorySuggestionsOpen(false)
     setUploadFiles([])
     setFileInputKey((k) => k + 1)
-    setError('')
+    setFieldErrors({})
   }
 
   const onDelete = (productId: number) => {
@@ -283,7 +317,6 @@ const AdminProducts = () => {
             borderRadius: '16px',
             padding: '20px',
             marginBottom: '18px',
-            boxShadow: '0 10px 30px rgba(15, 23, 42, 0.05)',
           }}
         >
           <h2 style={{ margin: '0 0 14px', fontSize: '18px', fontWeight: 700, color: '#111827' }}>
@@ -294,31 +327,49 @@ const AdminProducts = () => {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, minmax(0, 1fr))', gap: '12px' }}>
               <div style={{ gridColumn: 'span 8' }}>
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>
-                  Product Name
+                  Product Name <span style={{ color: '#dc2626' }}>*</span>
                 </label>
                 <input
                   value={form.name}
                   onChange={onInputChange('name')}
                   placeholder="Enter product name"
-                  style={{ width: '100%', border: '1px solid #d1d5db', borderRadius: '10px', padding: '11px 12px' }}
+                  aria-invalid={Boolean(fieldErrors.name)}
+                  style={{
+                    width: '100%',
+                    border: fieldErrors.name ? borderError : borderNormal,
+                    borderRadius: '10px',
+                    padding: '11px 12px',
+                  }}
                 />
+                {fieldErrors.name && (
+                  <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#dc2626' }}>{fieldErrors.name}</p>
+                )}
               </div>
 
               <div style={{ gridColumn: 'span 4' }}>
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>
-                  SKU
+                  SKU <span style={{ color: '#dc2626' }}>*</span>
                 </label>
                 <input
                   value={form.sku}
                   onChange={onInputChange('sku')}
                   placeholder="SKU"
-                  style={{ width: '100%', border: '1px solid #d1d5db', borderRadius: '10px', padding: '11px 12px' }}
+                  aria-invalid={Boolean(fieldErrors.sku)}
+                  style={{
+                    width: '100%',
+                    border: fieldErrors.sku ? borderError : borderNormal,
+                    borderRadius: '10px',
+                    padding: '11px 12px',
+                  }}
                 />
+                {fieldErrors.sku && (
+                  <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#dc2626' }}>{fieldErrors.sku}</p>
+                )}
               </div>
 
               <div style={{ gridColumn: 'span 4' }}>
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>
-                  Category
+                  Category <span style={{ color: '#dc2626' }}>*</span>
                 </label>
                 <div style={{ position: 'relative', width: '100%' }}>
                   <input
@@ -327,7 +378,7 @@ const AdminProducts = () => {
                     onChange={(e) => {
                       setForm((prev) => ({ ...prev, category: e.target.value }))
                       setCategorySuggestionsOpen(true)
-                      setError('')
+                      clearFieldError('category')
                     }}
                     onFocus={() => setCategorySuggestionsOpen(true)}
                     onBlur={() => {
@@ -344,9 +395,10 @@ const AdminProducts = () => {
                     aria-autocomplete="list"
                     aria-expanded={categorySuggestionsOpen}
                     role="combobox"
+                    aria-invalid={Boolean(fieldErrors.category)}
                     style={{
                       width: '100%',
-                      border: '1px solid #d1d5db',
+                      border: fieldErrors.category ? borderError : borderNormal,
                       borderRadius: '10px',
                       padding: '11px 12px',
                       fontSize: '14px',
@@ -370,7 +422,6 @@ const AdminProducts = () => {
                         border: '1px solid #e5e7eb',
                         borderRadius: '10px',
                         background: '#fff',
-                        boxShadow: '0 10px 25px rgba(15, 23, 42, 0.12)',
                         zIndex: 40,
                       }}
                     >
@@ -382,7 +433,7 @@ const AdminProducts = () => {
                             e.preventDefault()
                             setForm((prev) => ({ ...prev, category: opt }))
                             setCategorySuggestionsOpen(false)
-                            setError('')
+                            clearFieldError('category')
                           }}
                           style={{
                             padding: '10px 12px',
@@ -413,7 +464,6 @@ const AdminProducts = () => {
                           border: '1px solid #e5e7eb',
                           borderRadius: '10px',
                           background: '#f8fafc',
-                          boxShadow: '0 10px 25px rgba(15, 23, 42, 0.08)',
                           zIndex: 40,
                         }}
                       >
@@ -421,6 +471,9 @@ const AdminProducts = () => {
                       </div>
                     )}
                 </div>
+                {fieldErrors.category && (
+                  <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#dc2626' }}>{fieldErrors.category}</p>
+                )}
               </div>
 
               <div style={{ gridColumn: 'span 4' }}>
@@ -466,7 +519,7 @@ const AdminProducts = () => {
 
               <div style={{ gridColumn: 'span 4' }}>
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>
-                  Price (Rs.)
+                  Price (Rs.) <span style={{ color: '#dc2626' }}>*</span>
                 </label>
                 <input
                   value={form.price}
@@ -474,8 +527,17 @@ const AdminProducts = () => {
                   type="number"
                   min={1}
                   placeholder="Price"
-                  style={{ width: '100%', border: '1px solid #d1d5db', borderRadius: '10px', padding: '11px 12px' }}
+                  aria-invalid={Boolean(fieldErrors.price)}
+                  style={{
+                    width: '100%',
+                    border: fieldErrors.price ? borderError : borderNormal,
+                    borderRadius: '10px',
+                    padding: '11px 12px',
+                  }}
                 />
+                {fieldErrors.price && (
+                  <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#dc2626' }}>{fieldErrors.price}</p>
+                )}
               </div>
 
               <div style={{ gridColumn: 'span 8' }}>
@@ -483,7 +545,7 @@ const AdminProducts = () => {
                   htmlFor="product-images"
                   style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#475569', marginBottom: '6px' }}
                 >
-                  Product Images (min 1, max 4)
+                  Product Images (max 4)
                 </label>
                 <input
                   key={fileInputKey}
@@ -491,8 +553,17 @@ const AdminProducts = () => {
                   type="file"
                   accept="image/*"
                   onChange={onFileChange}
-                  style={{ width: '100%', border: '1px solid #d1d5db', borderRadius: '10px', padding: '9px 10px' }}
+                  aria-invalid={Boolean(fieldErrors.images)}
+                  style={{
+                    width: '100%',
+                    border: fieldErrors.images ? borderError : borderNormal,
+                    borderRadius: '10px',
+                    padding: '9px 10px',
+                  }}
                 />
+                {fieldErrors.images && (
+                  <p style={{ margin: '6px 0 0', fontSize: '12px', color: '#dc2626' }}>{fieldErrors.images}</p>
+                )}
                 {editingId !== null && uploadFiles.length === 0 && (
                   <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#6b7280' }}>
                     No new files selected. Existing images will be kept.
@@ -553,7 +624,7 @@ const AdminProducts = () => {
 
               <div style={{ gridColumn: 'span 4' }}>
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#0f172a', marginBottom: '6px' }}>
-                  Stock
+                  Stock <span style={{ color: '#dc2626' }}>*</span>
                 </label>
                 <input
                   value={form.stock}
@@ -562,16 +633,19 @@ const AdminProducts = () => {
                   min={0}
                   step={1}
                   placeholder="0"
-                  style={{ width: '100%', border: '1px solid #d1d5db', borderRadius: '10px', padding: '11px 12px' }}
+                  aria-invalid={Boolean(fieldErrors.stock)}
+                  style={{
+                    width: '100%',
+                    border: fieldErrors.stock ? borderError : borderNormal,
+                    borderRadius: '10px',
+                    padding: '11px 12px',
+                  }}
                 />
+                {fieldErrors.stock && (
+                  <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#dc2626' }}>{fieldErrors.stock}</p>
+                )}
               </div>
             </div>
-
-            {error && (
-              <p style={{ color: '#dc2626', margin: '10px 0 0', fontSize: '14px' }}>
-                {error}
-              </p>
-            )}
 
             <div style={{ display: 'flex', gap: '10px', marginTop: '14px' }}>
               <button
@@ -583,7 +657,6 @@ const AdminProducts = () => {
                   fontWeight: 700,
                   color: '#fff',
                   background: '#bd162c',
-                  boxShadow: '0 8px 20px rgba(189, 22, 44, 0.28)',
                   letterSpacing: '0.2px',
                   cursor: 'pointer',
                 }}
@@ -648,13 +721,13 @@ const AdminProducts = () => {
               <button
                 type="submit"
                 style={{
-                  border: 0,
-                  borderRadius: '8px',
-                  padding: '9px 14px',
-                  fontWeight: 600,
+                  padding: '10px 14px',
                   fontSize: '14px',
-                  color: '#fff',
-                  background: '#111827',
+                  fontWeight: 600,
+                  color: '#ffffff',
+                  backgroundColor: '#bd162c',
+                  border: '1px solid #991b1b',
+                  borderRadius: '8px',
                   cursor: 'pointer',
                 }}
               >
@@ -667,7 +740,7 @@ const AdminProducts = () => {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: '#f9fafb' }}>
-                  {['ID', 'SKU', 'Name', 'Category', 'Size', 'Images', 'Price', 'Stock', 'Status', 'Actions'].map((head) => (
+                  {['ID', 'Images', 'SKU', 'Name', 'Category', 'Size', 'Price', 'Stock', 'Status', 'Actions'].map((head) => (
                     <th
                       key={head}
                       style={{
@@ -692,6 +765,42 @@ const AdminProducts = () => {
                       <td style={{ padding: '12px 14px', borderBottom: '1px solid #f3f4f6', color: '#4b5563' }}>
                         #{product.id}
                       </td>
+                      <td style={{ padding: '10px 14px', borderBottom: '1px solid #f3f4f6', verticalAlign: 'middle' }}>
+                        {product.images.length > 0 ? (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px' }}>
+                            {product.images.slice(0, 4).map((src, index) => (
+                              <img
+                                key={`${product.id}-img-${index}`}
+                                src={src}
+                                alt={`${product.name} preview ${index + 1}`}
+                                style={{
+                                  width: '44px',
+                                  height: '44px',
+                                  objectFit: 'cover',
+                                  borderRadius: '8px',
+                                  border: '1px solid #e5e7eb',
+                                  background: '#f9fafb',
+                                  display: 'block',
+                                }}
+                              />
+                            ))}
+                            {product.images.length > 4 && (
+                              <span
+                                style={{
+                                  fontSize: '12px',
+                                  fontWeight: 600,
+                                  color: '#6b7280',
+                                  padding: '0 4px',
+                                }}
+                              >
+                                +{product.images.length - 4}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span style={{ color: '#9ca3af', fontSize: '13px' }}>—</span>
+                        )}
+                      </td>
                       <td style={{ padding: '12px 14px', borderBottom: '1px solid #f3f4f6', color: '#111827', fontFamily: 'monospace' }}>
                         {product.sku}
                       </td>
@@ -703,9 +812,6 @@ const AdminProducts = () => {
                       </td>
                       <td style={{ padding: '12px 14px', borderBottom: '1px solid #f3f4f6', color: '#4b5563' }}>
                         {product.size.length > 0 ? product.size.join(', ') : '-'}
-                      </td>
-                      <td style={{ padding: '12px 14px', borderBottom: '1px solid #f3f4f6', color: '#4b5563' }}>
-                        {product.images.length} image{product.images.length === 1 ? '' : 's'}
                       </td>
                       <td style={{ padding: '12px 14px', borderBottom: '1px solid #f3f4f6', color: '#111827' }}>
                         {formatRs(product.price)}

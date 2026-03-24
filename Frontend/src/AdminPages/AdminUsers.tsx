@@ -79,7 +79,7 @@ const AdminUsers = () => {
                 fontSize: '14px',
                 fontWeight: 600,
                 color: '#ffffff',
-                backgroundColor: '#b91c1c',
+                backgroundColor: '#bd162c',
                 border: '1px solid #991b1b',
                 borderRadius: '8px',
                 cursor: 'pointer',
