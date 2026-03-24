@@ -9,6 +9,8 @@ import Tyre from '../assets/Tyre.png'
 
 type OrderStatus = 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled'
 
+type PaymentMethod = 'eSewa' | 'Khalti' | 'Cash'
+
 type OrderLine = {
   productName: string
   sku: string
@@ -27,6 +29,7 @@ type Order = {
   address: string
   placedAt: string
   status: OrderStatus
+  paymentMethod: PaymentMethod
   items: OrderLine[]
 }
 
@@ -50,44 +53,39 @@ function orderGrandTotal(order: Order) {
 const initialOrders: Order[] = [
   {
     id: 'o1',
-    orderNumber: 'ORD-2401',
-    customerName: 'Nivesh Shrestha',
-    customerEmail: 'nivesh@example.com',
-    phone: '+977 9841122334',
-    address: 'Patan, Lalitpur, Nepal',
+    orderNumber: 'ORD-2410',
+    customerName: 'Sita Gurung',
+    customerEmail: 'sita.gurung@example.com',
+    phone: '+977 9811122334',
+    address: 'Baneshwor, Kathmandu, Nepal',
     placedAt: '2025-03-24',
     status: 'pending',
+    paymentMethod: 'eSewa',
     items: [
       {
         productName: 'Premium Synthetic Engine Oil',
         sku: 'SKU-1001',
-        quantity: 2,
+        quantity: 1,
         unitPrice: 3500,
         imageUrl: EngineOil,
-      },
-      {
-        productName: 'Brake Service Kit',
-        sku: 'SKU-1002',
-        quantity: 1,
-        unitPrice: 5200,
-        imageUrl: Brakes,
       },
     ],
   },
   {
     id: 'o2',
-    orderNumber: 'ORD-2398',
-    customerName: 'Aarav Sharma',
-    customerEmail: 'aarav.sharma@example.com',
-    phone: '+977 9849925333',
-    address: 'Thamel, Kathmandu, Nepal',
-    placedAt: '2025-03-22',
+    orderNumber: 'ORD-2408',
+    customerName: 'Nivesh Shrestha',
+    customerEmail: 'nivesh@example.com',
+    phone: '+977 9841122334',
+    address: 'Patan, Lalitpur, Nepal',
+    placedAt: '2025-03-23',
     status: 'confirmed',
+    paymentMethod: 'eSewa',
     items: [
       {
         productName: 'All-weather Tyre 100/90-17',
         sku: 'SKU-1003',
-        quantity: 2,
+        quantity: 1,
         unitPrice: 12500,
         imageUrl: Tyre,
       },
@@ -95,13 +93,54 @@ const initialOrders: Order[] = [
   },
   {
     id: 'o3',
-    orderNumber: 'ORD-2395',
+    orderNumber: 'ORD-2407',
+    customerName: 'Kiran Thapa',
+    customerEmail: 'kiran.thapa@example.com',
+    phone: '+977 9855511222',
+    address: 'Itahari, Sunsari, Nepal',
+    placedAt: '2025-03-22',
+    status: 'shipped',
+    paymentMethod: 'Khalti',
+    items: [
+      {
+        productName: 'Brake Service Kit',
+        sku: 'SKU-1002',
+        quantity: 1,
+        unitPrice: 5200,
+        imageUrl: Brakes,
+      },
+    ],
+  },
+  {
+    id: 'o4',
+    orderNumber: 'ORD-2406',
     customerName: 'Diya Patel',
     customerEmail: 'diya.patel@example.com',
     phone: '+977 9812345678',
     address: 'Biratnagar, Nepal',
+    placedAt: '2025-03-21',
+    status: 'delivered',
+    paymentMethod: 'Khalti',
+    items: [
+      {
+        productName: 'Premium Synthetic Engine Oil',
+        sku: 'SKU-1001',
+        quantity: 2,
+        unitPrice: 3500,
+        imageUrl: EngineOil,
+      },
+    ],
+  },
+  {
+    id: 'o5',
+    orderNumber: 'ORD-2405',
+    customerName: 'Aarav Sharma',
+    customerEmail: 'aarav.sharma@example.com',
+    phone: '+977 9849925333',
+    address: 'Thamel, Kathmandu, Nepal',
     placedAt: '2025-03-20',
-    status: 'shipped',
+    status: 'pending',
+    paymentMethod: 'Cash',
     items: [
       {
         productName: 'Brake Service Kit',
@@ -116,44 +155,6 @@ const initialOrders: Order[] = [
         quantity: 1,
         unitPrice: 3500,
         imageUrl: EngineOil,
-      },
-    ],
-  },
-  {
-    id: 'o4',
-    orderNumber: 'ORD-2388',
-    customerName: 'Rohan Verma',
-    customerEmail: 'rohan.verma@example.com',
-    phone: '+977 9855011223',
-    address: 'Lakeside, Pokhara, Nepal',
-    placedAt: '2025-03-15',
-    status: 'delivered',
-    items: [
-      {
-        productName: 'Premium Synthetic Engine Oil',
-        sku: 'SKU-1001',
-        quantity: 3,
-        unitPrice: 3500,
-        imageUrl: EngineOil,
-      },
-    ],
-  },
-  {
-    id: 'o5',
-    orderNumber: 'ORD-2380',
-    customerName: 'Neha Singh',
-    customerEmail: 'neha.singh@example.com',
-    phone: '+977 9849925333',
-    address: 'Bhaktapur, Nepal',
-    placedAt: '2025-03-10',
-    status: 'cancelled',
-    items: [
-      {
-        productName: 'All-weather Tyre 100/90-17',
-        sku: 'SKU-1003',
-        quantity: 1,
-        unitPrice: 12500,
-        imageUrl: Tyre,
       },
     ],
   },
@@ -212,6 +213,30 @@ function StatusBadge({ status }: { status: OrderStatus }) {
   )
 }
 
+function PaymentBadge({ method }: { method: PaymentMethod }) {
+  const map: Record<PaymentMethod, { label: string; bg: string; color: string }> = {
+    eSewa: { label: 'eSewa', bg: '#dcfce7', color: '#166534' },
+    Khalti: { label: 'Khalti', bg: '#ede7f6', color: '#5e35b1' },
+    Cash: { label: 'Cash', bg: '#f1f5f9', color: '#475569' },
+  }
+  const p = map[method]
+  return (
+    <span
+      style={{
+        display: 'inline-block',
+        borderRadius: '999px',
+        padding: '4px 10px',
+        fontSize: '12px',
+        fontWeight: 700,
+        backgroundColor: p.bg,
+        color: p.color,
+      }}
+    >
+      {p.label}
+    </span>
+  )
+}
+
 const AdminOrders = () => {
   const [orders, setOrders] = useState<Order[]>(initialOrders)
   const [searchInput, setSearchInput] = useState('')
@@ -228,6 +253,7 @@ const AdminOrders = () => {
         order.customerName,
         order.customerEmail,
         order.phone,
+        order.paymentMethod,
         ...order.items.map((i) => `${i.productName} ${i.sku}`),
       ]
         .join(' ')
@@ -287,7 +313,7 @@ const AdminOrders = () => {
           <div style={{ minWidth: 0, flex: '1 1 auto' }}>
             <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 700, color: '#1e293b' }}>Orders</h1>
             <p style={{ margin: '6px 0 0', fontSize: '14px', color: '#64748b' }}>
-              Customer orders — search and update fulfilment status. Cancellations are done by customers only.
+              Customer orders — search and update fulfilment status.
             </p>
           </div>
           <form
@@ -382,7 +408,7 @@ const AdminOrders = () => {
           }}
         >
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '900px' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1000px' }}>
               <thead>
                 <tr style={{ backgroundColor: '#f1f5f9' }}>
                   <th style={thStyle}>Order</th>
@@ -390,6 +416,7 @@ const AdminOrders = () => {
                   <th style={thStyle}>Products</th>
                   <th style={thStyle}>Date</th>
                   <th style={thStyle}>Total</th>
+                  <th style={thStyle}>Payment</th>
                   <th style={thStyle}>Status</th>
                   <th style={thStyle}>Actions</th>
                 </tr>
@@ -424,6 +451,9 @@ const AdminOrders = () => {
                         </td>
                         <td style={tdStyle}>
                           <span style={{ fontWeight: 600, color: '#0f172a' }}>{formatRs(grandTotal)}</span>
+                        </td>
+                        <td style={tdStyle}>
+                          <PaymentBadge method={order.paymentMethod} />
                         </td>
                         <td style={tdStyle}>
                           <StatusBadge status={order.status} />
@@ -474,16 +504,13 @@ const AdminOrders = () => {
                       </tr>
                       {isOpen && (
                         <tr style={{ backgroundColor: '#f8fafc' }}>
-                          <td colSpan={7} style={{ padding: '0', borderTop: '1px solid #e2e8f0' }}>
+                          <td colSpan={8} style={{ padding: '0', borderTop: '1px solid #e2e8f0' }}>
                             <div style={{ padding: '16px 20px' }}>
-                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px',
-                                marginBottom: '14px' }}>
-                                <div>
-                                  <div style={{ fontSize: '14px', fontWeight: 600, color: '#1e293b' }}>Shipping address</div>
-                                  <p style={{ margin: '6px 0 0', fontSize: '13px', color: '#475569', lineHeight: 1.5 }}>
-                                    {order.address}, {order.phone}
-                                  </p>
-                                </div>
+                              <div style={{ marginBottom: '14px' }}>
+                                <div style={{ fontSize: '14px', fontWeight: 600, color: '#1e293b' }}>Shipping address</div>
+                                <p style={{ margin: '6px 0 0', fontSize: '13px', color: '#475569', lineHeight: 1.5 }}>
+                                  {order.address}, {order.phone}
+                                </p>
                               </div>
                               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
                                 <thead>
@@ -564,7 +591,7 @@ const AdminOrders = () => {
                 })}
                 {filteredOrders.length === 0 && (
                   <tr>
-                    <td colSpan={7} style={{ padding: '24px', textAlign: 'center', color: '#64748b', fontSize: '14px' }}>
+                    <td colSpan={8} style={{ padding: '24px', textAlign: 'center', color: '#64748b', fontSize: '14px' }}>
                       No orders match your filters.
                     </td>
                   </tr>
