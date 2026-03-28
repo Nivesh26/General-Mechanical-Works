@@ -25,6 +25,7 @@ import AdminReviews from './AdminPages/AdminReviews'
 import AdminMessage from './AdminPages/AdminMessage'
 import AdminAppointments from './AdminPages/AdminAppointments'
 import AdminService from './AdminPages/AdminService'
+import AdminBill from './AdminPages/AdminBill'
 import AdminBlog from './AdminPages/AdminBlog'
 import AdminOffer from './AdminPages/AdminOffer'
 import AdminServiceReviews from './AdminPages/AdminServiceReviews'
@@ -97,6 +98,7 @@ function AppRoutes() {
       <Route path="/adminmessages" element={withFade(<AdminMessage />)} />
       <Route path="/adminappointments" element={withFade(<AdminAppointments />)} />
       <Route path="/adminservices" element={withFade(<AdminService />)} />
+      <Route path="/adminbills" element={withFade(<AdminBill />)} />
       <Route path="/adminblogs" element={withFade(<AdminBlog />)} />
       <Route path="/adminoffers" element={withFade(<AdminOffer />)} />
       <Route path="/adminservicereviews" element={withFade(<AdminServiceReviews />)} />
