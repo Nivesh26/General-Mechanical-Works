@@ -640,7 +640,7 @@ const Vehiclesform = ({ vehicles, setVehicles }: VehiclesformProps) => {
                   )}
                 </div>
 
-                <div className="flex flex-col items-center justify-center gap-1 min-h-[2rem]">
+                <div className="flex flex-col items-center justify-center gap-1 min-h-8">
                   {!isEditing && !plate.startsWith("new-") && (
                     <div className="flex flex-col items-center gap-1 w-full">
                       <span
@@ -653,7 +653,7 @@ const Vehiclesform = ({ vehicles, setVehicles }: VehiclesformProps) => {
                         {v.plateFormat === "embossed" ? "Embossed" : "Traditional"}
                       </span>
                       <span
-                        className="text-center text-[#1a1a1a] font-medium text-sm sm:text-[15px] break-words max-w-[200px]"
+                        className="text-center text-[#1a1a1a] font-medium text-sm sm:text-[15px] wrap-break-word max-w-[200px]"
                         style={v.plateFormat === "traditional" ? devanagariStack : undefined}
                       >
                         {formatDisplayPlate(v)}
@@ -713,7 +713,7 @@ const Vehiclesform = ({ vehicles, setVehicles }: VehiclesformProps) => {
 
               {isEditing && (
                 <div className="pb-6 pt-1 px-0 sm:px-1">
-                  <div className="rounded-2xl border border-gray-200 bg-gradient-to-b from-gray-50/80 to-white p-4 sm:p-6 space-y-5 shadow-sm">
+                  <div className="rounded-2xl border border-gray-200 bg-linear-to-b from-gray-50/80 to-white p-4 sm:p-6 space-y-5 shadow-sm">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                       <h3 className="text-sm font-semibold text-[#1a1a1a]">Nepal license plate format</h3>
                       <p className="text-xs text-gray-500 max-w-xl">
