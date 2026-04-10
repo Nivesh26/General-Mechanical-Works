@@ -2,6 +2,8 @@ import { useState } from 'react'
 import Header from '../UserComponent/Header'
 import Footer from '../UserComponent/Footer'
 import Copyright from '../UserComponent/Copyright'
+import ServicePickupPanel from '../UserComponent/ServicePickupPanel'
+import ServiceWorkshopPanel from '../UserComponent/ServiceWorkshopPanel'
 import { HiOutlineBuildingStorefront, HiOutlineTruck } from 'react-icons/hi2'
 
 /** Bring bike to the workshop vs we collect from your location */
@@ -27,7 +29,6 @@ const Service = () => {
     <div className="min-h-screen flex flex-col bg-white">
       <Header />
 
-      {/* Hero */}
       <section>
         <div className="mx-[80px] py-12 text-center">
           <h1 className="text-primary font-sec text-3xl sm:text-4xl font-bold tracking-[4px] uppercase">
@@ -39,8 +40,8 @@ const Service = () => {
         </div>
       </section>
 
-      <main className="flex-1 mx-[80px] py-10">
-        <div className="max-w-4xl mx-auto">
+      <main className="flex-1 mx-[80px] pb-16">
+        <div className="max-w-4xl xl:max-w-6xl mx-auto">
           <section>
             <h2 className="text-xl font-bold text-gray-900 mb-4">Workshop or pickup</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -66,6 +67,10 @@ const Service = () => {
               ))}
             </div>
           </section>
+
+          {bookingMode === 'pickup' && <ServicePickupPanel />}
+
+          {bookingMode === 'normal' && <ServiceWorkshopPanel />}
         </div>
       </main>
 
