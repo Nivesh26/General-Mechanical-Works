@@ -11,17 +11,22 @@ interface ProfliphotosProps {
   vehicles?: Vehicle[];
 }
 
-const formatVehicleLabel = (v: Vehicle) =>
-  [v.company, v.model].filter(Boolean).join(" ") + (v.plate && !v.plate.startsWith("new-") ? ` (${v.plate})` : "");
+/** Subtitle under the user name: only the bike marked as main (company + model). */
+function mainBikeNameLine(vehicles: Vehicle[]): string {
+  const saved = vehicles.filter(
+    (v) => !v.plate.startsWith("new-") && (v.company.trim() || v.model.trim())
+  );
+  const main = saved.find((v) => v.isMainBike);
+  if (main) {
+    const name = [main.company, main.model].filter((s) => s.trim()).join(" ").trim();
+    if (name) return name;
+  }
+  if (saved.length === 0) return "No bike added";
+  return "Select your main bike";
+}
 
 const Profliephotos = ({ activeTab = "profile", firstName = "Nivesh", lastName = "Shrestha", vehicles = [] }: ProfliphotosProps) => {
-  const displayVehicles = vehicles.filter((v) => v.company || v.model || (v.plate && !v.plate.startsWith("new-")));
-  const vehicleLabel =
-    displayVehicles.length === 0
-      ? "No vehicles"
-      : displayVehicles.length >= 2
-        ? displayVehicles.map(formatVehicleLabel).join(", ")
-        : formatVehicleLabel(displayVehicles[0]);
+  const vehicleLabel = mainBikeNameLine(vehicles);
   return (
     <section className="w-full pt-8 pb-4">
       {/* Cover + Upload button; only profile photo in front */}
