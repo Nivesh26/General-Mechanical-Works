@@ -1,28 +1,5 @@
 import { useMemo, useState, type FormEvent } from "react";
-import {
-  HiOutlineCog,
-  HiOutlineWrench,
-  HiOutlineSparkles,
-  HiOutlinePaintBrush,
-} from "react-icons/hi2";
-
-const workshopServices = [
-  { id: "service", title: "Service Work", description: "Motorbike care, servicing", Icon: HiOutlineCog },
-  { id: "tyre", title: "Tyre Repair", description: "Tyre fitting service", Icon: HiOutlineWrench },
-  { id: "wash", title: "Bike Wash", description: "Premium washing & deep cleaning", Icon: HiOutlineSparkles },
-  { id: "engine", title: "Engine Repair", description: "Engine diagnostics & repair", Icon: HiOutlineCog },
-  { id: "dent", title: "Dent & painting", description: "Dent repair & paint", Icon: HiOutlinePaintBrush },
-  { id: "modify", title: "Modify bike", description: "Tuning & modifications", Icon: HiOutlineWrench },
-] as const;
-
-const timeSlots = ["9:00 AM", "10:00 AM", "11:00 AM", "2:00 PM", "3:00 PM", "4:00 PM"];
-
-/** Mock saved bikes — replace with profile/API when available */
-const workshopBikes = [
-  { id: "bike-1", label: "Honda CB 350 — BA 01 1234" },
-  { id: "bike-2", label: "Yamaha R15 — BA 02 5678" },
-  { id: "bike-3", label: "Royal Enfield Classic 350 — BA 03 9012" },
-] as const;
+import { timeSlots, workshopBikes, workshopServices } from "./serviceBookingShared";
 
 const ServiceWorkshopPanel = () => {
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
@@ -42,10 +19,10 @@ const ServiceWorkshopPanel = () => {
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    // Hook for API: selectedServiceId, date, slot, selectedBikeId (optional), notes
+    // Hook for API: selectedServiceId, date, slot, selectedBikeId, notes
   };
 
-  const canSubmit = selectedServiceId && date && slot;
+  const canSubmit = Boolean(selectedServiceId && date && slot && selectedBikeId);
 
   return (
     <section className="mt-10 rounded-2xl border border-gray-200 bg-gray-50/60 p-6 sm:p-8 space-y-8">
@@ -122,17 +99,20 @@ const ServiceWorkshopPanel = () => {
         </div>
 
         <div>
-          <h3 className="text-sm font-semibold text-gray-900 mb-2">3. Select bike (optional)</h3>
+          <h3 className="text-sm font-semibold text-gray-900 mb-2">3. Select bike</h3>
           <label htmlFor="workshop-bike" className="block text-sm text-gray-600 mb-1">
-            Choose which bike this booking.
+            Choose which bike this booking is for.
           </label>
           <select
             id="workshop-bike"
             value={selectedBikeId}
             onChange={(e) => setSelectedBikeId(e.target.value)}
+            required
             className="w-full max-w-md border border-gray-300 rounded-xl px-3 py-2.5 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary bg-white"
           >
-            <option value="">No bike selected</option>
+            <option value="" disabled>
+              Select a bike
+            </option>
             {workshopBikes.map((b) => (
               <option key={b.id} value={b.id}>
                 {b.label}

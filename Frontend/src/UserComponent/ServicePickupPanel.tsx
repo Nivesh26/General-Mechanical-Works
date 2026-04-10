@@ -1,5 +1,6 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState, type FormEvent } from "react";
 import { HiOutlineMapPin } from "react-icons/hi2";
+import { timeSlots, workshopBikes, workshopServices } from "./serviceBookingShared";
 
 /** Google Maps iframe: official Embed API when key is set, otherwise classic lat/lng embed. */
 function buildGoogleMapsEmbedSrc(lat: number, lng: number): string {
@@ -17,6 +18,12 @@ function buildGoogleMapsEmbedSrc(lat: number, lng: number): string {
 }
 
 const ServicePickupPanel = () => {
+  const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
+  const [date, setDate] = useState("");
+  const [slot, setSlot] = useState("");
+  const [selectedBikeId, setSelectedBikeId] = useState("");
+  const [notes, setNotes] = useState("");
+
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [geoStatus, setGeoStatus] = useState<"idle" | "loading" | "ok" | "denied" | "error">("idle");
   const [geoMessage, setGeoMessage] = useState("");
@@ -25,6 +32,15 @@ const ServicePickupPanel = () => {
     () => (coords ? buildGoogleMapsEmbedSrc(coords.lat, coords.lng) : null),
     [coords]
   );
+
+  const { minDate, maxDate } = useMemo(() => {
+    const today = new Date();
+    const max = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+    return {
+      minDate: today.toISOString().slice(0, 10),
+      maxDate: max.toISOString().slice(0, 10),
+    };
+  }, []);
 
   const useCurrentLocation = useCallback(() => {
     if (!navigator.geolocation) {
@@ -54,63 +70,184 @@ const ServicePickupPanel = () => {
     );
   }, []);
 
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    // Hook for API: selectedServiceId, date, slot, coords, selectedBikeId, notes
+  };
+
+  const canSubmit = Boolean(selectedServiceId && date && slot && coords && selectedBikeId);
+
   return (
-    <section className="mt-10 rounded-2xl border border-gray-200 bg-gray-50/60 p-6 sm:p-8 space-y-6">
+    <section className="mt-10 rounded-2xl border border-gray-200 bg-gray-50/60 p-6 sm:p-8 space-y-8">
       <div>
         <h2 className="text-xl font-bold text-gray-900">Pickup service</h2>
         <p className="mt-2 text-sm text-gray-600 max-w-2xl">
-          We collect your bike from you. Share your current location on the map so our team can plan pickup.
+          We collect your bike from you. Choose your service and time, then share your pickup location on the map.
         </p>
       </div>
-
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <button
-          type="button"
-          onClick={useCurrentLocation}
-          disabled={geoStatus === "loading"}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-white hover:opacity-95 transition-opacity disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed"
-        >
-          <HiOutlineMapPin className="w-5 h-5 shrink-0" aria-hidden />
-          {geoStatus === "loading" ? "Getting location…" : "Use my current location"}
-        </button>
-        {coords && (
-          <p className="text-xs text-gray-500 tabular-nums">
-            {coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}
-          </p>
-        )}
-      </div>
-
-      {geoMessage && (
-        <p
-          className={`text-sm ${
-            geoStatus === "ok" ? "text-emerald-700" : geoStatus === "denied" || geoStatus === "error" ? "text-amber-800" : "text-gray-600"
-          }`}
-          role="status"
-        >
-          {geoMessage}
-        </p>
-      )}
 
       <div>
-        <p className="text-sm font-medium text-gray-700 mb-2">Map preview</p>
-        <div className="rounded-xl border border-gray-200 overflow-hidden bg-gray-200 w-full h-[400px] sm:h-[480px]">
-          {mapSrc ? (
-            <iframe
-              title="Your pickup location on Google Maps"
-              className="w-full h-full border-0 block"
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-              allowFullScreen
-              src={mapSrc}
-            />
-          ) : (
-            <div className="w-full h-full flex flex-col items-center justify-center gap-2 px-4 text-center text-gray-500 text-sm">
-              <HiOutlineMapPin className="w-10 h-10 text-gray-400" aria-hidden />
-              <span>Map appears here after you share your current location.</span>
-            </div>
-          )}
+        <h3 className="text-sm font-semibold text-gray-900 mb-3">1. Choose service</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+          {workshopServices.map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              onClick={() => setSelectedServiceId(selectedServiceId === s.id ? null : s.id)}
+              className={`rounded-xl p-4 border-2 text-left flex items-start gap-3 transition-colors ${
+                selectedServiceId === s.id
+                  ? "border-primary bg-primary/5"
+                  : "border-gray-200 hover:border-gray-300 bg-white"
+              }`}
+            >
+              <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
+                <s.Icon className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <p className="font-semibold text-gray-900 text-sm sm:text-base">{s.title}</p>
+                <p className="text-xs sm:text-sm text-gray-600 mt-0.5">{s.description}</p>
+              </div>
+            </button>
+          ))}
         </div>
       </div>
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <h3 className="text-sm font-semibold text-gray-900">2. Date & time</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div>
+            <label htmlFor="pickup-date" className="block text-sm font-medium text-gray-700 mb-1">
+              Preferred date
+            </label>
+            <input
+              id="pickup-date"
+              type="date"
+              min={minDate}
+              max={maxDate}
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary bg-white"
+            />
+          </div>
+          <div>
+            <span className="block text-sm font-medium text-gray-700 mb-2">Time slot</span>
+            <div className="flex flex-wrap gap-2">
+              {timeSlots.map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setSlot(slot === t ? "" : t)}
+                  className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                    slot === t
+                      ? "bg-primary text-white border-primary"
+                      : "bg-white text-gray-700 border-gray-300 hover:border-primary"
+                  }`}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <h3 className="text-sm font-semibold text-gray-900 mb-2">3. Pickup location</h3>
+          <p className="text-sm text-gray-600 mb-3">Share your current location on the map so our team can plan pickup.</p>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
+            <button
+              type="button"
+              onClick={useCurrentLocation}
+              disabled={geoStatus === "loading"}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-white hover:opacity-95 transition-opacity disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed"
+            >
+              <HiOutlineMapPin className="w-5 h-5 shrink-0" aria-hidden />
+              {geoStatus === "loading" ? "Getting location…" : "Use my current location"}
+            </button>
+            {coords && (
+              <p className="text-xs text-gray-500 tabular-nums">
+                {coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}
+              </p>
+            )}
+          </div>
+          {geoMessage && (
+            <p
+              className={`text-sm mb-3 ${
+                geoStatus === "ok"
+                  ? "text-emerald-700"
+                  : geoStatus === "denied" || geoStatus === "error"
+                    ? "text-amber-800"
+                    : "text-gray-600"
+              }`}
+              role="status"
+            >
+              {geoMessage}
+            </p>
+          )}
+          <p className="text-sm font-medium text-gray-700 mb-2">Map preview</p>
+          <div className="rounded-xl border border-gray-200 overflow-hidden bg-gray-200 w-full h-[400px] sm:h-[480px]">
+            {mapSrc ? (
+              <iframe
+                title="Your pickup location on Google Maps"
+                className="w-full h-full border-0 block"
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                allowFullScreen
+                src={mapSrc}
+              />
+            ) : (
+              <div className="w-full h-full flex flex-col items-center justify-center gap-2 px-4 text-center text-gray-500 text-sm">
+                <HiOutlineMapPin className="w-10 h-10 text-gray-400" aria-hidden />
+                <span>Map appears here after you share your current location.</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div>
+          <h3 className="text-sm font-semibold text-gray-900 mb-2">4. Select bike</h3>
+          <label htmlFor="pickup-bike" className="block text-sm text-gray-600 mb-1">
+            Choose which bike this booking is for.
+          </label>
+          <select
+            id="pickup-bike"
+            value={selectedBikeId}
+            onChange={(e) => setSelectedBikeId(e.target.value)}
+            required
+            className="w-full max-w-md border border-gray-300 rounded-xl px-3 py-2.5 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary bg-white"
+          >
+            <option value="" disabled>
+              Select a bike
+            </option>
+            {workshopBikes.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label htmlFor="pickup-notes" className="block text-sm font-semibold text-gray-900 mb-1">
+            5. Notes (optional)
+          </label>
+          <textarea
+            id="pickup-notes"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            rows={3}
+            placeholder="Any specific issues or requests…"
+            className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary resize-y bg-white"
+          />
+        </div>
+
+        <button
+          type="submit"
+          disabled={!canSubmit}
+          className="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-primary text-white font-semibold hover:opacity-95 transition-opacity cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed"
+        >
+          Book pickup service
+        </button>
+      </form>
     </section>
   );
 };
