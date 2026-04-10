@@ -17,10 +17,18 @@ const workshopServices = [
 
 const timeSlots = ["9:00 AM", "10:00 AM", "11:00 AM", "2:00 PM", "3:00 PM", "4:00 PM"];
 
+/** Mock saved bikes — replace with profile/API when available */
+const workshopBikes = [
+  { id: "bike-1", label: "Honda CB 350 — BA 01 1234" },
+  { id: "bike-2", label: "Yamaha R15 — BA 02 5678" },
+  { id: "bike-3", label: "Royal Enfield Classic 350 — BA 03 9012" },
+] as const;
+
 const ServiceWorkshopPanel = () => {
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
   const [date, setDate] = useState("");
   const [slot, setSlot] = useState("");
+  const [selectedBikeId, setSelectedBikeId] = useState("");
   const [notes, setNotes] = useState("");
 
   const { minDate, maxDate } = useMemo(() => {
@@ -34,7 +42,7 @@ const ServiceWorkshopPanel = () => {
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    // Hook for API: selectedServiceId, date, slot, notes
+    // Hook for API: selectedServiceId, date, slot, selectedBikeId (optional), notes
   };
 
   const canSubmit = selectedServiceId && date && slot;
@@ -114,8 +122,28 @@ const ServiceWorkshopPanel = () => {
         </div>
 
         <div>
-          <label htmlFor="workshop-notes" className="block text-sm font-medium text-gray-700 mb-1">
-            Notes (optional)
+          <h3 className="text-sm font-semibold text-gray-900 mb-2">3. Select bike (optional)</h3>
+          <label htmlFor="workshop-bike" className="block text-sm text-gray-600 mb-1">
+            Choose which bike this booking.
+          </label>
+          <select
+            id="workshop-bike"
+            value={selectedBikeId}
+            onChange={(e) => setSelectedBikeId(e.target.value)}
+            className="w-full max-w-md border border-gray-300 rounded-xl px-3 py-2.5 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary bg-white"
+          >
+            <option value="">No bike selected</option>
+            {workshopBikes.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label htmlFor="workshop-notes" className="block text-sm font-semibold text-gray-900 mb-1">
+            4. Notes (optional)
           </label>
           <textarea
             id="workshop-notes"
