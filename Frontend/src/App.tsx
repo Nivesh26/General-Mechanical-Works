@@ -76,8 +76,8 @@ function AppRoutes() {
       <Route path="/products" element={withFade(<Products />)} />
       <Route path="/contactus" element={withFade(<Contactus />)} />
       <Route path="/profile" element={withFade(<Profile />)} />
-      <Route path="/profile/vehicles" element={withFade(<Vehicles />)} />
-      <Route path="/profile/security" element={withFade(<ProfileSecurity />)} />
+      <Route path="/profilevehicles" element={withFade(<Vehicles />)} />
+      <Route path="/profilesecurity" element={withFade(<ProfileSecurity />)} />
       <Route path="/productdetail" element={withFade(<Productdetail />)} />
       <Route path="/cart" element={withFade(<Cart />)} />
       <Route path="/ordertracking" element={withFade(<Ordertracking />)} />
