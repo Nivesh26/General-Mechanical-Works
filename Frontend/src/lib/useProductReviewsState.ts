@@ -1,9 +1,17 @@
 import { useCallback, useSyncExternalStore } from 'react'
+import EngineOil from '../assets/EngineOil.png'
+import NiveshImg from '../assets/Nivesh.png'
+import AalokaImg from '../assets/aalokapoudel.jpg'
+import BabuRajImg from '../assets/baburaja.jpg'
 
 export type ProductReview = {
   id: string
   productId: string
   productName: string
+  /** Product photo (e.g. from CDN or bundled asset URL). */
+  productImage: string
+  /** Reviewer profile photo URL. */
+  userPhoto: string
   name: string
   rating: number
   comment: string
@@ -18,7 +26,9 @@ export const PRODUCT_REVIEWS_SEED: ProductReview[] = [
     id: 'rev-raj',
     productId: DEMO_PRODUCT_ID,
     productName: 'Premium Synthetic Engine Oil',
-    name: 'Raj K.',
+    productImage: EngineOil,
+    userPhoto: NiveshImg,
+    name: 'Nivesh',
     rating: 5,
     comment:
       'Great oil, smooth engine performance. Using it for the last 6 months with no issues. Recommended.',
@@ -28,7 +38,9 @@ export const PRODUCT_REVIEWS_SEED: ProductReview[] = [
     id: 'rev-sita',
     productId: DEMO_PRODUCT_ID,
     productName: 'Premium Synthetic Engine Oil',
-    name: 'Sita M.',
+    productImage: EngineOil,
+    userPhoto: AalokaImg,
+    name: 'Aaloka',
     rating: 5,
     comment: 'Quality product. Bike runs much smoother after the change. Will buy again.',
     date: '1 week ago',
@@ -37,7 +49,9 @@ export const PRODUCT_REVIEWS_SEED: ProductReview[] = [
     id: 'rev-amit',
     productId: DEMO_PRODUCT_ID,
     productName: 'Premium Synthetic Engine Oil',
-    name: 'Amit P.',
+    productImage: EngineOil,
+    userPhoto: BabuRajImg,
+    name: 'BabuRaj',
     rating: 4,
     comment: 'Good value for money. No complaints so far.',
     date: '2 weeks ago',

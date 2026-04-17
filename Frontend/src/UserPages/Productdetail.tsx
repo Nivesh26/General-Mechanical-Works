@@ -221,11 +221,13 @@ const Productdetail = () => {
                   const replyDraft = replyDraftByReviewId[review.id] ?? ''
                   return (
                     <div key={review.id} className="p-5 rounded-xl bg-gray-50 border border-gray-100">
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-semibold">
-                          {review.name.charAt(0).toUpperCase()}
-                        </div>
-                        <div>
+                      <div className="flex items-start gap-3 mb-3">
+                        <img
+                          src={review.userPhoto}
+                          alt={`${review.name} profile`}
+                          className="w-10 h-10 shrink-0 rounded-full object-cover border border-gray-200"
+                        />
+                        <div className="min-w-0 flex-1">
                           <p className="font-semibold text-gray-900">{review.name}</p>
                           <div className="flex items-center gap-1 mt-0.5">
                             {[1, 2, 3, 4, 5].map((i) => (

@@ -12,13 +12,15 @@ import { useProductReviewsState } from '../lib/useProductReviewsState'
 
 const cardStyle: CSSProperties = {
   backgroundColor: '#ffffff',
-  borderRadius: '12px',
-  border: '1px solid #e2e8f0',
-  padding: '20px',
-  marginBottom: '16px',
+  borderRadius: '16px',
+  border: '1px solid #e8ecf0',
+  padding: '24px',
+  marginBottom: '20px',
   width: '100%',
   maxWidth: '100%',
   boxSizing: 'border-box',
+  overflow: 'hidden',
+  boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 28px rgba(15, 23, 42, 0.07)',
 }
 
 const AdminReviews = () => {
@@ -82,48 +84,75 @@ const AdminReviews = () => {
                       flexWrap: 'wrap',
                       alignItems: 'flex-start',
                       justifyContent: 'space-between',
-                      gap: '12px',
-                      marginBottom: '12px',
+                      gap: '16px',
+                      marginBottom: '16px',
                     }}
                   >
-                    <div>
-                      <span
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: '16px',
+                        flex: 1,
+                        minWidth: 0,
+                      }}
+                    >
+                      <img
+                        src={review.userPhoto}
+                        alt={`${review.name} profile`}
                         style={{
-                          display: 'inline-block',
-                          fontSize: '11px',
-                          fontWeight: 700,
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.06em',
-                          color: '#bd162c',
-                          backgroundColor: '#fef2f2',
-                          padding: '4px 10px',
-                          borderRadius: '999px',
-                          marginBottom: '8px',
+                          width: '52px',
+                          height: '52px',
+                          borderRadius: '50%',
+                          objectFit: 'cover',
+                          flexShrink: 0,
+                          border: '2px solid #ffffff',
+                          boxShadow: '0 0 0 1px #e2e8f0, 0 4px 12px rgba(15, 23, 42, 0.08)',
                         }}
-                      >
-                        {review.productName}
-                      </span>
-                      <h2 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: '#0f172a' }}>
-                        {review.name}
-                      </h2>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px' }}>
-                        {[1, 2, 3, 4, 5].map((i) => (
-                          <HiStar
-                            key={i}
+                      />
+                      <div style={{ flex: 1, minWidth: 0, paddingTop: '2px' }}>
+                        <p
+                          style={{
+                            margin: '0 0 4px',
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            letterSpacing: '0.04em',
+                            textTransform: 'uppercase',
+                            color: '#94a3b8',
+                          }}
+                        >
+                          Reviewer
+                        </p>
+                        <h2 style={{ margin: 0, fontSize: '17px', fontWeight: 700, color: '#0f172a', letterSpacing: '-0.02em' }}>
+                          {review.name}
+                        </h2>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '8px', flexWrap: 'wrap' }}>
+                          {[1, 2, 3, 4, 5].map((i) => (
+                            <HiStar
+                              key={i}
+                              style={{
+                                width: 17,
+                                height: 17,
+                                color: i <= review.rating ? '#fbbf24' : '#e5e7eb',
+                                fill: i <= review.rating ? '#fbbf24' : '#e5e7eb',
+                              }}
+                            />
+                          ))}
+                          <span
                             style={{
-                              width: 16,
-                              height: 16,
-                              color: i <= review.rating ? '#fbbf24' : '#e5e7eb',
-                              fill: i <= review.rating ? '#fbbf24' : '#e5e7eb',
+                              fontSize: '12px',
+                              color: '#94a3b8',
+                              marginLeft: '4px',
+                              paddingLeft: '8px',
+                              borderLeft: '1px solid #e2e8f0',
                             }}
-                          />
-                        ))}
-                        <span style={{ fontSize: '12px', color: '#94a3b8', marginLeft: '4px' }}>
-                          {review.date}
-                        </span>
+                          >
+                            {review.date}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                       <button
                         type="button"
                         onClick={() => toggleAdminLike(review.id)}
@@ -132,13 +161,14 @@ const AdminReviews = () => {
                           alignItems: 'center',
                           gap: '8px',
                           padding: '8px 14px',
-                          borderRadius: '8px',
+                          borderRadius: '10px',
                           border: adminLiked ? '1px solid #93c5fd' : '1px solid #e2e8f0',
-                          backgroundColor: adminLiked ? '#eff6ff' : '#ffffff',
+                          backgroundColor: adminLiked ? '#eff6ff' : '#fafafa',
                           color: adminLiked ? '#1d4ed8' : '#475569',
                           fontSize: '13px',
                           fontWeight: 600,
                           cursor: 'pointer',
+                          transition: 'background-color 0.15s ease, border-color 0.15s ease',
                         }}
                       >
                         {adminLiked ? (
@@ -157,14 +187,15 @@ const AdminReviews = () => {
                           display: 'inline-flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          width: '40px',
-                          height: '40px',
-                          borderRadius: '8px',
+                          width: '42px',
+                          height: '42px',
+                          borderRadius: '10px',
                           border:
                             replyOpenId === review.id ? '1px solid #fecaca' : '1px solid #e2e8f0',
-                          backgroundColor: replyOpenId === review.id ? '#fef2f2' : '#ffffff',
+                          backgroundColor: replyOpenId === review.id ? '#fef2f2' : '#fafafa',
                           color: replyOpenId === review.id ? '#bd162c' : '#475569',
                           cursor: 'pointer',
+                          transition: 'background-color 0.15s ease, border-color 0.15s ease',
                         }}
                       >
                         {replyOpenId === review.id ? (
@@ -176,11 +207,18 @@ const AdminReviews = () => {
                     </div>
                   </div>
 
-                  <p style={{ margin: '0 0 12px', fontSize: '14px', lineHeight: 1.6, color: '#334155' }}>
+                  <p
+                    style={{
+                      margin: '0 0 16px',
+                      fontSize: '14px',
+                      lineHeight: 1.65,
+                      color: '#475569',
+                    }}
+                  >
                     {review.comment}
                   </p>
 
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '14px' }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: replyOpenId === review.id ? '12px' : '0' }}>
                     {customerLiked ? (
                       <span
                         style={{
@@ -188,8 +226,9 @@ const AdminReviews = () => {
                           fontWeight: 600,
                           color: '#1d4ed8',
                           backgroundColor: '#eff6ff',
-                          padding: '4px 10px',
-                          borderRadius: '6px',
+                          padding: '5px 11px',
+                          borderRadius: '8px',
+                          border: '1px solid #dbeafe',
                         }}
                       >
                         Customer marked helpful
@@ -198,7 +237,7 @@ const AdminReviews = () => {
                   </div>
 
                   {replyOpenId === review.id ? (
-                    <div style={{ marginTop: '4px' }}>
+                    <div style={{ marginBottom: '20px' }}>
                       <textarea
                         id={`admin-reply-${review.id}`}
                         value={replyValue(review.id)}
@@ -244,6 +283,82 @@ const AdminReviews = () => {
                       </button>
                     </div>
                   ) : null}
+
+                  <div
+                    style={{
+                      marginTop: '20px',
+                      marginLeft: '-24px',
+                      marginRight: '-24px',
+                      marginBottom: '-24px',
+                      padding: '22px 24px 24px',
+                      background: 'linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%)',
+                      borderTop: '1px solid #e8ecf0',
+                    }}
+                  >
+                    <p
+                      style={{
+                        margin: '0 0 14px',
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        letterSpacing: '0.1em',
+                        textTransform: 'uppercase',
+                        color: '#64748b',
+                      }}
+                    >
+                      Reviewed product
+                    </p>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '24px',
+                        flexWrap: 'wrap',
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: '132px',
+                          height: '132px',
+                          borderRadius: '14px',
+                          backgroundColor: '#ffffff',
+                          border: '1px solid #e2e8f0',
+                          boxShadow: '0 2px 10px rgba(15, 23, 42, 0.06)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          padding: '14px',
+                          flexShrink: 0,
+                        }}
+                      >
+                        <img
+                          src={review.productImage}
+                          alt={review.productName}
+                          style={{
+                            maxWidth: '100%',
+                            maxHeight: '100%',
+                            objectFit: 'contain',
+                          }}
+                        />
+                      </div>
+                      <div style={{ flex: 1, minWidth: '220px' }}>
+                        <p
+                          style={{
+                            margin: 0,
+                            fontSize: '16px',
+                            fontWeight: 700,
+                            color: '#0f172a',
+                            lineHeight: 1.35,
+                            letterSpacing: '-0.02em',
+                          }}
+                        >
+                          {review.productName}
+                        </p>
+                        <p style={{ margin: '8px 0 0', fontSize: '13px', lineHeight: 1.5, color: '#64748b' }}>
+                          This review is linked to the product shown above.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 </article>
               )
             })
