@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import plateEmbossedRef from "../assets/NepaliNumberPlate 1.png";
+import plateEmbossedRef from "../assets/NepaliNumberPlate1.png";
 import plateTraditionalRef from "../assets/NepaliNumberPlate2.png";
 
 const COMPANIES = ["Yamaha", "Honda", "KTM", "Triumph", "Suzuki"];
@@ -897,3 +897,4 @@ const Vehiclesform = ({ vehicles, setVehicles }: VehiclesformProps) => {
 };
 
 export default Vehiclesform;
+
