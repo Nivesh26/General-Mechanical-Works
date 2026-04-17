@@ -8,6 +8,7 @@ import EngineOil from '../assets/EngineOil.png'
 import Brakes from '../assets/Brakekit.png'
 import Battery from '../assets/Battery.png'
 import Tyre from '../assets/Tyre.png'
+import GMWlogo from '../assets/GMWlogo.png'
 import { HiOutlineCheck, HiStar, HiOutlineHandThumbUp, HiHandThumbUp } from 'react-icons/hi2'
 import { DEMO_PRODUCT_ID, useProductReviewsState } from '../lib/useProductReviewsState'
 
@@ -25,6 +26,8 @@ const Productdetail = () => {
     reviews,
     userLikedReviewIds,
     userLikedAdminReplyReviewIds,
+    reviewLikeCountById,
+    adminReplyLikeCountById,
     adminReplyByReviewId,
     toggleUserLike,
     toggleUserLikeAdminReply,
@@ -202,6 +205,8 @@ const Productdetail = () => {
                   const adminReply = (adminReplyByReviewId[review.id] ?? '').trim()
                   const reviewLiked = userLikedReviewIds.includes(review.id)
                   const replyLiked = userLikedAdminReplyReviewIds.includes(review.id)
+                  const reviewLikeCount = reviewLikeCountById[review.id] ?? 0
+                  const replyLikeCount = adminReplyLikeCountById[review.id] ?? 0
                   return (
                     <div key={review.id} className="p-5 rounded-xl bg-gray-50 border border-gray-100">
                       <div className="flex items-start gap-3 mb-3">
@@ -228,7 +233,11 @@ const Productdetail = () => {
                         <button
                           type="button"
                           onClick={() => toggleUserLike(review.id)}
-                          aria-label={reviewLiked ? 'Unlike this review' : 'Like this review'}
+                          aria-label={
+                            reviewLiked
+                              ? `Unlike this review, ${reviewLikeCount} total`
+                              : `Like this review, ${reviewLikeCount} total`
+                          }
                           className={`inline-flex items-center gap-1.5 text-sm font-medium cursor-pointer transition-colors ${
                             reviewLiked ? 'text-blue-600' : 'text-gray-500 hover:text-gray-700'
                           }`}
@@ -238,22 +247,37 @@ const Productdetail = () => {
                           ) : (
                             <HiOutlineHandThumbUp className="w-4 h-4" />
                           )}
-                          {reviewLiked ? 'Liked' : 'Like'}
+                          <span>{reviewLiked ? 'Liked' : 'Like'}</span>
+                          <span className="text-gray-300" aria-hidden>
+                            ·
+                          </span>
+                          <span className="text-xs font-normal tabular-nums text-gray-500">
+                            {reviewLikeCount}
+                          </span>
                         </button>
                       </div>
                       {adminReply ? (
                         <div className="rounded-lg border border-primary/20 bg-white px-3 py-2.5">
-                          <p className="text-xs font-semibold text-primary tracking-wide mb-1">
-                            General Mechanical Works
-                          </p>
+                          <div className="flex items-center gap-2.5 mb-1.5">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-gray-200 bg-white p-1.5">
+                              <img
+                                src={GMWlogo}
+                                alt=""
+                                className="h-full w-full object-contain object-center"
+                              />
+                            </div>
+                            <p className="text-xs font-semibold text-gray-900 tracking-wide m-0">
+                              General Mechanical Works
+                            </p>
+                          </div>
                           <p className="text-sm text-gray-700 leading-relaxed mb-2">{adminReply}</p>
                           <button
                             type="button"
                             onClick={() => toggleUserLikeAdminReply(review.id)}
                             aria-label={
                               replyLiked
-                                ? 'Unlike reply from General Mechanical Works'
-                                : 'Like reply from General Mechanical Works'
+                                ? `Unlike reply from General Mechanical Works, ${replyLikeCount} total`
+                                : `Like reply from General Mechanical Works, ${replyLikeCount} total`
                             }
                             className={`inline-flex items-center gap-1.5 text-sm font-medium cursor-pointer transition-colors ${
                               replyLiked ? 'text-blue-600' : 'text-gray-500 hover:text-gray-700'
@@ -264,7 +288,13 @@ const Productdetail = () => {
                             ) : (
                               <HiOutlineHandThumbUp className="w-4 h-4" />
                             )}
-                            {replyLiked ? 'Liked' : 'Like'}
+                            <span>{replyLiked ? 'Liked' : 'Like'}</span>
+                            <span className="text-gray-300" aria-hidden>
+                              ·
+                            </span>
+                            <span className="text-xs font-normal tabular-nums text-gray-500">
+                              {replyLikeCount}
+                            </span>
                           </button>
                         </div>
                       ) : null}

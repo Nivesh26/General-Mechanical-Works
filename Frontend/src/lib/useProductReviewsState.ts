@@ -72,12 +72,34 @@ export const PRODUCT_REVIEWS_SEED: ProductReview[] = [
   },
 ]
 
+/** Demo baseline like totals (shown on product page; toggles add/remove 1 for this shopper). */
+function initialReviewLikeCounts(): Record<string, number> {
+  const byId: Record<string, number> = {}
+  const defaults = [14, 7, 3]
+  PRODUCT_REVIEWS_SEED.forEach((r, i) => {
+    byId[r.id] = defaults[i] ?? 0
+  })
+  return byId
+}
+
+function initialAdminReplyLikeCounts(): Record<string, number> {
+  const byId: Record<string, number> = {}
+  PRODUCT_REVIEWS_SEED.forEach((r) => {
+    byId[r.id] = r.id === 'rev-raj' ? 5 : 0
+  })
+  return byId
+}
+
 type StoreSnapshot = {
   userLikedReviewIds: string[]
   /** Shoppers who tapped Like on the public company reply for that review (same id as review). */
   userLikedAdminReplyReviewIds: string[]
   /** Admin-only “helpful” flag in the reviews dashboard (not shown on product page). */
   adminLikedReviewIds: string[]
+  /** Aggregate like totals for the review (demo — replace with API). */
+  reviewLikeCountById: Record<string, number>
+  /** Aggregate like totals for the company reply on that review id (demo). */
+  adminReplyLikeCountById: Record<string, number>
   adminReplyByReviewId: Record<string, string>
   /** Review ids hidden in UI (demo — replace with API delete later). */
   removedReviewIds: string[]
@@ -88,6 +110,8 @@ function emptyStore(): StoreSnapshot {
     userLikedReviewIds: [],
     userLikedAdminReplyReviewIds: [],
     adminLikedReviewIds: [],
+    reviewLikeCountById: initialReviewLikeCounts(),
+    adminReplyLikeCountById: initialAdminReplyLikeCounts(),
     adminReplyByReviewId: {
       'rev-raj': SEED_ADMIN_REPLY_REV_RAJ,
     },
@@ -122,6 +146,8 @@ export function useProductReviewsState() {
     userLikedReviewIds,
     userLikedAdminReplyReviewIds,
     adminLikedReviewIds,
+    reviewLikeCountById,
+    adminReplyLikeCountById,
     adminReplyByReviewId,
     removedReviewIds,
   } =
@@ -135,18 +161,32 @@ export function useProductReviewsState() {
 
   const toggleUserLike = useCallback((reviewId: string) => {
     const s = getSnapshot()
-    const nextIds = s.userLikedReviewIds.includes(reviewId)
+    const wasLiked = s.userLikedReviewIds.includes(reviewId)
+    const nextIds = wasLiked
       ? s.userLikedReviewIds.filter((id) => id !== reviewId)
       : [...s.userLikedReviewIds, reviewId]
-    setStore({ ...s, userLikedReviewIds: nextIds })
+    const prev = s.reviewLikeCountById[reviewId] ?? 0
+    const nextCount = Math.max(0, wasLiked ? prev - 1 : prev + 1)
+    setStore({
+      ...s,
+      userLikedReviewIds: nextIds,
+      reviewLikeCountById: { ...s.reviewLikeCountById, [reviewId]: nextCount },
+    })
   }, [])
 
   const toggleUserLikeAdminReply = useCallback((reviewId: string) => {
     const s = getSnapshot()
-    const next = s.userLikedAdminReplyReviewIds.includes(reviewId)
+    const wasLiked = s.userLikedAdminReplyReviewIds.includes(reviewId)
+    const next = wasLiked
       ? s.userLikedAdminReplyReviewIds.filter((id) => id !== reviewId)
       : [...s.userLikedAdminReplyReviewIds, reviewId]
-    setStore({ ...s, userLikedAdminReplyReviewIds: next })
+    const prev = s.adminReplyLikeCountById[reviewId] ?? 0
+    const nextCount = Math.max(0, wasLiked ? prev - 1 : prev + 1)
+    setStore({
+      ...s,
+      userLikedAdminReplyReviewIds: next,
+      adminReplyLikeCountById: { ...s.adminReplyLikeCountById, [reviewId]: nextCount },
+    })
   }, [])
 
   const toggleAdminLike = useCallback((reviewId: string) => {
@@ -159,9 +199,13 @@ export function useProductReviewsState() {
 
   const setAdminReply = useCallback((reviewId: string, text: string) => {
     const s = getSnapshot()
+    const nextReply = { ...s.adminReplyByReviewId, [reviewId]: text }
+    const nextAdminLikes = { ...s.adminReplyLikeCountById }
+    if (nextAdminLikes[reviewId] === undefined) nextAdminLikes[reviewId] = 0
     setStore({
       ...s,
-      adminReplyByReviewId: { ...s.adminReplyByReviewId, [reviewId]: text },
+      adminReplyByReviewId: nextReply,
+      adminReplyLikeCountById: nextAdminLikes,
     })
   }, [])
 
@@ -169,10 +213,13 @@ export function useProductReviewsState() {
     const s = getSnapshot()
     const next = { ...s.adminReplyByReviewId }
     delete next[reviewId]
+    const nextAdminLikes = { ...s.adminReplyLikeCountById }
+    delete nextAdminLikes[reviewId]
     setStore({
       ...s,
       adminReplyByReviewId: next,
       userLikedAdminReplyReviewIds: s.userLikedAdminReplyReviewIds.filter((id) => id !== reviewId),
+      adminReplyLikeCountById: nextAdminLikes,
     })
   }, [])
 
@@ -182,6 +229,10 @@ export function useProductReviewsState() {
     if (s.removedReviewIds.includes(reviewId)) return
     const nextAdminReplies = { ...s.adminReplyByReviewId }
     delete nextAdminReplies[reviewId]
+    const nextReviewLikes = { ...s.reviewLikeCountById }
+    delete nextReviewLikes[reviewId]
+    const nextAdminReplyLikes = { ...s.adminReplyLikeCountById }
+    delete nextAdminReplyLikes[reviewId]
     setStore({
       ...s,
       removedReviewIds: [...s.removedReviewIds, reviewId],
@@ -189,6 +240,8 @@ export function useProductReviewsState() {
       userLikedAdminReplyReviewIds: s.userLikedAdminReplyReviewIds.filter((id) => id !== reviewId),
       adminLikedReviewIds: s.adminLikedReviewIds.filter((id) => id !== reviewId),
       adminReplyByReviewId: nextAdminReplies,
+      reviewLikeCountById: nextReviewLikes,
+      adminReplyLikeCountById: nextAdminReplyLikes,
     })
   }, [])
 
@@ -197,6 +250,8 @@ export function useProductReviewsState() {
     userLikedReviewIds,
     userLikedAdminReplyReviewIds,
     adminLikedReviewIds,
+    reviewLikeCountById,
+    adminReplyLikeCountById,
     adminReplyByReviewId,
     toggleUserLike,
     toggleUserLikeAdminReply,

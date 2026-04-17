@@ -34,6 +34,8 @@ const AdminReviews = () => {
   const {
     reviews,
     adminLikedReviewIds,
+    reviewLikeCountById,
+    adminReplyLikeCountById,
     adminReplyByReviewId,
     toggleAdminLike,
     setAdminReply,
@@ -136,6 +138,8 @@ const AdminReviews = () => {
               const adminLiked = adminLikedReviewIds.includes(review.id)
               const savedAdminReply = (adminReplyByReviewId[review.id] ?? '').trim()
               const linkedExpanded = linkedProductOpen[review.id] === true
+              const reviewLikeCount = reviewLikeCountById[review.id] ?? 0
+              const replyLikeCount = adminReplyLikeCountById[review.id] ?? 0
               return (
                 <article key={review.id} style={cardShell}>
                   <div
@@ -346,6 +350,17 @@ const AdminReviews = () => {
                     >
                       {review.comment}
                     </blockquote>
+                    <p
+                      style={{
+                        margin: '14px 0 0',
+                        fontSize: '13px',
+                        fontWeight: 600,
+                        color: '#64748b',
+                        fontVariantNumeric: 'tabular-nums',
+                      }}
+                    >
+                      {reviewLikeCount} likes
+                    </p>
                   </div>
 
                   {savedAdminReply && replyOpenId !== review.id ? (
@@ -364,48 +379,67 @@ const AdminReviews = () => {
                       </p>
                       <div
                         style={{
-                          position: 'relative',
                           borderRadius: '12px',
                           border: '1px solid rgba(189, 22, 44, 0.22)',
                           backgroundColor: '#fffafa',
-                          padding: '14px 44px 14px 16px',
+                          overflow: 'hidden',
                         }}
                       >
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteYourReply(review.id)}
-                          aria-label="Delete your reply"
-                          title="Delete your reply"
+                        <div
                           style={{
-                            position: 'absolute',
-                            top: '50%',
-                            right: '10px',
-                            transform: 'translateY(-50%)',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            width: '32px',
-                            height: '32px',
-                            borderRadius: '8px',
-                            border: '1px solid rgba(189, 22, 44, 0.15)',
-                            backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                            color: '#94a3b8',
-                            cursor: 'pointer',
-                            zIndex: 1,
+                            position: 'relative',
+                            padding: '14px 44px 14px 16px',
                           }}
                         >
-                          <HiOutlineTrash style={{ width: 17, height: 17 }} />
-                        </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteYourReply(review.id)}
+                            aria-label="Delete your reply"
+                            title="Delete your reply"
+                            style={{
+                              position: 'absolute',
+                              top: '50%',
+                              right: '10px',
+                              transform: 'translateY(-50%)',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              width: '32px',
+                              height: '32px',
+                              borderRadius: '8px',
+                              border: '1px solid rgba(189, 22, 44, 0.15)',
+                              backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                              color: '#94a3b8',
+                              cursor: 'pointer',
+                              zIndex: 1,
+                            }}
+                          >
+                            <HiOutlineTrash style={{ width: 17, height: 17 }} />
+                          </button>
+                          <p
+                            style={{
+                              margin: 0,
+                              fontSize: '14px',
+                              lineHeight: 1.6,
+                              color: '#334155',
+                              whiteSpace: 'pre-wrap',
+                            }}
+                          >
+                            {savedAdminReply}
+                          </p>
+                        </div>
                         <p
                           style={{
                             margin: 0,
-                            fontSize: '14px',
-                            lineHeight: 1.6,
-                            color: '#334155',
-                            whiteSpace: 'pre-wrap',
+                            padding: '12px 16px 14px',
+                            borderTop: '1px solid rgba(189, 22, 44, 0.12)',
+                            fontSize: '13px',
+                            fontWeight: 600,
+                            color: '#64748b',
+                            fontVariantNumeric: 'tabular-nums',
                           }}
                         >
-                          {savedAdminReply}
+                          {replyLikeCount} likes
                         </p>
                       </div>
                     </div>
@@ -508,6 +542,17 @@ const AdminReviews = () => {
                       >
                         Post your reply
                       </button>
+                      <p
+                        style={{
+                          margin: '12px 0 0',
+                          fontSize: '13px',
+                          fontWeight: 600,
+                          color: '#64748b',
+                          fontVariantNumeric: 'tabular-nums',
+                        }}
+                      >
+                        {replyLikeCount} likes
+                      </p>
                     </div>
                   ) : null}
 
