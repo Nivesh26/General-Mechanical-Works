@@ -8,6 +8,7 @@ import {
   HiOutlineChatBubbleLeft,
   HiChatBubbleLeft,
   HiOutlineTrash,
+  HiChevronDown,
 } from 'react-icons/hi2'
 import { useProductReviewsState } from '../lib/useProductReviewsState'
 
@@ -32,7 +33,6 @@ const cardShell: CSSProperties = {
 const AdminReviews = () => {
   const {
     reviews,
-    userLikedReviewIds,
     adminLikedReviewIds,
     adminReplyByReviewId,
     toggleAdminLike,
@@ -43,6 +43,8 @@ const AdminReviews = () => {
 
   const [drafts, setDrafts] = useState<Record<string, string>>({})
   const [replyOpenId, setReplyOpenId] = useState<string | null>(null)
+  /** Collapsed by default: header shows “Linked product” + chevron only. */
+  const [linkedProductOpen, setLinkedProductOpen] = useState<Record<string, boolean>>({})
 
   const replyValue = (reviewId: string) =>
     drafts[reviewId] !== undefined ? drafts[reviewId] : (adminReplyByReviewId[reviewId] ?? '')
@@ -75,6 +77,19 @@ const AdminReviews = () => {
     }
     if (replyOpenId === reviewId) setReplyOpenId(null)
     removeReview(reviewId)
+  }
+
+  const handleDeleteYourReply = (reviewId: string) => {
+    if (!window.confirm('Delete your reply? It will be removed here and on the product page until you post again.')) {
+      return
+    }
+    clearAdminReply(reviewId)
+    setDrafts((d) => {
+      const next = { ...d }
+      delete next[reviewId]
+      return next
+    })
+    if (replyOpenId === reviewId) setReplyOpenId(null)
   }
 
   return (
@@ -119,15 +134,15 @@ const AdminReviews = () => {
           ) : (
             reviews.map((review, index) => {
               const adminLiked = adminLikedReviewIds.includes(review.id)
-              const customerLiked = userLikedReviewIds.includes(review.id)
+              const savedAdminReply = (adminReplyByReviewId[review.id] ?? '').trim()
+              const linkedExpanded = linkedProductOpen[review.id] === true
               return (
                 <article key={review.id} style={cardShell}>
-                  {/* Card header */}
                   <div
                     style={{
                       display: 'flex',
                       flexWrap: 'wrap',
-                      alignItems: 'flex-start',
+                      alignItems: 'center',
                       justifyContent: 'space-between',
                       gap: '16px',
                       padding: '22px 26px',
@@ -135,21 +150,29 @@ const AdminReviews = () => {
                       borderBottom: '1px solid #eef2f6',
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '18px', flex: 1, minWidth: 0 }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '16px',
+                        flex: 1,
+                        minWidth: 0,
+                      }}
+                    >
                       <img
                         src={review.userPhoto}
                         alt={`${review.name} profile`}
                         style={{
-                          width: '56px',
-                          height: '56px',
+                          width: '52px',
+                          height: '52px',
                           borderRadius: '50%',
                           objectFit: 'cover',
                           flexShrink: 0,
                           border: '2px solid #ffffff',
-                          boxShadow: '0 0 0 1px #e2e8f0, 0 6px 16px rgba(15, 23, 42, 0.08)',
+                          boxShadow: '0 0 0 1px #e2e8f0, 0 4px 12px rgba(15, 23, 42, 0.08)',
                         }}
                       />
-                      <div style={{ flex: 1, minWidth: 0, paddingTop: '2px' }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
                         <p
                           style={{
                             margin: '0 0 6px',
@@ -160,7 +183,7 @@ const AdminReviews = () => {
                             color: '#94a3b8',
                           }}
                         >
-                          Customer review · #{index + 1}
+                          Review #{index + 1}
                         </p>
                         <h2
                           style={{
@@ -174,48 +197,17 @@ const AdminReviews = () => {
                         >
                           {review.name}
                         </h2>
-                        <div
+                        <p
                           style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '10px',
-                            marginTop: '10px',
-                            flexWrap: 'wrap',
+                            margin: '6px 0 0',
+                            fontSize: '13px',
+                            fontWeight: 500,
+                            color: '#64748b',
+                            lineHeight: 1.35,
                           }}
                         >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            {[1, 2, 3, 4, 5].map((i) => (
-                              <HiStar
-                                key={i}
-                                style={{
-                                  width: 18,
-                                  height: 18,
-                                  color: i <= review.rating ? '#f59e0b' : '#e5e7eb',
-                                  fill: i <= review.rating ? '#f59e0b' : '#e5e7eb',
-                                }}
-                              />
-                            ))}
-                          </div>
-                          <span
-                            style={{
-                              fontSize: '13px',
-                              fontWeight: 600,
-                              color: '#475569',
-                            }}
-                          >
-                            {review.rating} out of 5
-                          </span>
-                          <span
-                            style={{
-                              fontSize: '12px',
-                              color: '#94a3b8',
-                              paddingLeft: '10px',
-                              borderLeft: '1px solid #e2e8f0',
-                            }}
-                          >
-                            {review.date}
-                          </span>
-                        </div>
+                          {review.productName}
+                        </p>
                       </div>
                     </div>
                     <div
@@ -258,7 +250,7 @@ const AdminReviews = () => {
                       <button
                         type="button"
                         onClick={() => handleReplyIconClick(review.id)}
-                        aria-label={replyOpenId === review.id ? 'Close reply editor' : 'Write a reply'}
+                        aria-label={replyOpenId === review.id ? 'Close reply editor' : 'Write your reply'}
                         title={replyOpenId === review.id ? 'Close' : 'Reply'}
                         style={{
                           display: 'inline-flex',
@@ -284,7 +276,7 @@ const AdminReviews = () => {
                         type="button"
                         onClick={() => handleRemoveReview(review.id)}
                         aria-label="Remove review"
-                        title="Remove review"
+                        title="Remove review from list"
                         style={{
                           display: 'inline-flex',
                           alignItems: 'center',
@@ -303,11 +295,10 @@ const AdminReviews = () => {
                     </div>
                   </div>
 
-                  {/* Review body */}
-                  <div style={{ padding: '22px 26px 18px' }}>
+                  <div style={{ padding: '20px 26px 22px', borderBottom: '1px solid #eef2f6' }}>
                     <p
                       style={{
-                        margin: '0 0 4px',
+                        margin: '0 0 6px',
                         fontSize: '11px',
                         fontWeight: 600,
                         letterSpacing: '0.06em',
@@ -315,12 +306,36 @@ const AdminReviews = () => {
                         color: '#94a3b8',
                       }}
                     >
-                      Review text
+                      Customer review
                     </p>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        flexWrap: 'wrap',
+                        gap: '6px 10px',
+                        marginBottom: '10px',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }} aria-label={`${review.rating} out of 5 stars`}>
+                        {[1, 2, 3, 4, 5].map((i) => (
+                          <HiStar
+                            key={i}
+                            style={{
+                              width: 16,
+                              height: 16,
+                              color: i <= review.rating ? '#f59e0b' : '#e5e7eb',
+                              fill: i <= review.rating ? '#f59e0b' : '#e5e7eb',
+                            }}
+                          />
+                        ))}
+                      </div>
+                      <span style={{ fontSize: '12px', color: '#94a3b8' }}>{review.date}</span>
+                    </div>
                     <blockquote
                       style={{
                         margin: 0,
-                        padding: '16px 18px 16px 20px',
+                        padding: '14px 16px 14px 18px',
                         borderLeft: '3px solid #bd162c',
                         backgroundColor: '#f8fafc',
                         borderRadius: '0 12px 12px 0',
@@ -333,29 +348,11 @@ const AdminReviews = () => {
                     </blockquote>
                   </div>
 
-                  <div style={{ padding: '0 26px 18px', display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                    {customerLiked ? (
-                      <span
-                        style={{
-                          fontSize: '12px',
-                          fontWeight: 600,
-                          color: '#1e40af',
-                          backgroundColor: '#eff6ff',
-                          padding: '6px 12px',
-                          borderRadius: '999px',
-                          border: '1px solid #dbeafe',
-                        }}
-                      >
-                        Marked helpful by customer
-                      </span>
-                    ) : null}
-                  </div>
-
-                  {replyOpenId === review.id ? (
-                    <div style={{ padding: '0 26px 22px' }}>
+                  {savedAdminReply && replyOpenId !== review.id ? (
+                    <div style={{ padding: '20px 26px 22px' }}>
                       <p
                         style={{
-                          margin: '0 0 8px',
+                          margin: '0 0 10px',
                           fontSize: '11px',
                           fontWeight: 600,
                           letterSpacing: '0.06em',
@@ -365,30 +362,129 @@ const AdminReviews = () => {
                       >
                         Your reply
                       </p>
-                      <textarea
-                        id={`admin-reply-${review.id}`}
-                        value={replyValue(review.id)}
-                        onChange={(e) => setDrafts((d) => ({ ...d, [review.id]: e.target.value }))}
-                        onBlur={() => commitReply(review.id)}
-                        rows={4}
-                        placeholder="Write a professional response. This text appears on the product page."
-                        aria-label="Admin reply, shown on product page"
-                        autoFocus
+                      <div
                         style={{
-                          width: '100%',
-                          boxSizing: 'border-box',
-                          fontSize: '15px',
-                          lineHeight: 1.55,
-                          color: '#0f172a',
-                          border: '1px solid #e2e8f0',
+                          position: 'relative',
                           borderRadius: '12px',
-                          padding: '14px 16px',
-                          minHeight: '120px',
-                          resize: 'vertical',
-                          fontFamily: 'inherit',
-                          backgroundColor: '#fafbfc',
+                          border: '1px solid rgba(189, 22, 44, 0.22)',
+                          backgroundColor: '#fffafa',
+                          padding: '14px 44px 14px 16px',
                         }}
-                      />
+                      >
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteYourReply(review.id)}
+                          aria-label="Delete your reply"
+                          title="Delete your reply"
+                          style={{
+                            position: 'absolute',
+                            top: '50%',
+                            right: '10px',
+                            transform: 'translateY(-50%)',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '32px',
+                            height: '32px',
+                            borderRadius: '8px',
+                            border: '1px solid rgba(189, 22, 44, 0.15)',
+                            backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                            color: '#94a3b8',
+                            cursor: 'pointer',
+                            zIndex: 1,
+                          }}
+                        >
+                          <HiOutlineTrash style={{ width: 17, height: 17 }} />
+                        </button>
+                        <p
+                          style={{
+                            margin: 0,
+                            fontSize: '14px',
+                            lineHeight: 1.6,
+                            color: '#334155',
+                            whiteSpace: 'pre-wrap',
+                          }}
+                        >
+                          {savedAdminReply}
+                        </p>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {replyOpenId === review.id ? (
+                    <div style={{ padding: '20px 26px 22px' }}>
+                      <p
+                        style={{
+                          margin: '0 0 10px',
+                          fontSize: '11px',
+                          fontWeight: 600,
+                          letterSpacing: '0.06em',
+                          textTransform: 'uppercase',
+                          color: '#94a3b8',
+                        }}
+                      >
+                        {savedAdminReply ? 'Edit your reply' : 'Your reply'}
+                      </p>
+                      <div
+                        style={{
+                          position: 'relative',
+                          borderRadius: '12px',
+                          border: '1px solid rgba(189, 22, 44, 0.22)',
+                          backgroundColor: '#fffafa',
+                        }}
+                      >
+                        <button
+                          type="button"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => handleDeleteYourReply(review.id)}
+                          aria-label="Delete your reply"
+                          title="Delete your reply"
+                          style={{
+                            position: 'absolute',
+                            top: '50%',
+                            right: '10px',
+                            transform: 'translateY(-50%)',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '32px',
+                            height: '32px',
+                            borderRadius: '8px',
+                            border: '1px solid rgba(189, 22, 44, 0.15)',
+                            backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                            color: '#94a3b8',
+                            cursor: 'pointer',
+                            zIndex: 1,
+                          }}
+                        >
+                          <HiOutlineTrash style={{ width: 17, height: 17 }} />
+                        </button>
+                        <textarea
+                          id={`admin-reply-${review.id}`}
+                          value={replyValue(review.id)}
+                          onChange={(e) => setDrafts((d) => ({ ...d, [review.id]: e.target.value }))}
+                          rows={4}
+                          placeholder="What you write here appears on the product page as the General Mechanical Works reply."
+                          aria-label="Your reply, shown on the product page"
+                          autoFocus
+                          style={{
+                            width: '100%',
+                            boxSizing: 'border-box',
+                            fontSize: '15px',
+                            lineHeight: 1.55,
+                            color: '#0f172a',
+                            border: 'none',
+                            borderRadius: '12px',
+                            padding: '14px 44px 14px 16px',
+                            minHeight: '120px',
+                            resize: 'vertical',
+                            fontFamily: 'inherit',
+                            backgroundColor: 'transparent',
+                            outline: 'none',
+                          }}
+                          onBlur={() => commitReply(review.id)}
+                        />
+                      </div>
                       <button
                         type="button"
                         onMouseDown={(e) => e.preventDefault()}
@@ -410,108 +506,150 @@ const AdminReviews = () => {
                           boxShadow: '0 1px 2px rgba(189, 22, 44, 0.25)',
                         }}
                       >
-                        Post reply
+                        Post your reply
                       </button>
                     </div>
                   ) : null}
 
-                  {/* Product reference */}
+                  {/* Linked product — collapsible */}
                   <div
                     style={{
                       marginTop: replyOpenId === review.id ? 0 : '4px',
-                      padding: '22px 26px 26px',
                       background: 'linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%)',
                       borderTop: '1px solid #e8ecf0',
                     }}
                   >
-                    <p
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setLinkedProductOpen((prev) => ({ ...prev, [review.id]: !prev[review.id] }))
+                      }
+                      aria-expanded={linkedExpanded}
+                      aria-controls={`linked-product-${review.id}`}
+                      id={`linked-product-toggle-${review.id}`}
                       style={{
-                        margin: '0 0 14px',
-                        fontSize: '11px',
-                        fontWeight: 700,
-                        letterSpacing: '0.1em',
-                        textTransform: 'uppercase',
-                        color: '#64748b',
-                      }}
-                    >
-                      Linked product
-                    </p>
-                    <div
-                      style={{
+                        width: '100%',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '22px',
-                        flexWrap: 'wrap',
+                        justifyContent: 'space-between',
+                        gap: '14px',
+                        padding: '18px 26px',
+                        border: 'none',
+                        borderBottom: linkedExpanded ? '1px solid #e8ecf0' : 'none',
+                        background: 'transparent',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        fontFamily: 'inherit',
                       }}
                     >
-                      <div
+                      <span
                         style={{
-                          width: '120px',
-                          height: '120px',
-                          borderRadius: '14px',
-                          backgroundColor: '#ffffff',
-                          border: '1px solid #e2e8f0',
-                          boxShadow: '0 2px 12px rgba(15, 23, 42, 0.05)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          padding: '14px',
-                          flexShrink: 0,
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          letterSpacing: '0.1em',
+                          textTransform: 'uppercase',
+                          color: '#64748b',
                         }}
                       >
-                        <img
-                          src={review.productImage}
-                          alt={review.productName}
+                        Linked product
+                      </span>
+                      <HiChevronDown
+                        aria-hidden
+                        style={{
+                          width: 22,
+                          height: 22,
+                          color: '#64748b',
+                          flexShrink: 0,
+                          transform: linkedExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                          transition: 'transform 0.2s ease',
+                        }}
+                      />
+                    </button>
+                    {linkedExpanded ? (
+                      <div
+                        id={`linked-product-${review.id}`}
+                        role="region"
+                        aria-labelledby={`linked-product-toggle-${review.id}`}
+                        style={{ padding: '0 26px 26px' }}
+                      >
+                        <div
                           style={{
-                            maxWidth: '100%',
-                            maxHeight: '100%',
-                            objectFit: 'contain',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '22px',
+                            flexWrap: 'wrap',
                           }}
-                        />
+                        >
+                          <div
+                            style={{
+                              width: '120px',
+                              height: '120px',
+                              borderRadius: '14px',
+                              backgroundColor: '#ffffff',
+                              border: '1px solid #e2e8f0',
+                              boxShadow: '0 2px 12px rgba(15, 23, 42, 0.05)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              padding: '14px',
+                              flexShrink: 0,
+                            }}
+                          >
+                            <img
+                              src={review.productImage}
+                              alt={review.productName}
+                              style={{
+                                maxWidth: '100%',
+                                maxHeight: '100%',
+                                objectFit: 'contain',
+                              }}
+                            />
+                          </div>
+                          <div style={{ flex: 1, minWidth: '220px' }}>
+                            <p
+                              style={{
+                                margin: 0,
+                                fontSize: '16px',
+                                fontWeight: 700,
+                                color: '#0f172a',
+                                lineHeight: 1.35,
+                                letterSpacing: '-0.02em',
+                              }}
+                            >
+                              {review.productName}
+                            </p>
+                            <p
+                              style={{
+                                margin: '10px 0 0',
+                                fontSize: '11px',
+                                fontWeight: 600,
+                                letterSpacing: '0.06em',
+                                textTransform: 'uppercase',
+                                color: '#94a3b8',
+                              }}
+                            >
+                              Product detail
+                            </p>
+                            <p
+                              title={review.productDetail}
+                              style={{
+                                margin: '6px 0 0',
+                                fontSize: '13px',
+                                lineHeight: 1.55,
+                                color: '#64748b',
+                                display: '-webkit-box',
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: 'vertical',
+                                overflow: 'hidden',
+                                wordBreak: 'break-word',
+                              }}
+                            >
+                              {review.productDetail}
+                            </p>
+                          </div>
+                        </div>
                       </div>
-                      <div style={{ flex: 1, minWidth: '220px' }}>
-                        <p
-                          style={{
-                            margin: 0,
-                            fontSize: '16px',
-                            fontWeight: 700,
-                            color: '#0f172a',
-                            lineHeight: 1.35,
-                            letterSpacing: '-0.02em',
-                          }}
-                        >
-                          {review.productName}
-                        </p>
-                        <p
-                          style={{
-                            margin: '10px 0 0',
-                            fontSize: '11px',
-                            fontWeight: 600,
-                            letterSpacing: '0.06em',
-                            textTransform: 'uppercase',
-                            color: '#94a3b8',
-                          }}
-                        >
-                          Product detail
-                        </p>
-                        <p
-                          title={review.productDetail}
-                          style={{
-                            margin: '6px 0 0',
-                            fontSize: '13px',
-                            lineHeight: 1.55,
-                            color: '#64748b',
-                            display: '-webkit-box',
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: 'vertical',
-                            overflow: 'hidden',
-                            wordBreak: 'break-word',
-                          }}
-                        >
-                          {review.productDetail}
-                        </p>
-                      </div>
-                    </div>
+                    ) : null}
                   </div>
                 </article>
               )

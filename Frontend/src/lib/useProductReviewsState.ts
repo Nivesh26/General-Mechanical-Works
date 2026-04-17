@@ -1,7 +1,5 @@
 import { useCallback, useSyncExternalStore } from 'react'
 import EngineOil from '../assets/EngineOil.png'
-import Brakes from '../assets/Brakekit.png'
-import Battery from '../assets/Battery.png'
 import NiveshImg from '../assets/Nivesh.png'
 import AalokaImg from '../assets/aalokapoudel.jpg'
 import BabuRajImg from '../assets/baburaja.jpg'
@@ -25,17 +23,12 @@ export type ProductReview = {
 /** Demo product id — matches the engine oil product detail page filter. */
 export const DEMO_PRODUCT_ID = 'premium-engine-oil'
 
-const DEMO_BRAKE_PRODUCT_ID = 'brake-service-kit'
-const DEMO_BATTERY_PRODUCT_ID = 'motorcycle-battery'
-
 const OIL_PRODUCT_DETAIL =
   'Full synthetic formulation for four-stroke motorcycles: reduces wear, improves high-temperature stability, and supports extended drain intervals where the manufacturer allows. JASO MA2–style wet-clutch compatibility for many bikes—always confirm viscosity (e.g. 10W-40) and spec in your owner manual before use. Same listing as on the public product detail page; long descriptions are truncated here for a clean layout.'
 
-const BRAKE_PRODUCT_DETAIL =
-  'Complete brake service kit including pads, shims, and hardware where supplied. Designed for common commuter and sport-touring motorcycles—verify disc diameter, caliper type, and model year against the fitment chart before ordering. Bedding-in procedure and torque values are listed in the included sheet; follow them for safe stopping performance and even pad wear.'
-
-const BATTERY_PRODUCT_DETAIL =
-  'Sealed AGM-style motorcycle battery with strong cold-cranking performance for electric start bikes. Check terminal polarity (left/right positive), physical dimensions, and Ah rating against your OEM spec. Includes hold-down notes for tight battery boxes; register the battery with your charger if it has been stored—see the product sheet for storage and winter tips.'
+/** Pre-seeded company reply on one review for product detail / admin demo. */
+const SEED_ADMIN_REPLY_REV_RAJ =
+  'Thank you for the detailed feedback, Nivesh. We are glad the synthetic blend has been working well for your riding. If you ever need help choosing the right grade for seasonal changes, our team is happy to help—ride safe from General Mechanical Works.'
 
 export const PRODUCT_REVIEWS_SEED: ProductReview[] = [
   {
@@ -53,33 +46,37 @@ export const PRODUCT_REVIEWS_SEED: ProductReview[] = [
   },
   {
     id: 'rev-sita',
-    productId: DEMO_BRAKE_PRODUCT_ID,
-    productName: 'Brake Service Kit',
-    productDetail: BRAKE_PRODUCT_DETAIL,
-    productImage: Brakes,
+    productId: DEMO_PRODUCT_ID,
+    productName: 'Premium Synthetic Engine Oil',
+    productDetail: OIL_PRODUCT_DETAIL,
+    productImage: EngineOil,
     userPhoto: AalokaImg,
     name: 'Aaloka',
     rating: 5,
     comment:
-      'Brake kit fit perfectly and stopping power feels much more confident. Install took about an hour with basic tools.',
+      'Switched from mineral to this synthetic and the engine feels noticeably smoother on cold starts. Will stock up again.',
     date: '1 week ago',
   },
   {
     id: 'rev-amit',
-    productId: DEMO_BATTERY_PRODUCT_ID,
-    productName: 'Battery',
-    productDetail: BATTERY_PRODUCT_DETAIL,
-    productImage: Battery,
+    productId: DEMO_PRODUCT_ID,
+    productName: 'Premium Synthetic Engine Oil',
+    productDetail: OIL_PRODUCT_DETAIL,
+    productImage: EngineOil,
     userPhoto: BabuRajImg,
     name: 'BabuRaj',
     rating: 4,
-    comment: 'Battery dropped in without issues; bike starts instantly now. Good value for the price.',
+    comment:
+      'Good value for money. No leaks after the change and oil pressure looks steady on my gauge. Happy with the purchase.',
     date: '2 weeks ago',
   },
 ]
 
 type StoreSnapshot = {
   userLikedReviewIds: string[]
+  /** Shoppers who tapped Like on the public company reply for that review (same id as review). */
+  userLikedAdminReplyReviewIds: string[]
+  /** Admin-only “helpful” flag in the reviews dashboard (not shown on product page). */
   adminLikedReviewIds: string[]
   adminReplyByReviewId: Record<string, string>
   /** Review ids hidden in UI (demo — replace with API delete later). */
@@ -89,8 +86,11 @@ type StoreSnapshot = {
 function emptyStore(): StoreSnapshot {
   return {
     userLikedReviewIds: [],
+    userLikedAdminReplyReviewIds: [],
     adminLikedReviewIds: [],
-    adminReplyByReviewId: {},
+    adminReplyByReviewId: {
+      'rev-raj': SEED_ADMIN_REPLY_REV_RAJ,
+    },
     removedReviewIds: [],
   }
 }
@@ -118,8 +118,18 @@ function setStore(next: StoreSnapshot) {
 }
 
 export function useProductReviewsState() {
-  const { userLikedReviewIds, adminLikedReviewIds, adminReplyByReviewId, removedReviewIds } =
-    useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)
+  const {
+    userLikedReviewIds,
+    userLikedAdminReplyReviewIds,
+    adminLikedReviewIds,
+    adminReplyByReviewId,
+    removedReviewIds,
+  } =
+    useSyncExternalStore(
+    subscribe,
+    getSnapshot,
+    getServerSnapshot,
+  )
 
   const visibleReviews = PRODUCT_REVIEWS_SEED.filter((r) => !removedReviewIds.includes(r.id))
 
@@ -131,12 +141,20 @@ export function useProductReviewsState() {
     setStore({ ...s, userLikedReviewIds: nextIds })
   }, [])
 
+  const toggleUserLikeAdminReply = useCallback((reviewId: string) => {
+    const s = getSnapshot()
+    const next = s.userLikedAdminReplyReviewIds.includes(reviewId)
+      ? s.userLikedAdminReplyReviewIds.filter((id) => id !== reviewId)
+      : [...s.userLikedAdminReplyReviewIds, reviewId]
+    setStore({ ...s, userLikedAdminReplyReviewIds: next })
+  }, [])
+
   const toggleAdminLike = useCallback((reviewId: string) => {
     const s = getSnapshot()
-    const nextIds = s.adminLikedReviewIds.includes(reviewId)
+    const next = s.adminLikedReviewIds.includes(reviewId)
       ? s.adminLikedReviewIds.filter((id) => id !== reviewId)
       : [...s.adminLikedReviewIds, reviewId]
-    setStore({ ...s, adminLikedReviewIds: nextIds })
+    setStore({ ...s, adminLikedReviewIds: next })
   }, [])
 
   const setAdminReply = useCallback((reviewId: string, text: string) => {
@@ -151,30 +169,37 @@ export function useProductReviewsState() {
     const s = getSnapshot()
     const next = { ...s.adminReplyByReviewId }
     delete next[reviewId]
-    setStore({ ...s, adminReplyByReviewId: next })
+    setStore({
+      ...s,
+      adminReplyByReviewId: next,
+      userLikedAdminReplyReviewIds: s.userLikedAdminReplyReviewIds.filter((id) => id !== reviewId),
+    })
   }, [])
 
   const removeReview = useCallback((reviewId: string) => {
     const s = getSnapshot()
     if (!PRODUCT_REVIEWS_SEED.some((r) => r.id === reviewId)) return
     if (s.removedReviewIds.includes(reviewId)) return
-    const nextReplies = { ...s.adminReplyByReviewId }
-    delete nextReplies[reviewId]
+    const nextAdminReplies = { ...s.adminReplyByReviewId }
+    delete nextAdminReplies[reviewId]
     setStore({
       ...s,
       removedReviewIds: [...s.removedReviewIds, reviewId],
       userLikedReviewIds: s.userLikedReviewIds.filter((id) => id !== reviewId),
+      userLikedAdminReplyReviewIds: s.userLikedAdminReplyReviewIds.filter((id) => id !== reviewId),
       adminLikedReviewIds: s.adminLikedReviewIds.filter((id) => id !== reviewId),
-      adminReplyByReviewId: nextReplies,
+      adminReplyByReviewId: nextAdminReplies,
     })
   }, [])
 
   return {
     reviews: visibleReviews,
     userLikedReviewIds,
+    userLikedAdminReplyReviewIds,
     adminLikedReviewIds,
     adminReplyByReviewId,
     toggleUserLike,
+    toggleUserLikeAdminReply,
     toggleAdminLike,
     setAdminReply,
     clearAdminReply,

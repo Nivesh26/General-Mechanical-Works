@@ -8,7 +8,7 @@ import EngineOil from '../assets/EngineOil.png'
 import Brakes from '../assets/Brakekit.png'
 import Battery from '../assets/Battery.png'
 import Tyre from '../assets/Tyre.png'
-import { HiOutlineCheck, HiStar, HiOutlineHandThumbUp, HiOutlineChatBubbleLeft } from 'react-icons/hi2'
+import { HiOutlineCheck, HiStar, HiOutlineHandThumbUp, HiHandThumbUp } from 'react-icons/hi2'
 import { DEMO_PRODUCT_ID, useProductReviewsState } from '../lib/useProductReviewsState'
 
 const productImages = [EngineOil, Brakes, Battery, Tyre]
@@ -16,34 +16,19 @@ const productSizes = ['S', 'L', 'XL', 'XXL']
 /** Units available for this product (replace with API data when wired). */
 const PRODUCT_STOCK = 24
 
-type SessionReply = { id: string; text: string; at: string }
-
 const Productdetail = () => {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
   const [selectedSize, setSelectedSize] = useState<'S' | 'L' | 'XL' | 'XXL'>('L')
   const [reviewText, setReviewText] = useState('')
   const [rating, setRating] = useState(0)
-  const [replyOpenForId, setReplyOpenForId] = useState<string | null>(null)
-  const [replyDraftByReviewId, setReplyDraftByReviewId] = useState<Record<string, string>>({})
-  /** In-memory only — cleared on reload (not persisted). */
-  const [sessionRepliesByReviewId, setSessionRepliesByReviewId] = useState<
-    Record<string, SessionReply[]>
-  >({})
-  const { reviews, userLikedReviewIds, adminReplyByReviewId, toggleUserLike } = useProductReviewsState()
-
-  const appendSessionReply = (reviewId: string, text: string) => {
-    const trimmed = text.trim()
-    if (!trimmed) return
-    const entry: SessionReply = {
-      id: `session-${reviewId}-${Date.now()}`,
-      text: trimmed,
-      at: new Date().toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }),
-    }
-    setSessionRepliesByReviewId((prev) => ({
-      ...prev,
-      [reviewId]: [...(prev[reviewId] ?? []), entry],
-    }))
-  }
+  const {
+    reviews,
+    userLikedReviewIds,
+    userLikedAdminReplyReviewIds,
+    adminReplyByReviewId,
+    toggleUserLike,
+    toggleUserLikeAdminReply,
+  } = useProductReviewsState()
 
   const productReviews = reviews.filter((r) => r.productId === DEMO_PRODUCT_ID)
 
@@ -214,11 +199,9 @@ const Productdetail = () => {
               {/* Review list */}
               <div className="space-y-6">
                 {productReviews.map((review) => {
-                  const adminReply = adminReplyByReviewId[review.id]
-                  const publicThread = sessionRepliesByReviewId[review.id] ?? []
-                  const liked = userLikedReviewIds.includes(review.id)
-                  const replyOpen = replyOpenForId === review.id
-                  const replyDraft = replyDraftByReviewId[review.id] ?? ''
+                  const adminReply = (adminReplyByReviewId[review.id] ?? '').trim()
+                  const reviewLiked = userLikedReviewIds.includes(review.id)
+                  const replyLiked = userLikedAdminReplyReviewIds.includes(review.id)
                   return (
                     <div key={review.id} className="p-5 rounded-xl bg-gray-50 border border-gray-100">
                       <div className="flex items-start gap-3 mb-3">
@@ -241,101 +224,48 @@ const Productdetail = () => {
                         </div>
                       </div>
                       <p className="text-gray-600 text-sm leading-relaxed mb-3">{review.comment}</p>
-                      {adminReply ? (
-                        <div className="mb-3 rounded-lg border border-primary/20 bg-white px-3 py-2.5">
-                          <p className="text-xs font-semibold text-primary uppercase tracking-wide mb-1">
-                            GMW reply
-                          </p>
-                          <p className="text-sm text-gray-700 leading-relaxed">{adminReply}</p>
-                        </div>
-                      ) : null}
-                      {publicThread.length > 0 ? (
-                        <div className="mb-3 space-y-2">
-                          <p className="text-xs font-medium text-gray-500">Replies</p>
-                          {publicThread.map((r) => (
-                            <div
-                              key={r.id}
-                              className="ml-0.5 border-l-2 border-gray-200 pl-3 py-1 rounded-r-md bg-white/60"
-                            >
-                              <p className="text-xs text-gray-400">{r.at}</p>
-                              <p className="text-sm text-gray-700 leading-relaxed">{r.text}</p>
-                            </div>
-                          ))}
-                        </div>
-                      ) : null}
-                      <div className="flex flex-wrap items-center gap-3">
+                      <div className="mb-3">
                         <button
                           type="button"
                           onClick={() => toggleUserLike(review.id)}
+                          aria-label={reviewLiked ? 'Unlike this review' : 'Like this review'}
                           className={`inline-flex items-center gap-1.5 text-sm font-medium cursor-pointer transition-colors ${
-                            liked ? 'text-blue-500' : 'text-gray-500 hover:text-gray-700'
+                            reviewLiked ? 'text-blue-600' : 'text-gray-500 hover:text-gray-700'
                           }`}
                         >
-                          <HiOutlineHandThumbUp className="w-4 h-4" />
-                          {liked ? 'Liked' : 'Like'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setReplyOpenForId((prev) => (prev === review.id ? null : review.id))
-                          }
-                          className={`inline-flex items-center gap-1.5 text-sm font-medium cursor-pointer transition-colors ${
-                            replyOpen ? 'text-primary' : 'text-gray-500 hover:text-gray-700'
-                          }`}
-                        >
-                          <HiOutlineChatBubbleLeft className="w-4 h-4" />
-                          {replyOpen ? 'Close' : 'Reply'}
+                          {reviewLiked ? (
+                            <HiHandThumbUp className="w-4 h-4" />
+                          ) : (
+                            <HiOutlineHandThumbUp className="w-4 h-4" />
+                          )}
+                          {reviewLiked ? 'Liked' : 'Like'}
                         </button>
                       </div>
-                      {replyOpen ? (
-                        <div className="mt-4 pt-4 border-t border-gray-200 space-y-3">
-                          <label
-                            htmlFor={`reply-${review.id}`}
-                            className="block text-sm font-medium text-gray-700"
-                          >
-                            Your reply
-                          </label>
-                          <textarea
-                            id={`reply-${review.id}`}
-                            rows={3}
-                            value={replyDraft}
-                            onChange={(e) =>
-                              setReplyDraftByReviewId((d) => ({ ...d, [review.id]: e.target.value }))
+                      {adminReply ? (
+                        <div className="rounded-lg border border-primary/20 bg-white px-3 py-2.5">
+                          <p className="text-xs font-semibold text-primary tracking-wide mb-1">
+                            General Mechanical Works
+                          </p>
+                          <p className="text-sm text-gray-700 leading-relaxed mb-2">{adminReply}</p>
+                          <button
+                            type="button"
+                            onClick={() => toggleUserLikeAdminReply(review.id)}
+                            aria-label={
+                              replyLiked
+                                ? 'Unlike reply from General Mechanical Works'
+                                : 'Like reply from General Mechanical Works'
                             }
-                            placeholder="Join the conversation…"
-                            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary resize-y"
-                          />
-                          <div className="flex flex-wrap gap-2">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                appendSessionReply(review.id, replyDraft)
-                                setReplyDraftByReviewId((d) => {
-                                  const next = { ...d }
-                                  delete next[review.id]
-                                  return next
-                                })
-                                setReplyOpenForId(null)
-                              }}
-                              className="inline-flex items-center px-4 py-2 rounded-lg bg-primary text-white text-sm font-semibold hover:opacity-90 transition-opacity cursor-pointer"
-                            >
-                              Post reply
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setReplyOpenForId(null)
-                                setReplyDraftByReviewId((d) => {
-                                  const next = { ...d }
-                                  delete next[review.id]
-                                  return next
-                                })
-                              }}
-                              className="inline-flex items-center px-4 py-2 rounded-lg border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors cursor-pointer"
-                            >
-                              Cancel
-                            </button>
-                          </div>
+                            className={`inline-flex items-center gap-1.5 text-sm font-medium cursor-pointer transition-colors ${
+                              replyLiked ? 'text-blue-600' : 'text-gray-500 hover:text-gray-700'
+                            }`}
+                          >
+                            {replyLiked ? (
+                              <HiHandThumbUp className="w-4 h-4" />
+                            ) : (
+                              <HiOutlineHandThumbUp className="w-4 h-4" />
+                            )}
+                            {replyLiked ? 'Liked' : 'Like'}
+                          </button>
                         </div>
                       ) : null}
                     </div>
