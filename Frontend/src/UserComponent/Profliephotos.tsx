@@ -104,7 +104,7 @@ const Profliephotos = ({ activeTab = "profile", firstName = "Nivesh", lastName =
             Profile
           </Link>
           <Link
-            to="/profile/vehicles"
+            to="/profilevehicles"
             className={`text-black text-sm font-medium uppercase tracking-wide border-b-2 pb-3 -mb-[13px] ${
               activeTab === "vehicles" ? "border-primary" : "border-gray-300 hover:text-primary hover:border-primary"
             }`}
@@ -112,7 +112,7 @@ const Profliephotos = ({ activeTab = "profile", firstName = "Nivesh", lastName =
             Vehicles
           </Link>
           <Link
-            to="/profile/security"
+            to="/profilesecurity"
             className={`text-black text-sm font-medium uppercase tracking-wide border-b-2 pb-3 -mb-[13px] ${
               activeTab === "security" ? "border-primary" : "border-gray-300 hover:text-primary hover:border-primary"
             }`}
