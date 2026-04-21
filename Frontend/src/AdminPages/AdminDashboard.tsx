@@ -64,6 +64,13 @@ const getStatChangeStyle = (changeText: string): CSSProperties => {
   }
 }
 
+const getStatAccentColor = (changeText: string): string => {
+  const normalized = changeText.toLowerCase()
+  if (normalized.startsWith('-') || normalized.includes('down') || normalized.includes('decline')) return '#dc2626'
+  if (normalized.startsWith('+')) return '#16a34a'
+  return '#2563eb'
+}
+
 const AdminDashboard = () => {
   const bookingPieWrapRef = useRef<HTMLDivElement>(null)
   const [bookingPieTip, setBookingPieTip] = useState<{ label: string; value: number; pct: number } | null>(null)
@@ -306,26 +313,51 @@ const AdminDashboard = () => {
               <article
                 key={item.label}
                 style={{
+                  position: 'relative',
                   backgroundColor: '#fff',
                   border: '1px solid #e2e8f0',
-                  borderRadius: 14,
-                  padding: '1rem',
-                  boxShadow: '0 5px 18px rgba(15, 23, 42, 0.06)',
+                  borderRadius: 16,
+                  padding: '1rem 1rem 0.95rem',
+                  boxShadow: '0 8px 22px rgba(15, 23, 42, 0.06)',
+                  overflow: 'hidden',
                 }}
               >
-                <p style={{ margin: 0, color: '#64748b', fontSize: '0.85rem' }}>{item.label}</p>
-                <h3 style={{ margin: '0.3rem 0', color: '#0f172a', fontSize: '1.4rem' }}>{item.value}</h3>
+                <span
+                  aria-hidden
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: 3,
+                    background: `linear-gradient(90deg, ${getStatAccentColor(item.change)} 0%, ${getStatAccentColor(item.change)}cc 100%)`,
+                  }}
+                />
+                <p style={{ margin: 0, color: '#64748b', fontSize: '0.78rem', fontWeight: 600 }}>{item.label}</p>
+                <h3
+                  style={{
+                    margin: '0.42rem 0 0.62rem',
+                    color: '#0f172a',
+                    fontSize: '1.75rem',
+                    lineHeight: 1.08,
+                    letterSpacing: '-0.03em',
+                    fontVariantNumeric: 'tabular-nums',
+                  }}
+                >
+                  {item.value}
+                </h3>
                 <p
                   style={{
                     ...getStatChangeStyle(item.change),
-                    margin: '0 auto',
+                    margin: 0,
                     width: 'fit-content',
                     maxWidth: '100%',
-                    fontSize: '0.74rem',
+                    fontSize: '0.71rem',
                     fontWeight: 700,
-                    padding: '0.2rem 0.5rem',
+                    padding: '0.22rem 0.54rem',
                     borderRadius: 999,
                     lineHeight: 1.35,
+                    boxShadow: '0 1px 2px rgba(15, 23, 42, 0.05)',
                   }}
                 >
                   {item.change}
