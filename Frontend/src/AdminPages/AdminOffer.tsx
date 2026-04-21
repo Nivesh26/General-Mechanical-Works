@@ -2,7 +2,7 @@ import type { CSSProperties } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import AdminNavbar from '../AdminComponent/AdminNavbar'
-import { ADMIN_MAIN_SCROLL } from '../AdminComponent/adminMainStyles'
+import { ADMIN_MAIN_SCROLL, ADMIN_PAGE_HEADER_SPACING, ADMIN_PAGE_SUBTITLE, ADMIN_PAGE_TITLE } from '../AdminComponent/adminMainStyles'
 import Poster1 from '../assets/Poster1.png'
 import Poster2 from '../assets/Poster2.png'
 import Poster3 from '../assets/Poster3.png'
@@ -155,9 +155,9 @@ const AdminOffer = () => {
       {lightbox}
       <AdminNavbar />
       <main style={ADMIN_MAIN_SCROLL}>
-        <div style={{ marginBottom: '20px' }}>
-          <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 700, color: '#1e293b' }}>Offers</h1>
-          <p style={{ margin: '6px 0 0', fontSize: '14px', color: '#64748b', maxWidth: '560px' }}>
+        <div style={ADMIN_PAGE_HEADER_SPACING}>
+          <h1 style={ADMIN_PAGE_TITLE}>Offers</h1>
+          <p style={{ ...ADMIN_PAGE_SUBTITLE, maxWidth: '560px' }}>
             These posters match what visitors see under <strong>Latest Offers</strong> on the home page.
           </p>
         </div>

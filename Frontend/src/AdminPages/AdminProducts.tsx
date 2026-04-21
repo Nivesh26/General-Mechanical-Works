@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react'
 import { useMemo, useState } from 'react'
 import AdminNavbar from '../AdminComponent/AdminNavbar'
-import { ADMIN_MAIN_SCROLL } from '../AdminComponent/adminMainStyles'
+import { ADMIN_MAIN_SCROLL, ADMIN_PAGE_HEADER_SPACING, ADMIN_PAGE_SUBTITLE, ADMIN_PAGE_TITLE } from '../AdminComponent/adminMainStyles'
 import EngineOil from '../assets/EngineOil.png'
 import Brakes from '../assets/Brakekit.png'
 import Tyre from '../assets/Tyre.png'
@@ -305,12 +305,10 @@ const AdminProducts = () => {
       <AdminNavbar />
 
       <main style={ADMIN_MAIN_SCROLL}>
-        <h1 style={{ fontSize: '28px', fontWeight: 700, color: '#111827', marginBottom: '6px' }}>
-          Admin Products
-        </h1>
-        <p style={{ color: '#6b7280', marginBottom: '20px' }}>
-          Add, update, and manage product inventory.
-        </p>
+        <div style={ADMIN_PAGE_HEADER_SPACING}>
+          <h1 style={ADMIN_PAGE_TITLE}>Admin Products</h1>
+          <p style={ADMIN_PAGE_SUBTITLE}>Add, update, and manage product inventory.</p>
+        </div>
 
         <section
           style={{

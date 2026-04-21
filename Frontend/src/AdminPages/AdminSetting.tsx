@@ -2,7 +2,7 @@ import type { ChangeEvent, CSSProperties, FormEvent } from 'react'
 import { useRef, useState } from 'react'
 import { HiOutlinePencilSquare } from 'react-icons/hi2'
 import AdminNavbar from '../AdminComponent/AdminNavbar'
-import { ADMIN_MAIN_SCROLL } from '../AdminComponent/adminMainStyles'
+import { ADMIN_MAIN_SCROLL, ADMIN_PAGE_HEADER_SPACING, ADMIN_PAGE_SUBTITLE, ADMIN_PAGE_TITLE } from '../AdminComponent/adminMainStyles'
 
 type ProfileErrors = Partial<Record<'name' | 'email' | 'phone', string>>
 type PasswordErrors = Partial<Record<'current' | 'next' | 'confirm', string>>
@@ -108,11 +108,9 @@ const AdminSetting = () => {
       <AdminNavbar />
       <main style={ADMIN_MAIN_SCROLL}>
         <div style={{ width: '100%' }}>
-          <div style={{ marginBottom: '20px' }}>
-            <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 700, color: '#1e293b' }}>Settings</h1>
-            <p style={{ margin: '6px 0 0', fontSize: '14px', color: '#64748b' }}>
-              Manage admin profile details and security settings.
-            </p>
+          <div style={ADMIN_PAGE_HEADER_SPACING}>
+            <h1 style={ADMIN_PAGE_TITLE}>Settings</h1>
+            <p style={ADMIN_PAGE_SUBTITLE}>Manage admin profile details and security settings.</p>
           </div>
 
           <section style={{ ...cardStyle, width: '100%', boxSizing: 'border-box' }}>

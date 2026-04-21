@@ -2,7 +2,7 @@ import type { CSSProperties } from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { HiOutlineHeart } from 'react-icons/hi2'
 import AdminNavbar from '../AdminComponent/AdminNavbar'
-import { ADMIN_MAIN_SCROLL } from '../AdminComponent/adminMainStyles'
+import { ADMIN_MAIN_SCROLL, ADMIN_PAGE_HEADER_SPACING, ADMIN_PAGE_SUBTITLE, ADMIN_PAGE_TITLE } from '../AdminComponent/adminMainStyles'
 import Blog1Img from '../assets/Blog1.png'
 import Blog2Img from '../assets/Blog2.png'
 import Blog3Img from '../assets/Blog3.png'
@@ -198,9 +198,9 @@ const AdminBlog = () => {
     <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
       <AdminNavbar />
       <main style={ADMIN_MAIN_SCROLL}>
-        <div style={{ marginBottom: '20px' }}>
-          <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 700, color: '#1e293b' }}>Blog</h1>
-          <p style={{ margin: '6px 0 0', fontSize: '14px', color: '#64748b' }}>
+        <div style={ADMIN_PAGE_HEADER_SPACING}>
+          <h1 style={ADMIN_PAGE_TITLE}>Blog</h1>
+          <p style={ADMIN_PAGE_SUBTITLE}>
             Create posts with one cover image, edit or remove them, and view like counts.
           </p>
         </div>

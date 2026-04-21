@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react'
 import { Fragment, useMemo, useState } from 'react'
 import AdminNavbar from '../AdminComponent/AdminNavbar'
-import { ADMIN_MAIN_SCROLL } from '../AdminComponent/adminMainStyles'
+import { ADMIN_MAIN_SCROLL, ADMIN_PAGE_SUBTITLE, ADMIN_PAGE_TITLE } from '../AdminComponent/adminMainStyles'
 /** Product photos from `Frontend/src/assets` (same as admin catalog). */
 import EngineOil from '../assets/EngineOil.png'
 import Brakes from '../assets/Brakekit.png'
@@ -311,10 +311,8 @@ const AdminOrders = () => {
           }}
         >
           <div style={{ minWidth: 0, flex: '1 1 auto' }}>
-            <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 700, color: '#1e293b' }}>Orders</h1>
-            <p style={{ margin: '6px 0 0', fontSize: '14px', color: '#64748b' }}>
-              Customer orders — search and update fulfilment status.
-            </p>
+            <h1 style={ADMIN_PAGE_TITLE}>Orders</h1>
+            <p style={ADMIN_PAGE_SUBTITLE}>Customer orders — search and update fulfilment status.</p>
           </div>
           <form
             onSubmit={onSearchSubmit}

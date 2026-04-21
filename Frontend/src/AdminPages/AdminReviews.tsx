@@ -1,6 +1,6 @@
 import { useState, type CSSProperties } from 'react'
 import AdminNavbar from '../AdminComponent/AdminNavbar'
-import { ADMIN_MAIN_SCROLL } from '../AdminComponent/adminMainStyles'
+import { ADMIN_MAIN_SCROLL, ADMIN_PAGE_HEADER_SPACING, ADMIN_PAGE_SUBTITLE, ADMIN_PAGE_TITLE } from '../AdminComponent/adminMainStyles'
 import {
   HiStar,
   HiOutlineHandThumbUp,
@@ -13,9 +13,7 @@ import {
 import { useProductReviewsState } from '../lib/useProductReviewsState'
 
 const pageHeader: CSSProperties = {
-  marginBottom: '28px',
-  paddingBottom: '22px',
-  borderBottom: '1px solid #e2e8f0',
+  ...ADMIN_PAGE_HEADER_SPACING,
 }
 
 const cardShell: CSSProperties = {
@@ -101,17 +99,7 @@ const AdminReviews = () => {
         <div style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
           <header style={pageHeader}>
             <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '12px 16px' }}>
-              <h1
-                style={{
-                  margin: 0,
-                  fontSize: '26px',
-                  fontWeight: 700,
-                  color: '#0f172a',
-                  letterSpacing: '-0.03em',
-                }}
-              >
-                Product reviews
-              </h1>
+              <h1 style={ADMIN_PAGE_TITLE}>Product reviews</h1>
               {reviews.length > 0 ? (
                 <span
                   style={{
@@ -128,7 +116,7 @@ const AdminReviews = () => {
                 </span>
               ) : null}
             </div>
-            <p style={{ margin: '10px 0 0', fontSize: '14px', color: '#64748b', lineHeight: 1.5 }}>View reviews</p>
+            <p style={{ ...ADMIN_PAGE_SUBTITLE, margin: '6px 0 0', lineHeight: 1.5 }}>View reviews</p>
           </header>
 
           {reviews.length === 0 ? (

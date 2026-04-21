@@ -3,7 +3,7 @@ import { FiImage, FiMoreHorizontal, FiTrash2 } from 'react-icons/fi'
 import { HiOutlineMagnifyingGlass, HiOutlineShieldCheck } from 'react-icons/hi2'
 import { LuBan, LuBell, LuBellOff, LuMailOpen, LuPin, LuPinOff } from 'react-icons/lu'
 import AdminNavbar from '../AdminComponent/AdminNavbar'
-import { ADMIN_MAIN_MESSAGES } from '../AdminComponent/adminMainStyles'
+import { ADMIN_MAIN_MESSAGES, ADMIN_PAGE_HEADER_SPACING, ADMIN_PAGE_TITLE } from '../AdminComponent/adminMainStyles'
 import GMWLogo from '../assets/GMWlogo.png'
 
 const CHATBOT_USER_ID = 'chatbot'
@@ -286,7 +286,9 @@ const AdminMessage = () => {
     <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
       <AdminNavbar />
       <main style={ADMIN_MAIN_MESSAGES}>
-        <h1 style={{ margin: '0 0 14px 0', fontSize: '24px', color: '#1e293b' }}>Messages</h1>
+        <div style={{ ...ADMIN_PAGE_HEADER_SPACING, flexShrink: 0 }}>
+          <h1 style={ADMIN_PAGE_TITLE}>Messages</h1>
+        </div>
 
         <div
           style={{

@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react'
 import { useState } from 'react'
 import AdminNavbar from '../AdminComponent/AdminNavbar'
-import { ADMIN_MAIN_SCROLL } from '../AdminComponent/adminMainStyles'
+import { ADMIN_MAIN_SCROLL, ADMIN_PAGE_TITLE } from '../AdminComponent/adminMainStyles'
 
 const AdminUsers = () => {
   const [users, setUsers] = useState([
@@ -48,10 +48,10 @@ const AdminUsers = () => {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            marginBottom: '12px',
+            marginBottom: '16px',
           }}
         >
-          <h1 style={{ margin: 0, fontSize: '24px', color: '#1e293b' }}>Users</h1>
+          <h1 style={ADMIN_PAGE_TITLE}>Users</h1>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <input
