@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import AdminNavbar from '../AdminComponent/AdminNavbar'
 import { ADMIN_MAIN_SCROLL } from '../AdminComponent/adminMainStyles'
 import { FiBell } from 'react-icons/fi'
@@ -12,52 +13,64 @@ const AdminDashboard = () => {
   const minSales = Math.min(...monthlySales)
   const totalSales = monthlySales.reduce((sum, value) => sum + value, 0)
   const averageSales = Math.round(totalSales / monthlySales.length)
-  const growthPercent = Math.round(((monthlySales[monthlySales.length - 1] - monthlySales[0]) / monthlySales[0]) * 100)
 
-  const userTrendPoints = monthlyUsers
-    .map((sale, index) => {
-      const x = (index / (monthlySales.length - 1)) * 100
-      const y = 100 - (sale / maxUsers) * 100
-      return `${x},${y}`
-    })
-    .join(' ')
+  const userTrendCoordinates = monthlyUsers.map((value, index) => {
+    const x = (index / (monthlyUsers.length - 1)) * 100
+    const y = 86 - ((value - Math.min(...monthlyUsers)) / (maxUsers - Math.min(...monthlyUsers) || 1)) * 56
+    return { x, y }
+  })
+
+  const createSmoothPath = (points: Array<{ x: number; y: number }>) => {
+    if (points.length < 2) return ''
+    let path = `M ${points[0].x} ${points[0].y}`
+    for (let i = 1; i < points.length; i += 1) {
+      const prev = points[i - 1]
+      const curr = points[i]
+      const controlX = (prev.x + curr.x) / 2
+      path += ` C ${controlX} ${prev.y}, ${controlX} ${curr.y}, ${curr.x} ${curr.y}`
+    }
+    return path
+  }
+
+  const trendLinePath = createSmoothPath(userTrendCoordinates)
+  const trendAreaPath = `${trendLinePath} L 100 100 L 0 100 Z`
 
   const stats = [
     {
       label: 'Total Sales',
       value: 'NRP 157,000',
       change: '+14.2% from last month',
-      color: '#2563eb',
+      color: '#0f172a',
     },
     {
       label: 'Total Orders',
       value: '1,284',
       change: '+8.4% from last month',
-      color: '#0d9488',
+      color: '#0f172a',
     },
     {
       label: 'Active Users',
       value: '492',
       change: '+5.1% from last month',
-      color: '#9333ea',
+      color: '#0f172a',
     },
     {
       label: 'Pending Deliveries',
       value: '37',
       change: '-2.7% from last month',
-      color: '#f59e0b',
+      color: '#0f172a',
     },
     {
       label: 'Total Bookings',
       value: '246',
       change: '+11.6% from last month',
-      color: '#0891b2',
+      color: '#0f172a',
     },
     {
       label: 'Bookings Today',
       value: '19',
       change: '+3 new in last 2 hours',
-      color: '#16a34a',
+      color: '#0f172a',
     },
   ]
 
@@ -66,6 +79,12 @@ const AdminDashboard = () => {
     { id: '#ORD-1022', customer: 'Apex Mechanics', status: 'Processing' },
     { id: '#ORD-1023', customer: 'Titan Works', status: 'Shipped' },
     { id: '#ORD-1024', customer: 'Prime Automations', status: 'Pending' },
+  ]
+
+  const inboxChatsPreview = [
+    { name: 'Alex Rivera', snippet: 'Thanks for confirming the maintenance slot.', time: '12m ago', unread: true },
+    { name: 'Metro Dynamics', snippet: 'Can we reschedule to next Thursday?', time: '1h ago', unread: true },
+    { name: 'Nova Engineering', snippet: 'Invoice looks good on our side.', time: 'Yesterday', unread: false },
   ]
 
   const orderStatusStyles: Record<string, { color: string; border: string; backgroundColor: string }> = {
@@ -216,6 +235,7 @@ const AdminDashboard = () => {
               gridTemplateColumns: '2fr 1fr',
               gap: '1rem',
               marginBottom: '1rem',
+              alignItems: 'start',
             }}
           >
             <article
@@ -227,72 +247,66 @@ const AdminDashboard = () => {
                 boxShadow: '0 5px 18px rgba(15, 23, 42, 0.06)',
               }}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem' }}>
-                <div>
-                  <h2 style={{ margin: 0, color: '#0f172a', fontSize: '1.1rem' }}>Sales and Users (Last 6 Months)</h2>
-                  <p style={{ margin: '0.35rem 0 0', color: '#64748b', fontSize: '0.86rem' }}>
-                    Compare monthly sales with user activity in one view.
-                  </p>
-                </div>
-                <div
-                  style={{
-                    border: '1px solid #bfdbfe',
-                    backgroundColor: '#eff6ff',
-                    color: '#1d4ed8',
-                    borderRadius: 10,
-                    padding: '0.35rem 0.55rem',
-                    fontSize: '0.75rem',
-                    fontWeight: 700,
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  +{growthPercent}% growth
-                </div>
+              <div>
+                <h2 style={{ margin: 0, color: '#0f172a', fontSize: '1.1rem' }}>Sales and Users (Last 6 Months)</h2>
+                <p style={{ margin: '0.35rem 0 0', color: '#64748b', fontSize: '0.86rem' }}>
+                  Compare monthly sales with user activity in one view.
+                </p>
               </div>
 
-              <div style={{ height: 220, margin: '1rem 0 0.8rem' }}>
+              <div
+                style={{
+                  height: 220,
+                  margin: '1rem 0 0.8rem',
+                  border: '1px solid #dbeafe',
+                  borderRadius: 14,
+                  overflow: 'hidden',
+                  background: 'linear-gradient(180deg, #f8fbff 0%, #ffffff 100%)',
+                }}
+              >
                 <svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
-                  {[20, 40, 60, 80].map((lineY) => (
-                    <line
-                      key={lineY}
-                      x1="0"
-                      y1={lineY}
-                      x2="100"
-                      y2={lineY}
-                      stroke="#e2e8f0"
-                      strokeWidth="0.5"
+                  {monthLabels.map((month, index) => {
+                    const x = (index / (monthLabels.length - 1)) * 100
+                    return (
+                      <line
+                        key={`${month}-gridline`}
+                        x1={x}
+                        y1="8"
+                        x2={x}
+                        y2="100"
+                        stroke="#e2e8f0"
+                        strokeWidth="0.45"
+                        vectorEffect="non-scaling-stroke"
+                      />
+                    )
+                  })}
+                  <path d={trendAreaPath} fill="url(#salesTrendArea)" />
+                  <path
+                    d={trendLinePath}
+                    fill="none"
+                    stroke="#2563eb"
+                    strokeWidth="1.45"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    vectorEffect="non-scaling-stroke"
+                  />
+                  {userTrendCoordinates.map((point, index) => (
+                    <ellipse
+                      key={`${monthLabels[index]}-trend-dot`}
+                      cx={point.x}
+                      cy={point.y}
+                      rx="0.3"
+                      ry="0.95"
+                      fill="#1d4ed8"
                       vectorEffect="non-scaling-stroke"
                     />
                   ))}
-                  {monthlySales.map((sale, index) => {
-                    const x = (index / (monthlySales.length - 1)) * 100
-                    const y = 100 - (sale / maxSales) * 100
-                    const barWidth = 9
-                    return (
-                      <g key={`${monthLabels[index]}-${sale}-bar`}>
-                        <rect
-                          x={Math.max(0, x - barWidth / 2)}
-                          y={y}
-                          width={barWidth}
-                          height={100 - y}
-                          rx="1.8"
-                          fill="#bfdbfe"
-                        />
-                      </g>
-                    )
-                  })}
-                  <polyline
-                    fill="none"
-                    stroke="#7c3aed"
-                    strokeWidth="2.4"
-                    points={userTrendPoints}
-                    vectorEffect="non-scaling-stroke"
-                  />
-                  {monthlyUsers.map((users, index) => {
-                    const x = (index / (monthlyUsers.length - 1)) * 100
-                    const y = 100 - (users / maxUsers) * 100
-                    return <circle key={`${monthLabels[index]}-${users}-user`} cx={x} cy={y} r="1.7" fill="#6d28d9" />
-                  })}
+                  <defs>
+                    <linearGradient id="salesTrendArea" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#93c5fd" stopOpacity="0.55" />
+                      <stop offset="100%" stopColor="#93c5fd" stopOpacity="0.08" />
+                    </linearGradient>
+                  </defs>
                 </svg>
               </div>
 
@@ -303,7 +317,7 @@ const AdminDashboard = () => {
                     <p style={{ margin: '0.15rem 0 0', fontSize: '0.72rem', color: '#0f172a', fontWeight: 600, lineHeight: 1.35 }}>
                       NRP {(monthlySales[index] / 1000).toFixed(0)}k
                     </p>
-                    <p style={{ margin: '0.08rem 0 0', fontSize: '0.7rem', color: '#6d28d9', fontWeight: 600 }}>
+                    <p style={{ margin: '0.08rem 0 0', fontSize: '0.7rem', color: '#2563eb', fontWeight: 600 }}>
                       {monthlyUsers[index]} users
                     </p>
                   </div>
@@ -371,133 +385,302 @@ const AdminDashboard = () => {
                   </div>
                 </div>
               ))}
+              <div
+                style={{
+                  marginTop: '1.1rem',
+                  paddingTop: '1rem',
+                  borderTop: '1px solid #e2e8f0',
+                }}
+              >
+                <Link
+                  to="/adminappointments"
+                  style={{
+                    display: 'block',
+                    width: '100%',
+                    boxSizing: 'border-box',
+                    textAlign: 'center',
+                    textDecoration: 'none',
+                    fontSize: '0.86rem',
+                    fontWeight: 600,
+                    color: '#1d4ed8',
+                    padding: '0.55rem 0.9rem',
+                    borderRadius: 10,
+                    border: '1px solid #93c5fd',
+                    backgroundColor: '#eff6ff',
+                  }}
+                >
+                  View All
+                </Link>
+              </div>
             </article>
           </section>
 
           <section
             style={{
-              backgroundColor: '#fff',
-              border: '1px solid #e2e8f0',
-              borderRadius: 14,
-              padding: '1.2rem',
-              boxShadow: '0 5px 18px rgba(15, 23, 42, 0.06)',
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))',
+              gap: '1rem',
+              marginTop: '1rem',
+              alignItems: 'start',
             }}
           >
-            <h2 style={{ margin: 0, color: '#0f172a', fontSize: '1.1rem' }}>Recent Orders</h2>
-            <p style={{ margin: '0.35rem 0 1rem', color: '#64748b', fontSize: '0.86rem' }}>
-              Latest order updates from key customers.
-            </p>
-            <div style={{ display: 'grid', gap: '0.7rem' }}>
-              {recentOrders.map((order) => (
-                (() => {
-                  const statusStyle = orderStatusStyles[order.status] ?? {
-                    color: '#0f172a',
-                    border: '#cbd5e1',
-                    backgroundColor: '#fff',
-                  }
-                  return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <article
+                style={{
+                  backgroundColor: '#fff',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: 14,
+                  padding: '1.2rem',
+                  boxShadow: '0 5px 18px rgba(15, 23, 42, 0.06)',
+                }}
+              >
+                <h2 style={{ margin: 0, color: '#0f172a', fontSize: '1.1rem' }}>Recent Orders</h2>
+                <p style={{ margin: '0.35rem 0 1rem', color: '#64748b', fontSize: '0.86rem' }}>
+                  Latest order updates from key customers.
+                </p>
+                <div style={{ display: 'grid', gap: '0.7rem' }}>
+                  {recentOrders.map((order) => {
+                    const statusStyle = orderStatusStyles[order.status] ?? {
+                      color: '#334155',
+                      border: '#cbd5e1',
+                      backgroundColor: '#f8fafc',
+                    }
+                    return (
+                      <div
+                        key={order.id}
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          border: '1px solid #e2e8f0',
+                          borderRadius: 10,
+                          padding: '0.7rem 0.9rem',
+                          backgroundColor: '#f8fafc',
+                        }}
+                      >
+                        <div>
+                          <p style={{ margin: 0, color: '#0f172a', fontWeight: 600, fontSize: '0.85rem' }}>{order.id}</p>
+                          <p style={{ margin: '0.2rem 0 0', color: '#64748b', fontSize: '0.78rem' }}>{order.customer}</p>
+                        </div>
+                        <span
+                          style={{
+                            fontSize: '0.75rem',
+                            color: statusStyle.color,
+                            fontWeight: 600,
+                            padding: '0.25rem 0.55rem',
+                            borderRadius: 999,
+                            border: `1px solid ${statusStyle.border}`,
+                            backgroundColor: statusStyle.backgroundColor,
+                          }}
+                        >
+                          {order.status}
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
                 <div
-                  key={order.id}
                   style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    border: '1px solid #e2e8f0',
-                    borderRadius: 10,
-                    padding: '0.7rem 0.9rem',
-                    backgroundColor: '#f8fafc',
+                    marginTop: '1.1rem',
+                    paddingTop: '1rem',
+                    borderTop: '1px solid #e2e8f0',
                   }}
                 >
-                  <div>
-                    <p style={{ margin: 0, color: '#0f172a', fontWeight: 600, fontSize: '0.85rem' }}>{order.id}</p>
-                    <p style={{ margin: '0.2rem 0 0', color: '#64748b', fontSize: '0.78rem' }}>{order.customer}</p>
-                  </div>
-                  <span
+                  <Link
+                    to="/adminorders"
                     style={{
-                      fontSize: '0.75rem',
-                      color: statusStyle.color,
+                      display: 'block',
+                      width: '100%',
+                      boxSizing: 'border-box',
+                      textAlign: 'center',
+                      textDecoration: 'none',
+                      fontSize: '0.86rem',
                       fontWeight: 600,
-                      padding: '0.25rem 0.55rem',
-                      borderRadius: 999,
-                      border: `1px solid ${statusStyle.border}`,
-                      backgroundColor: statusStyle.backgroundColor,
+                      color: '#1d4ed8',
+                      padding: '0.55rem 0.9rem',
+                      borderRadius: 10,
+                      border: '1px solid #93c5fd',
+                      backgroundColor: '#eff6ff',
                     }}
                   >
-                    {order.status}
-                  </span>
+                    View All
+                  </Link>
                 </div>
-                  )
-                })()
-              ))}
-            </div>
-          </section>
+              </article>
 
-          <section
-            style={{
-              backgroundColor: '#fff',
-              border: '1px solid #e2e8f0',
-              borderRadius: 14,
-              padding: '1.2rem',
-              boxShadow: '0 5px 18px rgba(15, 23, 42, 0.06)',
-              marginTop: '1rem',
-            }}
-          >
-            <h2 style={{ margin: 0, color: '#0f172a', fontSize: '1.1rem' }}>Upcoming Bookings</h2>
-            <p style={{ margin: '0.35rem 0 1rem', color: '#64748b', fontSize: '0.86rem' }}>
-              Scheduled field and workshop bookings for your team.
-            </p>
-            <div style={{ display: 'grid', gap: '0.7rem' }}>
-              {upcomingBookings.map((booking) => (
-                (() => {
-                  const bookingStyle = bookingBadgeStyles[booking.status] ?? {
-                    color: '#0f172a',
-                    border: '#cbd5e1',
-                    backgroundColor: '#fff',
-                  }
-                  return (
-                <div
-                  key={booking.id}
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    gap: '0.8rem',
-                    border: '1px solid #e2e8f0',
-                    borderRadius: 10,
-                    padding: '0.75rem 0.9rem',
-                    backgroundColor: '#f8fafc',
-                  }}
-                >
-                  <div>
-                    <p style={{ margin: 0, color: '#0f172a', fontWeight: 700, fontSize: '0.83rem' }}>
-                      {booking.id} - {booking.client}
-                    </p>
-                    <p style={{ margin: '0.2rem 0 0', color: '#64748b', fontSize: '0.78rem' }}>{booking.service}</p>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', alignItems: 'flex-end' }}>
-                    <span style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 600, whiteSpace: 'nowrap' }}>
-                      {booking.slot}
-                    </span>
-                    <span
+              <article
+                style={{
+                  backgroundColor: '#fff',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: 14,
+                  padding: '1.2rem',
+                  boxShadow: '0 5px 18px rgba(15, 23, 42, 0.06)',
+                }}
+              >
+                <div>
+                  <h2 style={{ margin: 0, color: '#0f172a', fontSize: '1.1rem' }}>Chats & Inbox</h2>
+                  <p style={{ margin: '0.35rem 0 0', color: '#64748b', fontSize: '0.86rem' }}>
+                    Latest customer conversations and replies.
+                  </p>
+                </div>
+                <div style={{ display: 'grid', gap: '0.65rem', marginTop: '1rem' }}>
+                  {inboxChatsPreview.map((chat) => (
+                    <div
+                      key={chat.name + chat.time}
                       style={{
-                        fontSize: '0.74rem',
-                        color: bookingStyle.color,
-                        fontWeight: 600,
-                        padding: '0.24rem 0.58rem',
-                        borderRadius: 999,
-                        border: `1px solid ${bookingStyle.border}`,
-                        backgroundColor: bookingStyle.backgroundColor,
-                        whiteSpace: 'nowrap',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'flex-start',
+                        gap: '0.75rem',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: 10,
+                        padding: '0.7rem 0.85rem',
+                        backgroundColor: chat.unread ? '#f8fafc' : '#fff',
                       }}
                     >
-                      {booking.status}
-                    </span>
-                  </div>
+                      <div style={{ minWidth: 0 }}>
+                        <p style={{ margin: 0, color: '#0f172a', fontWeight: 600, fontSize: '0.84rem' }}>{chat.name}</p>
+                        <p
+                          style={{
+                            margin: '0.2rem 0 0',
+                            color: '#64748b',
+                            fontSize: '0.78rem',
+                            lineHeight: 1.35,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {chat.snippet}
+                        </p>
+                      </div>
+                      <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                        {chat.time}
+                      </span>
+                    </div>
+                  ))}
                 </div>
-                  )
-                })()
-              ))}
+                <div
+                  style={{
+                    marginTop: '1rem',
+                    paddingTop: '0.95rem',
+                    borderTop: '1px solid #e2e8f0',
+                  }}
+                >
+                  <Link
+                    to="/adminmessages"
+                    style={{
+                      display: 'block',
+                      width: '100%',
+                      boxSizing: 'border-box',
+                      textAlign: 'center',
+                      textDecoration: 'none',
+                      fontSize: '0.86rem',
+                      fontWeight: 600,
+                      color: '#1d4ed8',
+                      padding: '0.55rem 0.9rem',
+                      borderRadius: 10,
+                      border: '1px solid #93c5fd',
+                      backgroundColor: '#eff6ff',
+                    }}
+                  >
+                    Open inbox
+                  </Link>
+                </div>
+              </article>
             </div>
+
+            <article
+              style={{
+                backgroundColor: '#fff',
+                border: '1px solid #e2e8f0',
+                borderRadius: 14,
+                padding: '1.2rem',
+                boxShadow: '0 5px 18px rgba(15, 23, 42, 0.06)',
+              }}
+            >
+              <h2 style={{ margin: 0, color: '#0f172a', fontSize: '1.1rem' }}>Upcoming Bookings</h2>
+              <p style={{ margin: '0.35rem 0 1rem', color: '#64748b', fontSize: '0.86rem' }}>
+                Scheduled field and workshop bookings for your team.
+              </p>
+              <div style={{ display: 'grid', gap: '0.7rem' }}>
+                {upcomingBookings.map((booking) => {
+                  const bookingStyle = bookingBadgeStyles[booking.status] ?? {
+                    color: '#334155',
+                    border: '#cbd5e1',
+                    backgroundColor: '#f8fafc',
+                  }
+                  return (
+                    <div
+                      key={booking.id}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        gap: '0.8rem',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: 10,
+                        padding: '0.75rem 0.9rem',
+                        backgroundColor: '#f8fafc',
+                      }}
+                    >
+                      <div>
+                        <p style={{ margin: 0, color: '#0f172a', fontWeight: 700, fontSize: '0.83rem' }}>
+                          {booking.id} - {booking.client}
+                        </p>
+                        <p style={{ margin: '0.2rem 0 0', color: '#64748b', fontSize: '0.78rem' }}>{booking.service}</p>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', alignItems: 'flex-end' }}>
+                        <span style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                          {booking.slot}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: '0.74rem',
+                            color: bookingStyle.color,
+                            fontWeight: 600,
+                            padding: '0.24rem 0.58rem',
+                            borderRadius: 999,
+                            border: `1px solid ${bookingStyle.border}`,
+                            backgroundColor: bookingStyle.backgroundColor,
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {booking.status}
+                        </span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+              <div
+                style={{
+                  marginTop: '1.1rem',
+                  paddingTop: '1rem',
+                  borderTop: '1px solid #e2e8f0',
+                }}
+              >
+                <Link
+                  to="/adminappointments"
+                  style={{
+                    display: 'block',
+                    width: '100%',
+                    boxSizing: 'border-box',
+                    textAlign: 'center',
+                    textDecoration: 'none',
+                    fontSize: '0.86rem',
+                    fontWeight: 600,
+                    color: '#1d4ed8',
+                    padding: '0.55rem 0.9rem',
+                    borderRadius: 10,
+                    border: '1px solid #93c5fd',
+                    backgroundColor: '#eff6ff',
+                  }}
+                >
+                  View All
+                </Link>
+              </div>
+            </article>
           </section>
         </section>
       </main>
