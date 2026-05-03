@@ -1,38 +1,40 @@
 import type { CSSProperties } from 'react'
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import AdminNavbar from '../AdminComponent/AdminNavbar'
 import { ADMIN_MAIN_SCROLL, ADMIN_PAGE_TITLE } from '../AdminComponent/adminMainStyles'
 
+const USERS = [
+  {
+    name: 'Aarav Sharma',
+    email: 'aarav.sharma@example.com',
+    number: '+977 9849925333',
+    location: 'Patan, Nepal',
+  },
+  {
+    name: 'Diya Patel',
+    email: 'diya.patel@example.com',
+    number: '+977 9812345678',
+    location: 'Kathmandu, Nepal',
+  },
+  {
+    name: 'Rohan Verma',
+    email: 'rohan.verma@example.com',
+    number: '+977 9849925333',
+    location: 'Pokhara, Nepal',
+  },
+  {
+    name: 'Neha Singh',
+    email: 'neha.singh@example.com',
+    number: '+977 9849925333',
+    location: null,
+  },
+] as const
+
 const AdminUsers = () => {
-  const [users, setUsers] = useState([
-    {
-      name: 'Aarav Sharma',
-      email: 'aarav.sharma@example.com',
-      number: '+977 9849925333',
-      location: 'Patan, Nepal',
-    },
-    {
-      name: 'Diya Patel',
-      email: 'diya.patel@example.com',
-      number: '+977 9812345678',
-      location: 'Kathmandu, Nepal',
-    },
-    {
-      name: 'Rohan Verma',
-      email: 'rohan.verma@example.com',
-      number: '+977 9849925333',
-      location: 'Pokhara, Nepal',
-    },
-    {
-      name: 'Neha Singh',
-      email: 'neha.singh@example.com',
-      number: '+977 9849925333',
-      location: null,
-    },
-  ])
   const [searchInput, setSearchInput] = useState('')
 
-  const filteredUsers = users.filter((user) => {
+  const filteredUsers = [...USERS].filter((user) => {
     if (!searchInput.trim()) return true
 
     const searchableText = `${user.name} ${user.email} ${user.number} ${user.location ?? ''}`.toLowerCase()
@@ -113,31 +115,31 @@ const AdminUsers = () => {
               {filteredUsers.length > 0 ? (
                 filteredUsers.map((user) => (
                   <tr key={user.email} style={{ borderTop: '1px solid #e2e8f0' }}>
-                    <td style={bodyCellStyle}>{user.name}</td>
+                    <td style={bodyCellStyle}>
+                      <Link to="/adminuserprofile" className="admin-users-name-link">
+                        {user.name}
+                      </Link>
+                    </td>
                     <td style={bodyCellStyle}>{user.email}</td>
                     <td style={bodyCellStyle}>{user.number}</td>
                     <td style={bodyCellStyle}>{user.location?.trim() ? user.location : '-'}</td>
                     <td style={bodyCellStyle}>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setUsers((prevUsers) =>
-                            prevUsers.filter((existingUser) => existingUser.email !== user.email)
-                          )
-                        }
+                      <Link
+                        to="/adminuserprofile"
                         style={{
                           padding: '6px 10px',
                           fontSize: '12px',
                           fontWeight: 600,
-                          color: '#b91c1c',
-                          backgroundColor: '#fee2e2',
-                          border: '1px solid #fecaca',
+                          color: '#ffffff',
+                          backgroundColor: '#bd162c',
+                          border: '1px solid #991b1b',
                           borderRadius: '6px',
-                          cursor: 'pointer',
+                          textDecoration: 'none',
+                          display: 'inline-block',
                         }}
                       >
-                        Delete
-                      </button>
+                        View Profile
+                      </Link>
                     </td>
                   </tr>
                 ))

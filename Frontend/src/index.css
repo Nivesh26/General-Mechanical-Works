@@ -46,3 +46,13 @@ body {
 .animate-scroll:hover {
   animation-play-state: paused;
 }
+
+.admin-users-name-link {
+  color: #000000;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.admin-users-name-link:hover {
+  text-decoration: underline;
+}

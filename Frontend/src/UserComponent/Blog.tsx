@@ -88,18 +88,18 @@ const Blog = () => {
                 if (e.key === 'Enter' || e.key === ' ') openBlogDetail(post.id)
               }}
             >
-              <p className="text-gray-500 text-sm px-4 pt-4 pb-1">{post.date}</p>
-              <h3 className="text-primary font-bold text-sm sm:text-base uppercase px-4 pb-3 leading-tight">
-                {post.title}
-              </h3>
-              <div className="px-4 cursor-pointer">
+              <div className="px-4 pt-4 cursor-pointer">
                 <img
                   src={post.image}
                   alt=""
                   className="w-full h-48 sm:h-52 object-cover rounded-xl"
                 />
               </div>
-              <p className="text-black text-sm leading-relaxed px-4 pt-4 pb-4 flex-1 cursor-pointer">
+              <p className="text-gray-500 text-sm px-4 pt-3 pb-1">{post.date}</p>
+              <h3 className="text-primary font-bold text-sm sm:text-base uppercase px-4 pb-3 leading-tight">
+                {post.title}
+              </h3>
+              <p className="text-black text-sm leading-relaxed px-4 pt-0 pb-4 flex-1 cursor-pointer">
                 {post.description}
               </p>
               <div className="px-4 pb-4">

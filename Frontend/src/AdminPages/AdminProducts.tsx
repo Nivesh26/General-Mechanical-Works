@@ -15,6 +15,8 @@ type Product = {
   price: number
   stock: number
   images: string[]
+  /** When false, product is hidden from storefront / treated as inactive listing. */
+  active: boolean
 }
 
 type ProductForm = {
@@ -44,6 +46,7 @@ const initialProducts: Product[] = [
     price: 3500,
     stock: 18,
     images: [EngineOil],
+    active: true,
   },
   {
     id: 2,
@@ -54,6 +57,7 @@ const initialProducts: Product[] = [
     price: 5200,
     stock: 10,
     images: [Brakes],
+    active: true,
   },
   {
     id: 3,
@@ -64,6 +68,7 @@ const initialProducts: Product[] = [
     price: 12500,
     stock: 0,
     images: [Tyre],
+    active: true,
   },
 ]
 
@@ -77,6 +82,13 @@ const emptyForm: ProductForm = {
 }
 
 const formatRs = (value: number) => `Rs. ${value.toLocaleString('en-IN')}`
+
+/** Very light red tint for inactive product rows (distinct from active white rows). */
+const INACTIVE_ROW_BG = '#fff5f5'
+const INACTIVE_ROW_BORDER = '#fecdd3'
+const INACTIVE_ROW_ACCENT = '#fb7185'
+const INACTIVE_IMG_BORDER = '#fecaca'
+const INACTIVE_IMG_BG = '#fff1f2'
 
 type ProductFieldKey = 'name' | 'sku' | 'category' | 'price' | 'stock' | 'images'
 
@@ -255,6 +267,7 @@ const AdminProducts = () => {
         price: parsedPrice,
         stock: parsedStock,
         images: finalImageUrls,
+        active: true,
       },
     ])
     resetForm()
@@ -282,6 +295,12 @@ const AdminProducts = () => {
 
     setProducts((prev) => prev.filter((p) => p.id !== productId))
     if (editingId === productId) resetForm()
+  }
+
+  const toggleProductActive = (productId: number) => {
+    setProducts((prev) =>
+      prev.map((p) => (p.id === productId ? { ...p, active: !p.active } : p))
+    )
   }
 
   const onSearch = (event: React.FormEvent) => {
@@ -714,6 +733,7 @@ const AdminProducts = () => {
                         fontWeight: 700,
                         color: '#374151',
                         borderBottom: '1px solid #e5e7eb',
+                        ...(head === 'Actions' ? { whiteSpace: 'nowrap' as const, minWidth: '310px' } : {}),
                       }}
                     >
                       {head}
@@ -724,12 +744,32 @@ const AdminProducts = () => {
               <tbody>
                 {filteredProducts.map((product) => {
                   const outOfStock = product.stock === 0
+                  const listingActive = product.active
+                  const inactiveRow = !listingActive
                   return (
-                    <tr key={product.id}>
-                      <td style={{ padding: '12px 14px', borderBottom: '1px solid #f3f4f6', color: '#4b5563' }}>
+                    <tr
+                      key={product.id}
+                      style={{
+                        background: inactiveRow ? INACTIVE_ROW_BG : undefined,
+                        boxShadow: inactiveRow ? `inset 4px 0 0 ${INACTIVE_ROW_ACCENT}` : undefined,
+                      }}
+                    >
+                      <td
+                        style={{
+                          padding: '12px 14px',
+                          borderBottom: inactiveRow ? `1px solid ${INACTIVE_ROW_BORDER}` : '1px solid #f3f4f6',
+                          color: inactiveRow ? '#374151' : '#4b5563',
+                        }}
+                      >
                         {product.id}
                       </td>
-                      <td style={{ padding: '10px 14px', borderBottom: '1px solid #f3f4f6', verticalAlign: 'middle' }}>
+                      <td
+                        style={{
+                          padding: '10px 14px',
+                          borderBottom: inactiveRow ? `1px solid ${INACTIVE_ROW_BORDER}` : '1px solid #f3f4f6',
+                          verticalAlign: 'middle',
+                        }}
+                      >
                         {product.images.length > 0 ? (
                           <img
                             src={product.images[0]}
@@ -739,50 +779,127 @@ const AdminProducts = () => {
                               height: '44px',
                               objectFit: 'cover',
                               borderRadius: '8px',
-                              border: '1px solid #e5e7eb',
-                              background: '#f9fafb',
+                              border: inactiveRow ? `1px solid ${INACTIVE_IMG_BORDER}` : '1px solid #e5e7eb',
+                              background: inactiveRow ? INACTIVE_IMG_BG : '#f9fafb',
                               display: 'block',
+                              filter: inactiveRow ? 'brightness(0.96)' : undefined,
                             }}
                           />
                         ) : (
-                          <span style={{ color: '#9ca3af', fontSize: '13px' }}>—</span>
+                          <span style={{ color: inactiveRow ? '#9f1239' : '#9ca3af', fontSize: '13px' }}>—</span>
                         )}
                       </td>
-                      <td style={{ padding: '12px 14px', borderBottom: '1px solid #f3f4f6', color: '#111827', fontFamily: 'monospace' }}>
+                      <td
+                        style={{
+                          padding: '12px 14px',
+                          borderBottom: inactiveRow ? `1px solid ${INACTIVE_ROW_BORDER}` : '1px solid #f3f4f6',
+                          color: inactiveRow ? '#1e293b' : '#111827',
+                          fontFamily: 'monospace',
+                        }}
+                      >
                         {product.sku}
                       </td>
-                      <td style={{ padding: '12px 14px', borderBottom: '1px solid #f3f4f6', color: '#111827', fontWeight: 600 }}>
+                      <td
+                        style={{
+                          padding: '12px 14px',
+                          borderBottom: inactiveRow ? `1px solid ${INACTIVE_ROW_BORDER}` : '1px solid #f3f4f6',
+                          color: inactiveRow ? '#0f172a' : '#111827',
+                          fontWeight: 600,
+                        }}
+                      >
                         {product.name}
                       </td>
-                      <td style={{ padding: '12px 14px', borderBottom: '1px solid #f3f4f6', color: '#4b5563' }}>
+                      <td
+                        style={{
+                          padding: '12px 14px',
+                          borderBottom: inactiveRow ? `1px solid ${INACTIVE_ROW_BORDER}` : '1px solid #f3f4f6',
+                          color: inactiveRow ? '#334155' : '#4b5563',
+                        }}
+                      >
                         {product.category}
                       </td>
-                      <td style={{ padding: '12px 14px', borderBottom: '1px solid #f3f4f6', color: '#4b5563' }}>
+                      <td
+                        style={{
+                          padding: '12px 14px',
+                          borderBottom: inactiveRow ? `1px solid ${INACTIVE_ROW_BORDER}` : '1px solid #f3f4f6',
+                          color: inactiveRow ? '#334155' : '#4b5563',
+                        }}
+                      >
                         {product.size.length > 0 ? product.size.join(', ') : '-'}
                       </td>
-                      <td style={{ padding: '12px 14px', borderBottom: '1px solid #f3f4f6', color: '#111827' }}>
+                      <td
+                        style={{
+                          padding: '12px 14px',
+                          borderBottom: inactiveRow ? `1px solid ${INACTIVE_ROW_BORDER}` : '1px solid #f3f4f6',
+                          color: inactiveRow ? '#0f172a' : '#111827',
+                        }}
+                      >
                         {formatRs(product.price)}
                       </td>
-                      <td style={{ padding: '12px 14px', borderBottom: '1px solid #f3f4f6', color: '#111827' }}>
+                      <td
+                        style={{
+                          padding: '12px 14px',
+                          borderBottom: inactiveRow ? `1px solid ${INACTIVE_ROW_BORDER}` : '1px solid #f3f4f6',
+                          color: inactiveRow ? '#0f172a' : '#111827',
+                        }}
+                      >
                         {product.stock}
                       </td>
-                      <td style={{ padding: '12px 14px', borderBottom: '1px solid #f3f4f6' }}>
-                        <span
+                      <td
+                        style={{
+                          padding: '12px 14px',
+                          borderBottom: inactiveRow ? `1px solid ${INACTIVE_ROW_BORDER}` : '1px solid #f3f4f6',
+                        }}
+                      >
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-start' }}>
+                          <span
+                            style={{
+                              display: 'inline-block',
+                              borderRadius: '999px',
+                              padding: '4px 10px',
+                              fontSize: '12px',
+                              fontWeight: 700,
+                              color: outOfStock ? '#b91c1c' : '#166534',
+                              background: outOfStock ? '#fee2e2' : '#dcfce7',
+                            }}
+                          >
+                            {outOfStock ? 'Out of stock' : 'In stock'}
+                          </span>
+                          <span
+                            style={{
+                              display: 'inline-block',
+                              borderRadius: '999px',
+                              padding: '4px 10px',
+                              fontSize: '12px',
+                              fontWeight: 700,
+                              color: listingActive ? '#166534' : '#9f1239',
+                              background: listingActive ? '#dcfce7' : '#ffe4e6',
+                              minWidth: '72px',
+                              textAlign: 'center',
+                              boxSizing: 'border-box',
+                            }}
+                          >
+                            {listingActive ? 'Active' : 'Inactive'}
+                          </span>
+                        </div>
+                      </td>
+                      <td
+                        style={{
+                          padding: '12px 14px',
+                          borderBottom: inactiveRow ? `1px solid ${INACTIVE_ROW_BORDER}` : '1px solid #f3f4f6',
+                          verticalAlign: 'middle',
+                          whiteSpace: 'nowrap',
+                          minWidth: '310px',
+                        }}
+                      >
+                        <div
                           style={{
-                            display: 'inline-block',
-                            borderRadius: '999px',
-                            padding: '4px 10px',
-                            fontSize: '12px',
-                            fontWeight: 700,
-                            color: outOfStock ? '#b91c1c' : '#166534',
-                            background: outOfStock ? '#fee2e2' : '#dcfce7',
+                            display: 'inline-flex',
+                            flexWrap: 'nowrap',
+                            gap: '6px',
+                            alignItems: 'stretch',
                           }}
                         >
-                          {outOfStock ? 'Out of stock' : 'In stock'}
-                        </span>
-                      </td>
-                      <td style={{ padding: '12px 14px', borderBottom: '1px solid #f3f4f6' }}>
-                        <div style={{ display: 'flex', gap: '8px' }}>
                           <button
                             type="button"
                             onClick={() => onEdit(product)}
@@ -793,9 +910,44 @@ const AdminProducts = () => {
                               color: '#1f2937',
                               background: '#fff',
                               cursor: 'pointer',
+                              flexShrink: 0,
+                              fontSize: '12px',
+                              fontWeight: 600,
+                              lineHeight: 1.25,
+                              boxSizing: 'border-box',
+                              minHeight: '32px',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
                             }}
                           >
                             Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => toggleProductActive(product.id)}
+                            aria-label={listingActive ? 'Deactivate product' : 'Activate product'}
+                            style={{
+                              border: listingActive ? '1px solid #fcd34d' : '1px solid #86efac',
+                              borderRadius: '8px',
+                              padding: '6px 10px',
+                              color: listingActive ? '#92400e' : '#166534',
+                              background: listingActive ? '#fffbeb' : '#f0fdf4',
+                              cursor: 'pointer',
+                              fontWeight: 600,
+                              fontSize: '12px',
+                              flexShrink: 0,
+                              lineHeight: 1.25,
+                              boxSizing: 'border-box',
+                              minWidth: '104px',
+                              minHeight: '32px',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              textAlign: 'center',
+                            }}
+                          >
+                            {listingActive ? 'Deactivate' : 'Activate'}
                           </button>
                           <button
                             type="button"
@@ -807,6 +959,15 @@ const AdminProducts = () => {
                               color: '#b91c1c',
                               background: '#fff',
                               cursor: 'pointer',
+                              flexShrink: 0,
+                              fontSize: '12px',
+                              fontWeight: 600,
+                              lineHeight: 1.25,
+                              boxSizing: 'border-box',
+                              minHeight: '32px',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
                             }}
                           >
                             Delete

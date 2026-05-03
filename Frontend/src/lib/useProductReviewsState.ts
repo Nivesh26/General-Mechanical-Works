@@ -38,7 +38,7 @@ export const PRODUCT_REVIEWS_SEED: ProductReview[] = [
     productDetail: OIL_PRODUCT_DETAIL,
     productImage: EngineOil,
     userPhoto: NiveshImg,
-    name: 'Nivesh',
+    name: 'Nivesh Shrestha',
     rating: 5,
     comment:
       'Great oil, smooth engine performance. Using it for the last 6 months with no issues. Recommended.',
@@ -51,7 +51,7 @@ export const PRODUCT_REVIEWS_SEED: ProductReview[] = [
     productDetail: OIL_PRODUCT_DETAIL,
     productImage: EngineOil,
     userPhoto: AalokaImg,
-    name: 'Aaloka',
+    name: 'Aaloka Poudel',
     rating: 5,
     comment:
       'Switched from mineral to this synthetic and the engine feels noticeably smoother on cold starts. Will stock up again.',
@@ -64,7 +64,7 @@ export const PRODUCT_REVIEWS_SEED: ProductReview[] = [
     productDetail: OIL_PRODUCT_DETAIL,
     productImage: EngineOil,
     userPhoto: BabuRajImg,
-    name: 'BabuRaj',
+    name: 'Baburaj Shrestha',
     rating: 4,
     comment:
       'Good value for money. No leaks after the change and oil pressure looks steady on my gauge. Happy with the purchase.',

@@ -59,10 +59,11 @@ const ServiceCard = ({
   const [isHovered, setIsHovered] = useState(false);
 
   return (
-    <div
+    <Link
+      to="/services"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className={`rounded-2xl p-6 sm:p-8 flex flex-col items-center text-center transition-colors duration-300 cursor-pointer ${
+      className={`rounded-2xl p-6 sm:p-8 flex flex-col items-center text-center transition-colors duration-300 cursor-pointer no-underline ${
         isHovered ? "bg-primary" : "bg-gray-100"
       }`}
     >
@@ -98,7 +99,7 @@ const ServiceCard = ({
           }`}
         />
       </div>
-    </div>
+    </Link>
   );
 };
 
