@@ -328,7 +328,7 @@ const AdminOrders = () => {
               type="text"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Search order #, customer, product, SKU…"
+              placeholder="Search Order"
               autoComplete="off"
               style={{
                 width: '280px',

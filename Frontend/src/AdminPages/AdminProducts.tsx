@@ -727,7 +727,7 @@ const AdminProducts = () => {
                   return (
                     <tr key={product.id}>
                       <td style={{ padding: '12px 14px', borderBottom: '1px solid #f3f4f6', color: '#4b5563' }}>
-                        #{product.id}
+                        {product.id}
                       </td>
                       <td style={{ padding: '10px 14px', borderBottom: '1px solid #f3f4f6', verticalAlign: 'middle' }}>
                         {product.images.length > 0 ? (
