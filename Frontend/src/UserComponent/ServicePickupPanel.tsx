@@ -72,7 +72,7 @@ const ServicePickupPanel = () => {
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    // Hook for API: selectedServiceId, date, slot, coords, selectedBikeId, notes
+    // Backend hook: selectedServiceId, date, slot, coords, selectedBikeId, notes
   };
 
   const canSubmit = Boolean(selectedServiceId && date && slot && coords && selectedBikeId);

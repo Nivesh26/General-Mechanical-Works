@@ -19,7 +19,7 @@ const ServiceWorkshopPanel = () => {
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    // Hook for API: selectedServiceId, date, slot, selectedBikeId, notes
+    // Backend hook: selectedServiceId, date, slot, selectedBikeId, notes
   };
 
   const canSubmit = Boolean(selectedServiceId && date && slot && selectedBikeId);

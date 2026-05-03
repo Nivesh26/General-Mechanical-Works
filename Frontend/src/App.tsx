@@ -31,6 +31,7 @@ import AdminOffer from './AdminPages/AdminOffer'
 import AdminServiceReviews from './AdminPages/AdminServiceReviews'
 import AdminPayments from './AdminPages/AdminPayments'
 import ChatbotWidget from './UserComponent/ChatbotWidget'
+import AdminUserProfile from './AdminPages/UserProfile'
 
 
 
@@ -103,6 +104,7 @@ function AppRoutes() {
       <Route path="/adminoffers" element={withFade(<AdminOffer />)} />
       <Route path="/adminservicereviews" element={withFade(<AdminServiceReviews />)} />
       <Route path="/adminpaymentsinvoices" element={withFade(<AdminPayments />)} />
+      <Route path="/adminuserprofile" element={withFade(<AdminUserProfile />)} />
     </Routes>
   )
 }
