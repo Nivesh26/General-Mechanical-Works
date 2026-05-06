@@ -18,7 +18,7 @@ function buildGoogleMapsEmbedSrc(lat: number, lng: number): string {
 }
 
 const ServicePickupPanel = () => {
-  const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
+  const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
   const [date, setDate] = useState("");
   const [slot, setSlot] = useState("");
   const [selectedBikeId, setSelectedBikeId] = useState("");
@@ -72,10 +72,22 @@ const ServicePickupPanel = () => {
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    // Backend hook: selectedServiceId, date, slot, coords, selectedBikeId, notes
+    // Backend hook: selectedServiceIds, date, slot, coords, selectedBikeId, notes
   };
 
-  const canSubmit = Boolean(selectedServiceId && date && slot && coords && selectedBikeId);
+  const canSubmit = Boolean(
+    selectedServiceIds.length >= 1 && selectedServiceIds.length <= 3 && date && slot && coords && selectedBikeId
+  );
+
+  const toggleService = (serviceId: string) => {
+    setSelectedServiceIds((prev) => {
+      if (prev.includes(serviceId)) {
+        return prev.filter((id) => id !== serviceId);
+      }
+      if (prev.length >= 3) return prev;
+      return [...prev, serviceId];
+    });
+  };
 
   return (
     <section className="mt-10 rounded-2xl border border-gray-200 bg-gray-50/60 p-6 sm:p-8 space-y-8">
@@ -88,14 +100,15 @@ const ServicePickupPanel = () => {
 
       <div>
         <h3 className="text-sm font-semibold text-gray-900 mb-3">1. Choose service</h3>
+        <p className="text-xs text-gray-600 mb-3">Select at least 1 service and up to 3 services.</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {workshopServices.map((s) => (
             <button
               key={s.id}
               type="button"
-              onClick={() => setSelectedServiceId(selectedServiceId === s.id ? null : s.id)}
+              onClick={() => toggleService(s.id)}
               className={`rounded-xl p-4 border-2 text-left flex items-start gap-3 transition-colors ${
-                selectedServiceId === s.id
+                selectedServiceIds.includes(s.id)
                   ? "border-primary bg-primary/5"
                   : "border-gray-200 hover:border-gray-300 bg-white"
               }`}

@@ -31,7 +31,7 @@ const AdminNavbar = () => {
     { label: 'Orders', to: '/adminorders', icon: FiPackage },
     { label: 'Reviews', to: '/adminreviews', icon: FiStar },
     { label: 'Appointments', to: '/adminappointments', icon: FiCalendar },
-    { label: 'Services', to: '/adminservices', icon: FiTool },
+    { label: 'Service', to: '/adminservice', icon: FiTool },
     { label: 'Bill', to: '/adminbills', icon: FiFileText },
     { label: 'Blogs', to: '/adminblogs', icon: FiBookOpen },
     { label: 'Offers', to: '/adminoffers', icon: FiTag },

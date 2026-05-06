@@ -12,6 +12,9 @@ export const workshopServices = [
   { id: "engine", title: "Engine Repair", description: "Engine diagnostics & repair", Icon: HiOutlineCog },
   { id: "dent", title: "Dent & painting", description: "Dent repair & paint", Icon: HiOutlinePaintBrush },
   { id: "modify", title: "Modify bike", description: "Tuning & modifications", Icon: HiOutlineWrench },
+  { id: "battery", title: "Battery Service", description: "Battery test, charge & replacement", Icon: HiOutlineSparkles },
+  { id: "chain", title: "Chain & Sprocket", description: "Chain cleaning, alignment and replace", Icon: HiOutlineWrench },
+  { id: "other", title: "Other", description: "Any other custom bike service request", Icon: HiOutlinePaintBrush },
 ] as const;
 
 export const timeSlots = ["9:00 AM", "10:00 AM", "11:00 AM", "2:00 PM", "3:00 PM", "4:00 PM"];
