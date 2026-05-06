@@ -104,6 +104,7 @@ const AdminUsers = () => {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ backgroundColor: '#f1f5f9' }}>
+                <th style={{ ...headerCellStyle, width: '52px', textAlign: 'center' }}>No.</th>
                 <th style={headerCellStyle}>Name</th>
                 <th style={headerCellStyle}>Email</th>
                 <th style={headerCellStyle}>Number</th>
@@ -113,8 +114,11 @@ const AdminUsers = () => {
             </thead>
             <tbody>
               {filteredUsers.length > 0 ? (
-                filteredUsers.map((user) => (
+                filteredUsers.map((user, index) => (
                   <tr key={user.email} style={{ borderTop: '1px solid #e2e8f0' }}>
+                    <td style={{ ...bodyCellStyle, textAlign: 'center', color: '#64748b', fontWeight: 600 }}>
+                      {index + 1}
+                    </td>
                     <td style={bodyCellStyle}>
                       <Link to="/adminuserprofile" className="admin-users-name-link">
                         {user.name}
@@ -145,7 +149,7 @@ const AdminUsers = () => {
                 ))
               ) : (
                 <tr style={{ borderTop: '1px solid #e2e8f0' }}>
-                  <td style={bodyCellStyle} colSpan={5}>
+                  <td style={bodyCellStyle} colSpan={6}>
                     No users found.
                   </td>
                 </tr>

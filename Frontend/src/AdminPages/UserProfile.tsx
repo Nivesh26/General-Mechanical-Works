@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import profilePhotoSrc from '../assets/Nivesh.png'
 import AdminNavbar from '../AdminComponent/AdminNavbar'
@@ -21,6 +22,7 @@ type ProductOrder = {
   quantity: number
   date: string
   amount: string
+  paymentMethod: 'COD' | 'eSewa' | 'Khalti'
   status: OrderStatus
 }
 
@@ -45,6 +47,8 @@ type AdminUserProfileData = {
   productOrders: ProductOrder[]
   serviceHistory: ServiceRecord[]
 }
+
+type UserSectionTab = 'bikes' | 'orders' | 'history'
 
 /** Static profile — same for every user row until API wiring. */
 const STATIC_PROFILE: AdminUserProfileData = {
@@ -86,6 +90,7 @@ const STATIC_PROFILE: AdminUserProfileData = {
       quantity: 2,
       date: '28 Apr 2026',
       amount: 'NPR 3,400',
+      paymentMethod: 'COD',
       status: 'Pending',
     },
     {
@@ -94,6 +99,7 @@ const STATIC_PROFILE: AdminUserProfileData = {
       quantity: 1,
       date: '12 Mar 2026',
       amount: 'NPR 4,200',
+      paymentMethod: 'eSewa',
       status: 'Completed',
     },
     {
@@ -102,6 +108,7 @@ const STATIC_PROFILE: AdminUserProfileData = {
       quantity: 1,
       date: '3 Feb 2026',
       amount: 'NPR 12,500',
+      paymentMethod: 'Khalti',
       status: 'Completed',
     },
   ],
@@ -159,6 +166,20 @@ function serviceStatusStyle(status: ServiceStatus): CSSProperties {
   return { ...base, backgroundColor: '#e0e7ff', color: '#3730a3' }
 }
 
+function paymentMethodStyle(method: ProductOrder['paymentMethod']): CSSProperties {
+  const base: CSSProperties = {
+    display: 'inline-block',
+    padding: '4px 10px',
+    borderRadius: '999px',
+    fontSize: '12px',
+    fontWeight: 700,
+    lineHeight: 1.2,
+  }
+  if (method === 'COD') return { ...base, backgroundColor: '#e2e8f0', color: '#475569' }
+  if (method === 'eSewa') return { ...base, backgroundColor: '#bbf7d0', color: '#166534' }
+  return { ...base, backgroundColor: '#ddd6fe', color: '#5b21b6' }
+}
+
 const cardShell: CSSProperties = {
   backgroundColor: '#ffffff',
   border: '1px solid #e2e8f0',
@@ -167,6 +188,8 @@ const cardShell: CSSProperties = {
 }
 
 const AdminUserProfile = () => {
+  const [activeTab, setActiveTab] = useState<UserSectionTab>('bikes')
+
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
       <AdminNavbar />
@@ -257,170 +280,214 @@ const AdminUserProfile = () => {
               </div>
             </div>
 
-            <div style={cardShell}>
+            <div style={{ ...cardShell, marginTop: '4px' }}>
               <div
                 style={{
-                  padding: '14px 18px',
+                  display: 'flex',
+                  gap: '24px',
+                  padding: '0 18px',
                   borderBottom: '1px solid #e2e8f0',
-                  backgroundColor: '#f8fafc',
+                  backgroundColor: '#ffffff',
                 }}
               >
-                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: '#1e293b' }}>
-                  Registered bikes ({STATIC_PROFILE.bikes.length})
-                </h3>
+                {[
+                  { key: 'bikes' as const, label: 'REGISTERED BIKES' },
+                  { key: 'orders' as const, label: 'PRODUCT ORDERS' },
+                  { key: 'history' as const, label: 'SERVICE HISTORY' },
+                ].map((tab) => {
+                  const isActive = activeTab === tab.key
+                  return (
+                    <button
+                      key={tab.key}
+                      type="button"
+                      onClick={() => setActiveTab(tab.key)}
+                      style={{
+                        border: 'none',
+                        borderBottom: isActive ? '2px solid #bd162c' : '2px solid transparent',
+                        backgroundColor: 'transparent',
+                        color: isActive ? '#1e293b' : '#475569',
+                        fontSize: '13px',
+                        fontWeight: isActive ? 700 : 500,
+                        letterSpacing: '0.02em',
+                        padding: '14px 0 12px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {tab.label}
+                    </button>
+                  )
+                })}
               </div>
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '680px' }}>
-                  <thead>
-                    <tr style={{ backgroundColor: '#f1f5f9' }}>
-                      <th style={{ ...th, width: '48px', textAlign: 'center' }}>No.</th>
-                      <th style={th}>Brand</th>
-                      <th style={th}>Model</th>
-                      <th style={th}>License plate</th>
-                      <th style={th}>Color</th>
-                      <th style={th}>Primary</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {STATIC_PROFILE.bikes.map((bike, index) => (
-                      <tr key={bike.id} style={{ borderTop: '1px solid #e2e8f0' }}>
-                        <td style={{ ...td, textAlign: 'center', color: '#64748b', fontWeight: 600 }}>
-                          {index + 1}
-                        </td>
-                        <td style={td}>{bike.company}</td>
-                        <td style={td}>
-                          <span style={{ fontWeight: 600, color: '#1e293b' }}>{bike.model}</span>
-                        </td>
-                        <td style={{ ...td, fontFamily: 'ui-monospace, monospace', fontSize: '13px' }}>
-                          {bike.plate}
-                        </td>
-                        <td style={td}>{bike.color}</td>
-                        <td style={td}>
-                          {bike.isMain ? (
-                            <span
-                              style={{
-                                display: 'inline-block',
-                                padding: '4px 10px',
-                                borderRadius: '999px',
-                                fontSize: '12px',
-                                fontWeight: 700,
-                                backgroundColor: '#dcfce7',
-                                color: '#166534',
-                              }}
-                            >
-                              Main bike
-                            </span>
-                          ) : (
-                            <span style={{ color: '#94a3b8', fontSize: '13px' }}>—</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
 
-            <div style={{ ...cardShell, marginTop: '24px' }}>
-              <div
-                style={{
-                  padding: '14px 18px',
-                  borderBottom: '1px solid #e2e8f0',
-                  backgroundColor: '#f8fafc',
-                }}
-              >
-                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: '#1e293b' }}>
-                  Product orders
-                </h3>
-                <p style={{ margin: '6px 0 0', fontSize: '13px', color: '#64748b' }}>
-                  Parts and products linked to this customer (purchased or pending).
-                </p>
-              </div>
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '720px' }}>
-                  <thead>
-                    <tr style={{ backgroundColor: '#f1f5f9' }}>
-                      <th style={{ ...th, width: '48px', textAlign: 'center' }}>No.</th>
-                      <th style={th}>Order</th>
-                      <th style={th}>Product</th>
-                      <th style={{ ...th, textAlign: 'center' }}>Qty</th>
-                      <th style={th}>Date</th>
-                      <th style={th}>Amount</th>
-                      <th style={th}>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {STATIC_PROFILE.productOrders.map((order, index) => (
-                      <tr key={order.id} style={{ borderTop: '1px solid #e2e8f0' }}>
-                        <td style={{ ...td, textAlign: 'center', color: '#64748b', fontWeight: 600 }}>
-                          {index + 1}
-                        </td>
-                        <td style={{ ...td, fontFamily: 'ui-monospace, monospace', fontSize: '13px' }}>
-                          {order.id}
-                        </td>
-                        <td style={td}>
-                          <span style={{ fontWeight: 600, color: '#1e293b' }}>{order.product}</span>
-                        </td>
-                        <td style={{ ...td, textAlign: 'center' }}>{order.quantity}</td>
-                        <td style={td}>{order.date}</td>
-                        <td style={td}>{order.amount}</td>
-                        <td style={td}>
-                          <span style={orderStatusStyle(order.status)}>{order.status}</span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+              {activeTab === 'bikes' && (
+                <div>
+                  <div
+                    style={{
+                      padding: '14px 18px',
+                      borderBottom: '1px solid #e2e8f0',
+                      backgroundColor: '#f8fafc',
+                    }}
+                  >
+                    <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: '#1e293b' }}>
+                      Registered bikes ({STATIC_PROFILE.bikes.length})
+                    </h3>
+                  </div>
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '680px' }}>
+                      <thead>
+                        <tr style={{ backgroundColor: '#f1f5f9' }}>
+                          <th style={{ ...th, width: '48px', textAlign: 'center' }}>No.</th>
+                          <th style={th}>Brand</th>
+                          <th style={th}>Model</th>
+                          <th style={th}>License plate</th>
+                          <th style={th}>Color</th>
+                          <th style={th}>Primary</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {STATIC_PROFILE.bikes.map((bike, index) => (
+                          <tr key={bike.id} style={{ borderTop: '1px solid #e2e8f0' }}>
+                            <td style={{ ...td, textAlign: 'center', color: '#64748b', fontWeight: 600 }}>
+                              {index + 1}
+                            </td>
+                            <td style={td}>{bike.company}</td>
+                            <td style={td}>
+                              <span style={{ fontWeight: 600, color: '#1e293b' }}>{bike.model}</span>
+                            </td>
+                            <td style={{ ...td, fontFamily: 'ui-monospace, monospace', fontSize: '13px' }}>
+                              {bike.plate}
+                            </td>
+                            <td style={td}>{bike.color}</td>
+                            <td style={td}>
+                              {bike.isMain ? (
+                                <span
+                                  style={{
+                                    display: 'inline-block',
+                                    padding: '4px 10px',
+                                    borderRadius: '999px',
+                                    fontSize: '12px',
+                                    fontWeight: 700,
+                                    backgroundColor: '#dcfce7',
+                                    color: '#166534',
+                                  }}
+                                >
+                                  Main bike
+                                </span>
+                              ) : (
+                                <span style={{ color: '#94a3b8', fontSize: '13px' }}>—</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
 
-            <div style={{ ...cardShell, marginTop: '24px' }}>
-              <div
-                style={{
-                  padding: '14px 18px',
-                  borderBottom: '1px solid #e2e8f0',
-                  backgroundColor: '#f8fafc',
-                }}
-              >
-                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: '#1e293b' }}>
-                  Service history
-                </h3>
-                <p style={{ margin: '6px 0 0', fontSize: '13px', color: '#64748b' }}>
-                  Workshop visits and maintenance records for this customer.
-                </p>
-              </div>
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '760px' }}>
-                  <thead>
-                    <tr style={{ backgroundColor: '#f1f5f9' }}>
-                      <th style={{ ...th, width: '48px', textAlign: 'center' }}>No.</th>
-                      <th style={th}>Date</th>
-                      <th style={th}>Bike</th>
-                      <th style={th}>Service</th>
-                      <th style={th}>Details</th>
-                      <th style={th}>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {STATIC_PROFILE.serviceHistory.map((row, index) => (
-                      <tr key={row.id} style={{ borderTop: '1px solid #e2e8f0' }}>
-                        <td style={{ ...td, textAlign: 'center', color: '#64748b', fontWeight: 600 }}>
-                          {index + 1}
-                        </td>
-                        <td style={td}>{row.date}</td>
-                        <td style={td}>
-                          <span style={{ fontWeight: 500, color: '#334155' }}>{row.bikeLabel}</span>
-                        </td>
-                        <td style={td}>{row.serviceType}</td>
-                        <td style={{ ...td, maxWidth: '280px' }}>{row.details}</td>
-                        <td style={td}>
-                          <span style={serviceStatusStyle(row.status)}>{row.status}</span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              {activeTab === 'orders' && (
+                <div>
+                  <div
+                    style={{
+                      padding: '14px 18px',
+                      borderBottom: '1px solid #e2e8f0',
+                      backgroundColor: '#f8fafc',
+                    }}
+                  >
+                    <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: '#1e293b' }}>Product orders</h3>
+                    <p style={{ margin: '6px 0 0', fontSize: '13px', color: '#64748b' }}>
+                      Parts and products linked to this customer (purchased or pending).
+                    </p>
+                  </div>
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '720px' }}>
+                      <thead>
+                        <tr style={{ backgroundColor: '#f1f5f9' }}>
+                          <th style={{ ...th, width: '48px', textAlign: 'center' }}>No.</th>
+                          <th style={th}>Order</th>
+                          <th style={th}>Product</th>
+                          <th style={{ ...th, textAlign: 'center' }}>Qty</th>
+                          <th style={th}>Date</th>
+                          <th style={th}>Payment</th>
+                          <th style={th}>Amount</th>
+                          <th style={th}>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {STATIC_PROFILE.productOrders.map((order, index) => (
+                          <tr key={order.id} style={{ borderTop: '1px solid #e2e8f0' }}>
+                            <td style={{ ...td, textAlign: 'center', color: '#64748b', fontWeight: 600 }}>
+                              {index + 1}
+                            </td>
+                            <td style={{ ...td, fontFamily: 'ui-monospace, monospace', fontSize: '13px' }}>{order.id}</td>
+                            <td style={td}>
+                              <span style={{ fontWeight: 600, color: '#1e293b' }}>{order.product}</span>
+                            </td>
+                            <td style={{ ...td, textAlign: 'center' }}>{order.quantity}</td>
+                            <td style={td}>{order.date}</td>
+                            <td style={td}>
+                              <span style={paymentMethodStyle(order.paymentMethod)}>{order.paymentMethod}</span>
+                            </td>
+                            <td style={td}>{order.amount}</td>
+                            <td style={td}>
+                              <span style={orderStatusStyle(order.status)}>{order.status}</span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'history' && (
+                <div>
+                  <div
+                    style={{
+                      padding: '14px 18px',
+                      borderBottom: '1px solid #e2e8f0',
+                      backgroundColor: '#f8fafc',
+                    }}
+                  >
+                    <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: '#1e293b' }}>Service history</h3>
+                    <p style={{ margin: '6px 0 0', fontSize: '13px', color: '#64748b' }}>
+                      Workshop visits and maintenance records for this customer.
+                    </p>
+                  </div>
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '760px' }}>
+                      <thead>
+                        <tr style={{ backgroundColor: '#f1f5f9' }}>
+                          <th style={{ ...th, width: '48px', textAlign: 'center' }}>No.</th>
+                          <th style={th}>Date</th>
+                          <th style={th}>Bike</th>
+                          <th style={th}>Service</th>
+                          <th style={th}>Details</th>
+                          <th style={th}>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {STATIC_PROFILE.serviceHistory.map((row, index) => (
+                          <tr key={row.id} style={{ borderTop: '1px solid #e2e8f0' }}>
+                            <td style={{ ...td, textAlign: 'center', color: '#64748b', fontWeight: 600 }}>
+                              {index + 1}
+                            </td>
+                            <td style={td}>{row.date}</td>
+                            <td style={td}>
+                              <span style={{ fontWeight: 500, color: '#334155' }}>{row.bikeLabel}</span>
+                            </td>
+                            <td style={td}>{row.serviceType}</td>
+                            <td style={{ ...td, maxWidth: '280px' }}>{row.details}</td>
+                            <td style={td}>
+                              <span style={serviceStatusStyle(row.status)}>{row.status}</span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </div>
       </main>
     </div>
