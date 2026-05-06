@@ -309,7 +309,7 @@ function PlateFormatPicker({ value, onChange }: PlateFormatPickerProps) {
             />
           </div>
           <div className="min-w-0 pt-0.5">
-            <p className="font-semibold text-[#1a1a1a] text-sm">Embossed plate (current)</p>
+            <p className="font-semibold text-[#1a1a1a] text-sm">Embossed plate</p>
             <p className="text-xs text-gray-600 mt-1 leading-snug">
               White plate, province on top, Latin letters and numbers (e.g. Bagmati · B AB 0123).
             </p>

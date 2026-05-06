@@ -10,7 +10,7 @@ import Tyre from '../assets/Tyre.png'
 
 type OrderStatus = 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled'
 
-type PaymentMethod = 'eSewa' | 'Khalti' | 'Cash'
+type PaymentMethod = 'eSewa' | 'Khalti' | 'COD'
 
 type OrderLine = {
   productName: string
@@ -141,7 +141,7 @@ const initialOrders: Order[] = [
     address: 'Thamel, Kathmandu, Nepal',
     placedAt: '2025-03-20',
     status: 'pending',
-    paymentMethod: 'Cash',
+    paymentMethod: 'COD',
     items: [
       {
         productName: 'Brake Service Kit',
@@ -218,7 +218,7 @@ function PaymentBadge({ method }: { method: PaymentMethod }) {
   const map: Record<PaymentMethod, { label: string; bg: string; color: string }> = {
     eSewa: { label: 'eSewa', bg: '#dcfce7', color: '#166534' },
     Khalti: { label: 'Khalti', bg: '#ede7f6', color: '#5e35b1' },
-    Cash: { label: 'Cash', bg: '#f1f5f9', color: '#475569' },
+    COD: { label: 'COD', bg: '#f1f5f9', color: '#475569' },
   }
   const p = map[method]
   return (
