@@ -3,8 +3,8 @@ import Dashboardtop from '../AdminComponent/Dashboardtop'
 import RecentOrder from '../AdminComponent/RecentOrder'
 import Upcomingbooking from '../AdminComponent/Upcomingbooking'
 import ChatInbox from '../AdminComponent/chat&inbox'
-import BookingStatus from '../AdminComponent/bookingstatus'
 import SalesGraph from '../AdminComponent/SalesGraph'
+import ServiceAvailabilityCard from '../AdminComponent/ServiceAvailabilityCard'
 import { ADMIN_MAIN_SCROLL, ADMIN_PAGE_SUBTITLE, ADMIN_PAGE_TITLE } from '../AdminComponent/adminMainStyles'
 import { FiBell } from 'react-icons/fi'
 
@@ -77,18 +77,8 @@ const AdminDashboard = () => {
 
           <Dashboardtop />
 
-          <section
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '2fr 1fr',
-              gap: '1rem',
-              marginBottom: '1rem',
-              alignItems: 'start',
-            }}
-          >
+          <section style={{ marginBottom: '1rem' }}>
             <SalesGraph />
-
-            <BookingStatus />
           </section>
 
           <section
@@ -121,6 +111,7 @@ const AdminDashboard = () => {
               }}
             >
               <ChatInbox />
+              <ServiceAvailabilityCard />
             </div>
           </section>
         </section>
