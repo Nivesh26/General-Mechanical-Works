@@ -10,6 +10,8 @@ type Product = {
   id: number
   sku: string
   name: string
+  description: string
+  bulletPoints: string[]
   category: string
   size: string[]
   price: number
@@ -22,6 +24,8 @@ type Product = {
 type ProductForm = {
   sku: string
   name: string
+  description: string
+  bulletPoints: string
   category: string
   size: string[]
   price: string
@@ -41,6 +45,8 @@ const initialProducts: Product[] = [
     id: 1,
     sku: 'SKU-1001',
     name: 'Premium Synthetic Engine Oil',
+    description: 'High-performance synthetic engine oil for cleaner operation and long engine life.',
+    bulletPoints: ['Synthetic blend formula', 'Improves engine cleanliness', 'Suitable for daily commuting'],
     category: 'Lubricants',
     size: ['S', 'L'],
     price: 3500,
@@ -52,6 +58,8 @@ const initialProducts: Product[] = [
     id: 2,
     sku: 'SKU-1002',
     name: 'Brake Service Kit',
+    description: 'Complete brake maintenance kit including pads and cleaning accessories.',
+    bulletPoints: ['Reliable stopping performance', 'Includes core service parts', 'Easy workshop fitment'],
     category: 'Brakes',
     size: ['XL'],
     price: 5200,
@@ -63,6 +71,8 @@ const initialProducts: Product[] = [
     id: 3,
     sku: 'SKU-1003',
     name: 'All-weather Tyre 100/90-17',
+    description: 'Durable all-weather tyre with strong grip for city and highway riding.',
+    bulletPoints: ['All-season tread pattern', 'Stable on wet roads', 'Long-lasting compound'],
     category: 'Tyres',
     size: ['XXL', 'XXXL'],
     price: 12500,
@@ -75,6 +85,8 @@ const initialProducts: Product[] = [
 const emptyForm: ProductForm = {
   sku: '',
   name: '',
+  description: '',
+  bulletPoints: '',
   category: '',
   size: [],
   price: '',
@@ -90,7 +102,7 @@ const INACTIVE_ROW_ACCENT = '#fb7185'
 const INACTIVE_IMG_BORDER = '#fecaca'
 const INACTIVE_IMG_BG = '#fff1f2'
 
-type ProductFieldKey = 'name' | 'sku' | 'category' | 'price' | 'stock' | 'images'
+type ProductFieldKey = 'name' | 'sku' | 'description' | 'category' | 'price' | 'stock' | 'images'
 
 const borderNormal = '1px solid #d1d5db'
 const borderError = '1px solid #dc2626'
@@ -105,11 +117,13 @@ const validateProductForm = (
   const e: Partial<Record<ProductFieldKey, string>> = {}
   const trimmedSku = form.sku.trim().toUpperCase()
   const trimmedName = form.name.trim()
+  const trimmedDescription = form.description.trim()
   const trimmedCategory = form.category.trim()
   const parsedPrice = Number(form.price)
   const parsedStock = Number(form.stock)
 
   if (!trimmedName) e.name = 'Product name is required.'
+  if (!trimmedDescription) e.description = 'Product description is required.'
   if (!trimmedSku) e.sku = 'SKU is required.'
   else if (products.some((p) => p.sku === trimmedSku && p.id !== editingId)) {
     e.sku = 'This SKU is already in use.'
@@ -167,7 +181,12 @@ const AdminProducts = () => {
     (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
       setForm((prev) => ({ ...prev, [field]: event.target.value }))
       const errKey: ProductFieldKey | undefined =
-        field === 'name' || field === 'sku' || field === 'category' || field === 'price' || field === 'stock'
+        field === 'name' ||
+        field === 'sku' ||
+        field === 'description' ||
+        field === 'category' ||
+        field === 'price' ||
+        field === 'stock'
           ? field
           : undefined
       if (errKey) clearFieldError(errKey)
@@ -224,6 +243,11 @@ const AdminProducts = () => {
 
     const trimmedSku = form.sku.trim().toUpperCase()
     const trimmedName = form.name.trim()
+    const trimmedDescription = form.description.trim()
+    const finalBulletPoints = form.bulletPoints
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean)
     const trimmedCategory = form.category.trim()
     const finalSizes = sortSizes([...new Set(form.size)])
     const parsedPrice = Number(form.price)
@@ -243,6 +267,8 @@ const AdminProducts = () => {
                 ...p,
                 sku: trimmedSku,
                 name: trimmedName,
+                description: trimmedDescription,
+                bulletPoints: finalBulletPoints,
                 category: trimmedCategory,
                 size: finalSizes,
                 price: parsedPrice,
@@ -262,6 +288,8 @@ const AdminProducts = () => {
         id: prev.length > 0 ? Math.max(...prev.map((p) => p.id)) + 1 : 1,
         sku: trimmedSku,
         name: trimmedName,
+        description: trimmedDescription,
+        bulletPoints: finalBulletPoints,
         category: trimmedCategory,
         size: finalSizes,
         price: parsedPrice,
@@ -278,6 +306,8 @@ const AdminProducts = () => {
     setForm({
       sku: product.sku,
       name: product.name,
+      description: product.description,
+      bulletPoints: product.bulletPoints.join('\n'),
       category: product.category,
       size: product.size,
       price: String(product.price),
@@ -312,6 +342,8 @@ const AdminProducts = () => {
     if (!q) return true
     return (
       product.name.toLowerCase().includes(q) ||
+      product.description.toLowerCase().includes(q) ||
+      product.bulletPoints.some((point) => point.toLowerCase().includes(q)) ||
       product.sku.toLowerCase().includes(q) ||
       product.category.toLowerCase().includes(q) ||
       product.size.some((s) => s.toLowerCase().includes(q)) ||
@@ -384,6 +416,54 @@ const AdminProducts = () => {
                 {fieldErrors.sku && (
                   <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#dc2626' }}>{fieldErrors.sku}</p>
                 )}
+              </div>
+
+              <div style={{ gridColumn: 'span 12' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>
+                  Description <span style={{ color: '#dc2626' }}>*</span>
+                </label>
+                <textarea
+                  value={form.description}
+                  onChange={(e) => {
+                    setForm((prev) => ({ ...prev, description: e.target.value }))
+                    clearFieldError('description')
+                  }}
+                  placeholder="Enter product description"
+                  aria-invalid={Boolean(fieldErrors.description)}
+                  rows={3}
+                  style={{
+                    width: '100%',
+                    border: fieldErrors.description ? borderError : borderNormal,
+                    borderRadius: '10px',
+                    padding: '11px 12px',
+                    resize: 'vertical',
+                    fontFamily: 'inherit',
+                  }}
+                />
+                {fieldErrors.description && (
+                  <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#dc2626' }}>{fieldErrors.description}</p>
+                )}
+              </div>
+
+              <div style={{ gridColumn: 'span 12' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>
+                  Bullet Points <span style={{ color: '#dc2626' }}>*</span>{' '}
+                  <span style={{ fontWeight: 400, color: '#475569' }}>(one per line)</span>
+                </label>
+                <textarea
+                  value={form.bulletPoints}
+                  onChange={(e) => setForm((prev) => ({ ...prev, bulletPoints: e.target.value }))}
+                  placeholder={'e.g.\nLong-lasting performance\nLow maintenance'}
+                  rows={3}
+                  style={{
+                    width: '100%',
+                    border: borderNormal,
+                    borderRadius: '10px',
+                    padding: '11px 12px',
+                    resize: 'vertical',
+                    fontFamily: 'inherit',
+                  }}
+                />
               </div>
 
               <div style={{ gridColumn: 'span 4' }}>
@@ -719,16 +799,16 @@ const AdminProducts = () => {
             </form>
           </div>
 
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <div style={{ overflowX: 'auto', padding: '8px 10px 10px' }}>
+            <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
               <thead>
                 <tr style={{ background: '#f9fafb' }}>
-                  {['ID', 'Images', 'SKU', 'Name', 'Category', 'Size', 'Price', 'Stock', 'Status', 'Actions'].map((head) => (
+                  {['ID', 'Images', 'SKU', 'Name', 'Description', 'Highlights', 'Category', 'Size', 'Price', 'Stock', 'Status', 'Actions'].map((head) => (
                     <th
                       key={head}
                       style={{
                         textAlign: 'left',
-                        padding: '12px 14px',
+                        padding: '14px 16px',
                         fontSize: '13px',
                         fontWeight: 700,
                         color: '#374151',
@@ -756,18 +836,19 @@ const AdminProducts = () => {
                     >
                       <td
                         style={{
-                          padding: '12px 14px',
+                          padding: '14px 16px',
                           borderBottom: inactiveRow ? `1px solid ${INACTIVE_ROW_BORDER}` : '1px solid #f3f4f6',
                           color: inactiveRow ? '#374151' : '#4b5563',
+                          verticalAlign: 'top',
                         }}
                       >
                         {product.id}
                       </td>
                       <td
                         style={{
-                          padding: '10px 14px',
+                          padding: '12px 16px',
                           borderBottom: inactiveRow ? `1px solid ${INACTIVE_ROW_BORDER}` : '1px solid #f3f4f6',
-                          verticalAlign: 'middle',
+                          verticalAlign: 'top',
                         }}
                       >
                         {product.images.length > 0 ? (
@@ -791,64 +872,115 @@ const AdminProducts = () => {
                       </td>
                       <td
                         style={{
-                          padding: '12px 14px',
+                          padding: '14px 16px',
                           borderBottom: inactiveRow ? `1px solid ${INACTIVE_ROW_BORDER}` : '1px solid #f3f4f6',
                           color: inactiveRow ? '#1e293b' : '#111827',
                           fontFamily: 'monospace',
+                          verticalAlign: 'top',
                         }}
                       >
                         {product.sku}
                       </td>
                       <td
                         style={{
-                          padding: '12px 14px',
+                          padding: '14px 16px',
                           borderBottom: inactiveRow ? `1px solid ${INACTIVE_ROW_BORDER}` : '1px solid #f3f4f6',
                           color: inactiveRow ? '#0f172a' : '#111827',
                           fontWeight: 600,
+                          verticalAlign: 'top',
                         }}
                       >
                         {product.name}
                       </td>
                       <td
                         style={{
-                          padding: '12px 14px',
+                          padding: '14px 16px',
                           borderBottom: inactiveRow ? `1px solid ${INACTIVE_ROW_BORDER}` : '1px solid #f3f4f6',
                           color: inactiveRow ? '#334155' : '#4b5563',
+                          maxWidth: '260px',
+                          verticalAlign: 'top',
+                          lineHeight: 1.4,
+                        }}
+                      >
+                        <span
+                          style={{
+                            display: 'inline-block',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            maxWidth: '100%',
+                          }}
+                          title={product.description}
+                        >
+                          {product.description}
+                        </span>
+                      </td>
+                      <td
+                        style={{
+                          padding: '14px 16px',
+                          borderBottom: inactiveRow ? `1px solid ${INACTIVE_ROW_BORDER}` : '1px solid #f3f4f6',
+                          color: inactiveRow ? '#334155' : '#4b5563',
+                          maxWidth: '260px',
+                          verticalAlign: 'top',
+                        }}
+                      >
+                        {product.bulletPoints.length > 0 ? (
+                          <ul style={{ margin: 0, paddingLeft: '16px', display: 'grid', gap: '4px' }}>
+                            {product.bulletPoints.slice(0, 2).map((point) => (
+                              <li key={point} style={{ fontSize: '13px', lineHeight: 1.35 }}>
+                                {point}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          '—'
+                        )}
+                      </td>
+                      <td
+                        style={{
+                          padding: '14px 16px',
+                          borderBottom: inactiveRow ? `1px solid ${INACTIVE_ROW_BORDER}` : '1px solid #f3f4f6',
+                          color: inactiveRow ? '#334155' : '#4b5563',
+                          verticalAlign: 'top',
                         }}
                       >
                         {product.category}
                       </td>
                       <td
                         style={{
-                          padding: '12px 14px',
+                          padding: '14px 16px',
                           borderBottom: inactiveRow ? `1px solid ${INACTIVE_ROW_BORDER}` : '1px solid #f3f4f6',
                           color: inactiveRow ? '#334155' : '#4b5563',
+                          verticalAlign: 'top',
                         }}
                       >
                         {product.size.length > 0 ? product.size.join(', ') : '-'}
                       </td>
                       <td
                         style={{
-                          padding: '12px 14px',
+                          padding: '14px 16px',
                           borderBottom: inactiveRow ? `1px solid ${INACTIVE_ROW_BORDER}` : '1px solid #f3f4f6',
                           color: inactiveRow ? '#0f172a' : '#111827',
+                          verticalAlign: 'top',
                         }}
                       >
                         {formatRs(product.price)}
                       </td>
                       <td
                         style={{
-                          padding: '12px 14px',
+                          padding: '14px 16px',
                           borderBottom: inactiveRow ? `1px solid ${INACTIVE_ROW_BORDER}` : '1px solid #f3f4f6',
                           color: inactiveRow ? '#0f172a' : '#111827',
+                          verticalAlign: 'top',
                         }}
                       >
                         {product.stock}
                       </td>
                       <td
                         style={{
-                          padding: '12px 14px',
+                          padding: '14px 16px',
                           borderBottom: inactiveRow ? `1px solid ${INACTIVE_ROW_BORDER}` : '1px solid #f3f4f6',
+                          verticalAlign: 'top',
                         }}
                       >
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-start' }}>
@@ -885,7 +1017,7 @@ const AdminProducts = () => {
                       </td>
                       <td
                         style={{
-                          padding: '12px 14px',
+                          padding: '14px 16px',
                           borderBottom: inactiveRow ? `1px solid ${INACTIVE_ROW_BORDER}` : '1px solid #f3f4f6',
                           verticalAlign: 'middle',
                           whiteSpace: 'nowrap',
@@ -980,7 +1112,7 @@ const AdminProducts = () => {
                 {filteredProducts.length === 0 && (
                   <tr>
                     <td
-                      colSpan={10}
+                      colSpan={12}
                       style={{
                         padding: '18px 14px',
                         textAlign: 'center',
