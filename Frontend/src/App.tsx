@@ -32,6 +32,7 @@ import AdminPayments from './AdminPages/AdminPayments'
 import ChatbotWidget from './UserComponent/ChatbotWidget'
 import AdminUserProfile from './AdminPages/UserProfile'
 import AdminService from './AdminPages/AdminService'
+import Checkout from './UserPages/Checkout'
 
 
 
@@ -83,6 +84,7 @@ function AppRoutes() {
       <Route path="/cart" element={withFade(<Cart />)} />
       <Route path="/ordertracking" element={withFade(<Ordertracking />)} />
       <Route path="/blogs" element={withFade(<Blogs />)} />
+      <Route path="/checkout" element={withFade(<Checkout />)} />
 
       {/* Login and Signup */}
       <Route path="/login" element={withFade(<Login />)} />

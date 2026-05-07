@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import Header from '../UserComponent/Header'
 import Footer from '../UserComponent/Footer'
 import Copyright from '../UserComponent/Copyright'
@@ -42,6 +43,7 @@ const MIN_QTY = 1
 const MAX_QTY = 10
 
 const Cart = () => {
+  const navigate = useNavigate()
   const [items, setItems] = useState<CartItem[]>(initialCartItems)
   const [selectedIds, setSelectedIds] = useState<number[]>([1, 2])
   const [quantities, setQuantities] = useState<Record<number, number>>({ 1: 1, 2: 1 })
@@ -87,6 +89,24 @@ const Cart = () => {
   const subtotal = selectedItems.reduce((sum, p) => sum + lineTotal(p), 0)
   const taxAmount = Math.round(subtotal * TAX_RATE)
   const total = subtotal + taxAmount
+
+  const goToCheckout = () => {
+    if (selectedItems.length === 0) return
+
+    navigate('/checkout', {
+      state: {
+        selectedItems: selectedItems.map((item) => ({
+          id: item.id,
+          name: item.name,
+          priceValue: item.priceValue,
+          quantity: quantities[item.id] ?? 1,
+        })),
+        subtotal,
+        taxAmount,
+        total,
+      },
+    })
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
@@ -260,6 +280,7 @@ const Cart = () => {
               </div>
               <button
                 type="button"
+                onClick={goToCheckout}
                 className="w-full mt-6 py-3 rounded-lg bg-primary text-white font-semibold text-sm hover:opacity-90 transition-opacity cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={selectedItems.length === 0}
               >
