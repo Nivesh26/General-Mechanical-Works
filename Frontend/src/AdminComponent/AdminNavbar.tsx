@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
+import { toast } from 'react-toastify'
 import { useAuth } from '../context/AuthContext'
 import {
   FiBookOpen,
@@ -164,6 +165,7 @@ const AdminNavbar = () => {
       <button
         type="button"
         onClick={() => {
+          toast.info('Logged out.')
           logout()
           navigate('/login', { replace: true })
         }}

@@ -33,8 +33,7 @@ import ChatbotWidget from './UserComponent/ChatbotWidget'
 import AdminUserProfile from './AdminPages/UserProfile'
 import AdminService from './AdminPages/AdminService'
 import Checkout from './UserPages/Checkout'
-
-
+import { AdminPrivateRoute } from './components/AdminPrivateRoute'
 
 /** Scroll to top on every navigation so new pages don’t open mid-page. */
 function ScrollToTop() {
@@ -68,6 +67,8 @@ const PageTransition = ({ children }: { children: ReactNode }) => {
 
 function AppRoutes() {
   const withFade = (node: ReactNode) => <PageTransition>{node}</PageTransition>
+  const adminPage = (node: ReactNode) =>
+    withFade(<AdminPrivateRoute>{node}</AdminPrivateRoute>)
 
   return (
     <Routes>
@@ -91,22 +92,22 @@ function AppRoutes() {
       <Route path="/signup" element={withFade(<Signup />)} />
       <Route path="/forgetpassword" element={withFade(<Forgetpassword />)} />
 
-      {/* Admin */}
-      <Route path="/admindashboard" element={withFade(<AdminDashboard />)} />
-      <Route path="/adminorders" element={withFade(<AdminOrders />)} />
-      <Route path="/adminproducts" element={withFade(<AdminProducts />)} />
-      <Route path="/adminusers" element={withFade(<AdminUsers />)} />
-      <Route path="/adminsettings" element={withFade(<AdminSetting />)} />
-      <Route path="/adminreviews" element={withFade(<AdminReviews />)} />
-      <Route path="/adminmessages" element={withFade(<AdminMessage />)} />
-      <Route path="/adminappointments" element={withFade(<AdminAppointments />)} />
-      <Route path="/adminservice" element={withFade(<AdminService />)} />
-      <Route path="/adminbills" element={withFade(<AdminBill />)} />
-      <Route path="/adminblogs" element={withFade(<AdminBlog />)} />
-      <Route path="/adminoffers" element={withFade(<AdminOffer />)} />
-      <Route path="/adminservicereviews" element={withFade(<AdminServiceReviews />)} />
-      <Route path="/adminpaymentsinvoices" element={withFade(<AdminPayments />)} />
-      <Route path="/adminuserprofile" element={withFade(<AdminUserProfile />)} />
+      {/* Admin (requires login + ADMIN role) */}
+      <Route path="/admindashboard" element={adminPage(<AdminDashboard />)} />
+      <Route path="/adminorders" element={adminPage(<AdminOrders />)} />
+      <Route path="/adminproducts" element={adminPage(<AdminProducts />)} />
+      <Route path="/adminusers" element={adminPage(<AdminUsers />)} />
+      <Route path="/adminsettings" element={adminPage(<AdminSetting />)} />
+      <Route path="/adminreviews" element={adminPage(<AdminReviews />)} />
+      <Route path="/adminmessages" element={adminPage(<AdminMessage />)} />
+      <Route path="/adminappointments" element={adminPage(<AdminAppointments />)} />
+      <Route path="/adminservice" element={adminPage(<AdminService />)} />
+      <Route path="/adminbills" element={adminPage(<AdminBill />)} />
+      <Route path="/adminblogs" element={adminPage(<AdminBlog />)} />
+      <Route path="/adminoffers" element={adminPage(<AdminOffer />)} />
+      <Route path="/adminservicereviews" element={adminPage(<AdminServiceReviews />)} />
+      <Route path="/adminpaymentsinvoices" element={adminPage(<AdminPayments />)} />
+      <Route path="/adminuserprofile" element={adminPage(<AdminUserProfile />)} />
     </Routes>
   )
 }

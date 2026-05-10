@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { toast } from "react-toastify";
 import type { ProfileGender, ProfileUpdatePayload } from "../lib/api";
 
 export type ProfileFieldSource = {
@@ -106,7 +107,6 @@ const Profileform = ({ profile, onNameChange, onPersist }: ProfileformProps) => 
   const [editingLabel, setEditingLabel] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState("");
   const [validationError, setValidationError] = useState("");
-  const [persistError, setPersistError] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -114,12 +114,10 @@ const Profileform = ({ profile, onNameChange, onPersist }: ProfileformProps) => 
     setEditingLabel(null);
     setEditingValue("");
     setValidationError("");
-    setPersistError("");
   }, [profile]);
 
   const startEdit = (label: string, value: string) => {
     if (label === "Email") return;
-    setPersistError("");
     setValidationError("");
     setEditingLabel(label);
     if (label === "Date of Birth") {
@@ -164,11 +162,11 @@ const Profileform = ({ profile, onNameChange, onPersist }: ProfileformProps) => 
 
     if (onPersist && Object.keys(patch).length > 0) {
       setSaving(true);
-      setPersistError("");
       try {
         await onPersist(patch);
+        toast.success("Profile updated.");
       } catch (e) {
-        setPersistError(e instanceof Error ? e.message : "Could not save changes.");
+        toast.error(e instanceof Error ? e.message : "Could not save changes.");
       } finally {
         setSaving(false);
       }
@@ -184,14 +182,6 @@ const Profileform = ({ profile, onNameChange, onPersist }: ProfileformProps) => 
 
   return (
     <section className="w-full py-6 sm:py-8 px-2 sm:px-0">
-      {persistError && (
-        <p className="text-red-600 text-sm text-center mb-4" role="alert">
-          {persistError}
-        </p>
-      )}
-      {saving && (
-        <p className="text-gray-500 text-sm text-center mb-4">Saving…</p>
-      )}
       <div className="border-t border-gray-200">
         {fields.map(({ label, value }) => {
           const readOnly = label === "Email";

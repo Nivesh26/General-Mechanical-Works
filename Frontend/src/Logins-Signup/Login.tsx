@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { toast } from 'react-toastify'
 import { HiEye, HiEyeSlash } from 'react-icons/hi2'
 import Header from '../UserComponent/Header'
 import Footer from '../UserComponent/Footer'
@@ -33,13 +34,11 @@ const Userlogin = () => {
   const location = useLocation()
   const routeState = (location.state ?? {}) as LoginLocationState
   const from = routeState.from ?? '/'
-  const justRegistered = Boolean(routeState.registered)
 
   const [email, setEmail] = useState(routeState.email ?? '')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [errors, setErrors] = useState<Partial<Record<'email' | 'password', string>>>({})
-  const [submitError, setSubmitError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
   const validate = () => {
@@ -55,14 +54,14 @@ const Userlogin = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setSubmitError('')
     if (!validate()) return
     setSubmitting(true)
     try {
       const auth = await login(email.trim(), password)
+      toast.success('Signed in successfully.')
       navigate(postLoginPath(auth.role, from), { replace: true })
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : 'Login failed.')
+      toast.error(err instanceof Error ? err.message : 'Login failed.')
     } finally {
       setSubmitting(false)
     }
@@ -90,16 +89,6 @@ const Userlogin = () => {
             </p>
 
             <form onSubmit={handleSubmit} className="space-y-6" noValidate>
-              {justRegistered && (
-                <p className="text-sm text-green-700 text-center bg-green-50 border border-green-200 rounded-lg py-2 px-3" role="status">
-                  Account created. Sign in with your email and password.
-                </p>
-              )}
-              {submitError && (
-                <p className="text-sm text-red-600 text-center" role="alert">
-                  {submitError}
-                </p>
-              )}
               <div>
                 <input
                   type="email"

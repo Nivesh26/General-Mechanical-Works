@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { toast } from 'react-toastify'
 import { HiEye, HiEyeSlash } from 'react-icons/hi2'
 import Header from '../UserComponent/Header'
 import Footer from '../UserComponent/Footer'
@@ -22,7 +23,6 @@ const Usersignup = () => {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [errors, setErrors] = useState<Partial<Record<SignupField, string>>>({})
-  const [submitError, setSubmitError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
   const validate = () => {
@@ -51,7 +51,6 @@ const Usersignup = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setSubmitError('')
     if (!validate()) return
     setSubmitting(true)
     try {
@@ -62,12 +61,13 @@ const Usersignup = () => {
         password,
         phone: phone.trim(),
       })
+      toast.success('Account created. Please sign in.')
       navigate('/login', {
         replace: true,
         state: { registered: true, email: trimmedEmail },
       })
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : 'Registration failed.')
+      toast.error(err instanceof Error ? err.message : 'Registration failed.')
     } finally {
       setSubmitting(false)
     }
@@ -104,11 +104,6 @@ const Usersignup = () => {
             </p>
 
             <form onSubmit={handleSubmit} className="space-y-6" noValidate>
-              {submitError && (
-                <p className="text-sm text-red-600 text-center" role="alert">
-                  {submitError}
-                </p>
-              )}
               <div>
                 <input
                   type="text"

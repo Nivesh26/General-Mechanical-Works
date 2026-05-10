@@ -14,7 +14,20 @@ import {
   type AuthResponse,
 } from '../lib/api'
 
+/** Tab/session scoped: cleared when the browser tab is closed (unlike localStorage). */
 const TOKEN_KEY = 'gmw_auth_token'
+
+function readStoredToken(): string | null {
+	const fromSession = sessionStorage.getItem(TOKEN_KEY)
+	if (fromSession) return fromSession
+	const legacy = localStorage.getItem(TOKEN_KEY)
+	if (legacy) {
+		sessionStorage.setItem(TOKEN_KEY, legacy)
+		localStorage.removeItem(TOKEN_KEY)
+		return legacy
+	}
+	return null
+}
 
 type AuthContextValue = {
   user: UserProfile | null
@@ -28,11 +41,12 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem(TOKEN_KEY))
+  const [token, setToken] = useState<string | null>(() => readStoredToken())
   const [user, setUser] = useState<UserProfile | null>(null)
-  const [loading, setLoading] = useState<boolean>(() => Boolean(localStorage.getItem(TOKEN_KEY)))
+  const [loading, setLoading] = useState<boolean>(() => Boolean(readStoredToken()))
 
   const logout = useCallback(() => {
+    sessionStorage.removeItem(TOKEN_KEY)
     localStorage.removeItem(TOKEN_KEY)
     setToken(null)
     setUser(null)
@@ -65,7 +79,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [token, logout])
 
   const applySession = useCallback((auth: AuthResponse) => {
-    localStorage.setItem(TOKEN_KEY, auth.accessToken)
+    sessionStorage.setItem(TOKEN_KEY, auth.accessToken)
+    localStorage.removeItem(TOKEN_KEY)
     setToken(auth.accessToken)
   }, [])
 
@@ -79,7 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   )
 
   const refreshUser = useCallback(async () => {
-    const t = token ?? localStorage.getItem(TOKEN_KEY)
+    const t = token ?? sessionStorage.getItem(TOKEN_KEY)
     if (!t) return
     const profile = await authFetchProfile(t)
     setUser(profile)

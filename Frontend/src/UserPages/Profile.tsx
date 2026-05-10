@@ -6,6 +6,7 @@ import Header from "../UserComponent/Header";
 import Profileform from "../UserComponent/Profileform";
 import Profliephotos from "../UserComponent/Profliephotos";
 import { initialVehicles } from "../UserComponent/Vehiclesform";
+import { toast } from "react-toastify";
 import { useAuth } from "../context/AuthContext";
 import { patchUserProfile, type ProfileUpdatePayload } from "../lib/api";
 
@@ -66,6 +67,7 @@ const Profile = () => {
   };
 
   const handleLogout = () => {
+    toast.info("You have been logged out.");
     logout();
     navigate("/login", { replace: true });
   };
