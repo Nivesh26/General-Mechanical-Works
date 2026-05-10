@@ -1,8 +1,11 @@
 import { NavLink } from 'react-router-dom'
-import { HiOutlineMagnifyingGlass } from 'react-icons/hi2'
+import { HiOutlineMagnifyingGlass, HiOutlineUserCircle } from 'react-icons/hi2'
 import GMWlogo from '../assets/GMWlogo.png'
+import { useAuth } from '../context/AuthContext'
 
 const Header = () => {
+  const { user, loading, token } = useAuth()
+
   const navLinks = [
     { to: '/', label: 'Home' },
     { to: '/aboutus', label: 'About Us' },
@@ -10,6 +13,8 @@ const Header = () => {
     { to: '/products', label: 'Products' },
     { to: '/contactus', label: 'Contact' },
   ]
+
+  const accountLoading = Boolean(token) && loading
 
   return (
     <header className="sticky top-0 z-50 bg-white py-2">
@@ -55,13 +60,28 @@ const Header = () => {
             </span>
           </div>
 
-          {/* Login button */}
-          <NavLink
-            to="/login"
-            className="flex-shrink-0 px-6 py-2.5 rounded-full bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-colors"
-          >
-            Login
-          </NavLink>
+          {accountLoading ? (
+            <span
+              className="flex-shrink-0 w-11 h-11 rounded-full bg-gray-100 animate-pulse"
+              aria-hidden
+            />
+          ) : user ? (
+            <NavLink
+              to="/profile"
+              className="flex-shrink-0 p-2 rounded-full text-black hover:bg-gray-100 transition-colors"
+              aria-label="Profile"
+              title="Profile"
+            >
+              <HiOutlineUserCircle className="w-9 h-9 text-black" />
+            </NavLink>
+          ) : (
+            <NavLink
+              to="/login"
+              className="flex-shrink-0 px-6 py-2.5 rounded-full bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-colors"
+            >
+              Login
+            </NavLink>
+          )}
         </div>
       </div>
     </header>

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { NavLink } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 import {
   FiBookOpen,
   FiBox,
@@ -20,6 +21,8 @@ import {
 import GMWLogo from '../assets/GMWlogo.png'
 
 const AdminNavbar = () => {
+  const navigate = useNavigate()
+  const { logout } = useAuth()
   const [isLogoutHovered, setIsLogoutHovered] = useState(false)
   const navScrollRef = useRef<HTMLElement | null>(null)
   const navScrollStorageKey = 'admin-navbar-scroll-top'
@@ -160,6 +163,10 @@ const AdminNavbar = () => {
 
       <button
         type="button"
+        onClick={() => {
+          logout()
+          navigate('/login', { replace: true })
+        }}
         onMouseEnter={() => setIsLogoutHovered(true)}
         onMouseLeave={() => setIsLogoutHovered(false)}
         style={{

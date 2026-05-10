@@ -1,18 +1,46 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { HiEye, HiEyeSlash } from 'react-icons/hi2'
 import Header from '../UserComponent/Header'
 import Footer from '../UserComponent/Footer'
 import Copyright from '../UserComponent/Copyright'
 import googleIcon from '../assets/google.png'
+import { useAuth } from '../context/AuthContext'
+import type { Role } from '../lib/api'
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
+/** After login: admins go to the dashboard; users go to `from` unless it is an admin URL. */
+function postLoginPath(role: Role, from: string): string {
+  if (role === 'ADMIN') {
+    return '/admindashboard'
+  }
+  if (from.startsWith('/admin')) {
+    return '/'
+  }
+  return from || '/'
+}
+
+type LoginLocationState = {
+  from?: string
+  registered?: boolean
+  email?: string
+}
+
 const Userlogin = () => {
-  const [email, setEmail] = useState('')
+  const { login } = useAuth()
+  const navigate = useNavigate()
+  const location = useLocation()
+  const routeState = (location.state ?? {}) as LoginLocationState
+  const from = routeState.from ?? '/'
+  const justRegistered = Boolean(routeState.registered)
+
+  const [email, setEmail] = useState(routeState.email ?? '')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [errors, setErrors] = useState<Partial<Record<'email' | 'password', string>>>({})
+  const [submitError, setSubmitError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
   const validate = () => {
     const next: Partial<Record<'email' | 'password', string>> = {}
@@ -20,15 +48,24 @@ const Userlogin = () => {
     if (!trimmed) next.email = 'Email is required.'
     else if (!emailRegex.test(trimmed)) next.email = 'Enter a valid email address.'
     if (!password) next.password = 'Password is required.'
-    else if (password.length < 6) next.password = 'Password must be at least 6 characters.'
+    else if (password.length < 8) next.password = 'Password must be at least 8 characters.'
     setErrors(next)
     return Object.keys(next).length === 0
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setSubmitError('')
     if (!validate()) return
-    // TODO: wire to auth API
+    setSubmitting(true)
+    try {
+      const auth = await login(email.trim(), password)
+      navigate(postLoginPath(auth.role, from), { replace: true })
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Login failed.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const inputBorder = (hasError: boolean) =>
@@ -53,6 +90,16 @@ const Userlogin = () => {
             </p>
 
             <form onSubmit={handleSubmit} className="space-y-6" noValidate>
+              {justRegistered && (
+                <p className="text-sm text-green-700 text-center bg-green-50 border border-green-200 rounded-lg py-2 px-3" role="status">
+                  Account created. Sign in with your email and password.
+                </p>
+              )}
+              {submitError && (
+                <p className="text-sm text-red-600 text-center" role="alert">
+                  {submitError}
+                </p>
+              )}
               <div>
                 <input
                   type="email"
@@ -126,9 +173,10 @@ const Userlogin = () => {
 
               <button
                 type="submit"
-                className="w-full py-3 rounded-lg bg-primary text-white font-bold hover:opacity-90 transition-opacity mt-2"
+                disabled={submitting}
+                className="w-full py-3 rounded-lg bg-primary text-white font-bold hover:opacity-90 transition-opacity mt-2 disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                Login
+                {submitting ? 'Signing in…' : 'Login'}
               </button>
             </form>
 

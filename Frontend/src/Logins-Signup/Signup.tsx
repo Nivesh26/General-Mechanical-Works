@@ -1,16 +1,19 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { HiEye, HiEyeSlash } from 'react-icons/hi2'
 import Header from '../UserComponent/Header'
 import Footer from '../UserComponent/Footer'
 import Copyright from '../UserComponent/Copyright'
 import googleIcon from '../assets/google.png'
+import { authSignup } from '../lib/api'
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 type SignupField = 'fullName' | 'email' | 'phone' | 'password' | 'confirmPassword'
 
 const Usersignup = () => {
+  const navigate = useNavigate()
+
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
@@ -19,6 +22,8 @@ const Usersignup = () => {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [errors, setErrors] = useState<Partial<Record<SignupField, string>>>({})
+  const [submitError, setSubmitError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
   const validate = () => {
     const next: Partial<Record<SignupField, string>> = {}
@@ -44,10 +49,28 @@ const Usersignup = () => {
     return Object.keys(next).length === 0
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setSubmitError('')
     if (!validate()) return
-    // TODO: wire to signup API
+    setSubmitting(true)
+    try {
+      const trimmedEmail = email.trim()
+      await authSignup({
+        name: fullName.trim(),
+        email: trimmedEmail,
+        password,
+        phone: phone.trim(),
+      })
+      navigate('/login', {
+        replace: true,
+        state: { registered: true, email: trimmedEmail },
+      })
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Registration failed.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const inputBorder = (hasError: boolean) =>
@@ -81,6 +104,11 @@ const Usersignup = () => {
             </p>
 
             <form onSubmit={handleSubmit} className="space-y-6" noValidate>
+              {submitError && (
+                <p className="text-sm text-red-600 text-center" role="alert">
+                  {submitError}
+                </p>
+              )}
               <div>
                 <input
                   type="text"
@@ -211,9 +239,10 @@ const Usersignup = () => {
 
               <button
                 type="submit"
-                className="w-full py-3 rounded-lg bg-primary text-white font-bold hover:opacity-90 transition-opacity mt-2"
+                disabled={submitting}
+                className="w-full py-3 rounded-lg bg-primary text-white font-bold hover:opacity-90 transition-opacity mt-2 disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                Register
+                {submitting ? 'Creating account…' : 'Register'}
               </button>
             </form>
 
