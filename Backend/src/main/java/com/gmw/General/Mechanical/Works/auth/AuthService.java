@@ -106,6 +106,21 @@ public class AuthService {
 		return new ProfilePatchResponse(dto, newToken);
 	}
 
+	@Transactional
+	public void changePassword(String email, ChangePasswordRequest request) {
+		User user = userRepository.findByEmailIgnoreCase(email.trim().toLowerCase())
+				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+		if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Current password is incorrect");
+		}
+		if (passwordEncoder.matches(request.getNewPassword(), user.getPasswordHash())) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+					"New password must be different from your current password");
+		}
+		user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+		userRepository.save(user);
+	}
+
 	private AuthResponse buildAuthResponse(User user) {
 		String token = jwtService.generateToken(user);
 		return new AuthResponse(

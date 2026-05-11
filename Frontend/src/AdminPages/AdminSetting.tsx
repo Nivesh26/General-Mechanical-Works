@@ -1,8 +1,11 @@
 import type { ChangeEvent, CSSProperties, FormEvent } from 'react'
 import { useRef, useState } from 'react'
-import { HiOutlinePencilSquare } from 'react-icons/hi2'
+import { HiEye, HiEyeSlash, HiOutlinePencilSquare } from 'react-icons/hi2'
+import { toast } from 'react-toastify'
 import AdminNavbar from '../AdminComponent/AdminNavbar'
 import { ADMIN_MAIN_SCROLL, ADMIN_PAGE_HEADER_SPACING, ADMIN_PAGE_SUBTITLE, ADMIN_PAGE_TITLE } from '../AdminComponent/adminMainStyles'
+import { useAuth } from '../context/AuthContext'
+import { changePassword } from '../lib/api'
 
 type ProfileErrors = Partial<Record<'name' | 'email' | 'phone', string>>
 type PasswordErrors = Partial<Record<'current' | 'next' | 'confirm', string>>
@@ -19,10 +22,10 @@ function initialsFromName(value: string) {
 }
 
 const AdminSetting = () => {
+  const { token } = useAuth()
   const [name, setName] = useState('General Mechanical Works')
   const [email, setEmail] = useState('generalmechanicalworks46@gmail.com')
   const [phone, setPhone] = useState('+977 9876543212')
-  const [role] = useState('Super Admin')
   const [profileErrors, setProfileErrors] = useState<ProfileErrors>({})
   const [profileSaved, setProfileSaved] = useState(false)
 
@@ -30,7 +33,10 @@ const AdminSetting = () => {
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [passwordErrors, setPasswordErrors] = useState<PasswordErrors>({})
-  const [passwordSaved, setPasswordSaved] = useState(false)
+  const [passwordSubmitting, setPasswordSubmitting] = useState(false)
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false)
+  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [avatarError, setAvatarError] = useState<string | null>(null)
@@ -86,6 +92,7 @@ const AdminSetting = () => {
     if (!currentPassword) next.current = 'Current password is required.'
     if (!newPassword) next.next = 'New password is required.'
     else if (newPassword.length < 8) next.next = 'New password must be at least 8 characters.'
+    else if (newPassword.length > 128) next.next = 'New password must be at most 128 characters.'
     else if (newPassword === currentPassword) next.next = 'New password must be different from current password.'
     if (!confirmPassword) next.confirm = 'Please confirm the new password.'
     else if (confirmPassword !== newPassword) next.confirm = 'Passwords do not match.'
@@ -93,14 +100,25 @@ const AdminSetting = () => {
     return Object.keys(next).length === 0
   }
 
-  const onChangePassword = (e: FormEvent) => {
+  const onChangePassword = async (e: FormEvent) => {
     e.preventDefault()
     if (!validatePassword()) return
-    setCurrentPassword('')
-    setNewPassword('')
-    setConfirmPassword('')
-    setPasswordSaved(true)
-    window.setTimeout(() => setPasswordSaved(false), 3500)
+    if (!token) {
+      toast.error('You must be signed in to change your password.')
+      return
+    }
+    setPasswordSubmitting(true)
+    try {
+      await changePassword(token, { currentPassword, newPassword })
+      toast.success('Password updated.')
+      setCurrentPassword('')
+      setNewPassword('')
+      setConfirmPassword('')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not change password.')
+    } finally {
+      setPasswordSubmitting(false)
+    }
   }
 
   return (
@@ -247,11 +265,6 @@ const AdminSetting = () => {
                 {profileErrors.phone && <span style={errStyle}>{profileErrors.phone}</span>}
               </label>
 
-              <label style={labelStyle}>
-                Role
-                <input type="text" value={role} disabled style={{ ...inputStyle, backgroundColor: '#f8fafc', color: '#64748b' }} />
-              </label>
-
               <button type="submit" style={btnPrimary}>
                 Save Profile
               </button>
@@ -277,54 +290,116 @@ const AdminSetting = () => {
             >
               <label style={labelStyle}>
                 Current password
-                <input
-                  type="password"
-                  value={currentPassword}
-                  onChange={(e) => {
-                    setCurrentPassword(e.target.value)
-                    setPasswordErrors((prev) => ({ ...prev, current: undefined }))
-                  }}
-                  style={{ ...inputStyle, border: passwordErrors.current ? borderError : borderNormal }}
-                />
+                <div style={passwordInputWrapStyle}>
+                  <input
+                    type={showCurrentPassword ? 'text' : 'password'}
+                    value={currentPassword}
+                    onChange={(e) => {
+                      setCurrentPassword(e.target.value)
+                      setPasswordErrors((prev) => ({ ...prev, current: undefined }))
+                    }}
+                    autoComplete="current-password"
+                    style={{
+                      ...inputStyle,
+                      paddingRight: '40px',
+                      border: passwordErrors.current ? borderError : borderNormal,
+                    }}
+                  />
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    aria-label={showCurrentPassword ? 'Hide password' : 'Show password'}
+                    onClick={() => setShowCurrentPassword((p) => !p)}
+                    style={passwordEyeBtnStyle}
+                  >
+                    {showCurrentPassword ? (
+                      <HiEyeSlash style={{ width: '20px', height: '20px' }} aria-hidden />
+                    ) : (
+                      <HiEye style={{ width: '20px', height: '20px' }} aria-hidden />
+                    )}
+                  </button>
+                </div>
                 {passwordErrors.current && <span style={errStyle}>{passwordErrors.current}</span>}
               </label>
 
               <label style={labelStyle}>
                 New password
-                <input
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => {
-                    setNewPassword(e.target.value)
-                    setPasswordErrors((prev) => ({ ...prev, next: undefined }))
-                  }}
-                  style={{ ...inputStyle, border: passwordErrors.next ? borderError : borderNormal }}
-                />
+                <div style={passwordInputWrapStyle}>
+                  <input
+                    type={showNewPassword ? 'text' : 'password'}
+                    value={newPassword}
+                    onChange={(e) => {
+                      setNewPassword(e.target.value)
+                      setPasswordErrors((prev) => ({ ...prev, next: undefined }))
+                    }}
+                    autoComplete="new-password"
+                    style={{
+                      ...inputStyle,
+                      paddingRight: '40px',
+                      border: passwordErrors.next ? borderError : borderNormal,
+                    }}
+                  />
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    aria-label={showNewPassword ? 'Hide password' : 'Show password'}
+                    onClick={() => setShowNewPassword((p) => !p)}
+                    style={passwordEyeBtnStyle}
+                  >
+                    {showNewPassword ? (
+                      <HiEyeSlash style={{ width: '20px', height: '20px' }} aria-hidden />
+                    ) : (
+                      <HiEye style={{ width: '20px', height: '20px' }} aria-hidden />
+                    )}
+                  </button>
+                </div>
                 {passwordErrors.next && <span style={errStyle}>{passwordErrors.next}</span>}
               </label>
 
               <label style={labelStyle}>
                 Confirm new password
-                <input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => {
-                    setConfirmPassword(e.target.value)
-                    setPasswordErrors((prev) => ({ ...prev, confirm: undefined }))
-                  }}
-                  style={{ ...inputStyle, border: passwordErrors.confirm ? borderError : borderNormal }}
-                />
+                <div style={passwordInputWrapStyle}>
+                  <input
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    value={confirmPassword}
+                    onChange={(e) => {
+                      setConfirmPassword(e.target.value)
+                      setPasswordErrors((prev) => ({ ...prev, confirm: undefined }))
+                    }}
+                    autoComplete="new-password"
+                    style={{
+                      ...inputStyle,
+                      paddingRight: '40px',
+                      border: passwordErrors.confirm ? borderError : borderNormal,
+                    }}
+                  />
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                    onClick={() => setShowConfirmPassword((p) => !p)}
+                    style={passwordEyeBtnStyle}
+                  >
+                    {showConfirmPassword ? (
+                      <HiEyeSlash style={{ width: '20px', height: '20px' }} aria-hidden />
+                    ) : (
+                      <HiEye style={{ width: '20px', height: '20px' }} aria-hidden />
+                    )}
+                  </button>
+                </div>
                 {passwordErrors.confirm && <span style={errStyle}>{passwordErrors.confirm}</span>}
               </label>
 
-              <button type="submit" style={btnPrimary}>
-                Update Password
+              <button
+                type="submit"
+                style={{
+                  ...btnPrimary,
+                  ...(passwordSubmitting ? { opacity: 0.65, cursor: 'not-allowed' as const } : {}),
+                }}
+                disabled={passwordSubmitting}
+              >
+                {passwordSubmitting ? 'Updating…' : 'Update Password'}
               </button>
-              {passwordSaved && (
-                <p style={okStyle} role="status">
-                  Password changed successfully.
-                </p>
-              )}
             </form>
           </div>
         </section>
@@ -375,6 +450,27 @@ const inputStyle: CSSProperties = {
   fontSize: '14px',
   outline: 'none',
   boxSizing: 'border-box',
+}
+
+const passwordInputWrapStyle: CSSProperties = {
+  position: 'relative',
+  width: '100%',
+}
+
+const passwordEyeBtnStyle: CSSProperties = {
+  position: 'absolute',
+  right: '6px',
+  top: '50%',
+  transform: 'translateY(-50%)',
+  padding: '4px',
+  border: 'none',
+  background: 'transparent',
+  cursor: 'pointer',
+  color: '#64748b',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  lineHeight: 0,
 }
 
 const errStyle: CSSProperties = {

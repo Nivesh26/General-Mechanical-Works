@@ -65,7 +65,7 @@ const Profile = () => {
   };
 
   const handleLogout = () => {
-    toast.info("You have been logged out.");
+    toast.error("You have been logged out.");
     logout();
     navigate("/login", { replace: true });
   };

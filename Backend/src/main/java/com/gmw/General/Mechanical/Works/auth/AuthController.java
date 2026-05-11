@@ -34,4 +34,9 @@ public class AuthController {
 	public UserProfileDto me(Principal principal) {
 		return authService.getProfile(principal.getName());
 	}
+
+	@PostMapping("/me/password")
+	public void changePassword(Principal principal, @Valid @RequestBody ChangePasswordRequest request) {
+		authService.changePassword(principal.getName(), request);
+	}
 }

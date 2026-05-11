@@ -165,7 +165,7 @@ const AdminNavbar = () => {
       <button
         type="button"
         onClick={() => {
-          toast.info('Logged out.')
+          toast.error('Logged out.')
           logout()
           navigate('/login', { replace: true })
         }}

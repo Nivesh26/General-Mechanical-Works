@@ -28,6 +28,11 @@ export type ProfilePatchResult = {
   accessToken?: string | null
 }
 
+export type ChangePasswordPayload = {
+  currentPassword: string
+  newPassword: string
+}
+
 export interface AuthResponse extends UserProfile {
   accessToken: string
   tokenType: string
@@ -103,4 +108,17 @@ export async function patchUserProfile(
   })
   if (!res.ok) throw new Error(await parseErrorMessage(res))
   return res.json() as Promise<ProfilePatchResult>
+}
+
+export async function changePassword(token: string, body: ChangePasswordPayload): Promise<void> {
+  const res = await fetch(`${getApiBase()}/api/auth/me/password`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
 }
