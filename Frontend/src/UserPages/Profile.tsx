@@ -9,6 +9,7 @@ import { initialVehicles } from "../UserComponent/Vehiclesform";
 import { toast } from "react-toastify";
 import { useAuth } from "../context/AuthContext";
 import { useProfileAvatar } from "../hooks/useProfileAvatar";
+import { useProfileCover } from "../hooks/useProfileCover";
 import { patchUserProfile, type ProfileUpdatePayload } from "../lib/api";
 
 function splitFullName(fullName: string): { first: string; last: string } {
@@ -20,6 +21,7 @@ function splitFullName(fullName: string): { first: string; last: string } {
 }
 
 const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
+const COVER_MAX_BYTES = 4 * 1024 * 1024;
 
 const Profile = () => {
   const { user, loading, logout, token, refreshUser, replaceToken } = useAuth();
@@ -27,6 +29,11 @@ const Profile = () => {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const { avatarUrl, busy: avatarBusy, uploadAvatar, removeAvatar } = useProfileAvatar(
+    user,
+    token,
+    refreshUser,
+  );
+  const { coverUrl, busy: coverBusy, uploadCover, removeCover } = useProfileCover(
     user,
     token,
     refreshUser,
@@ -108,6 +115,29 @@ const Profile = () => {
     }
   };
 
+  const handleCoverFile = async (file: File) => {
+    if (file.size > COVER_MAX_BYTES) {
+      toast.error("Cover image must be 4 MB or smaller.");
+      return;
+    }
+    try {
+      await uploadCover(file);
+      toast.success("Cover photo updated.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not upload cover photo.");
+    }
+  };
+
+  const handleCoverDelete = async () => {
+    if (!window.confirm("Remove your cover photo?")) return;
+    try {
+      await removeCover();
+      toast.success("Cover photo removed.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not remove cover photo.");
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col bg-white">
@@ -139,6 +169,11 @@ const Profile = () => {
           onAvatarFile={handleAvatarFile}
           onAvatarDelete={handleAvatarDelete}
           avatarBusy={avatarBusy}
+          coverObjectUrl={coverUrl}
+          hasCoverPhoto={Boolean(user.coverPhoto)}
+          onCoverFile={handleCoverFile}
+          onCoverDelete={handleCoverDelete}
+          coverBusy={coverBusy}
         />
         <Profileform
           profile={profileFields}
@@ -146,7 +181,7 @@ const Profile = () => {
           onPersist={handlePersist}
         />
 
-        <div className="flex justify-end pt-8 pb-4 border-t border-gray-200 mt-8">
+        <div className="flex justify-end pt-4 pb-2 mt-2">
           <button
             type="button"
             onClick={handleLogout}

@@ -18,6 +18,11 @@ interface ProfliphotosProps {
   onAvatarFile?: (file: File) => void;
   onAvatarDelete?: () => void;
   avatarBusy?: boolean;
+  coverObjectUrl?: string | null;
+  hasCoverPhoto?: boolean;
+  onCoverFile?: (file: File) => void;
+  onCoverDelete?: () => void;
+  coverBusy?: boolean;
 }
 
 function letterFromName(firstName: string, lastName: string): string {
@@ -53,8 +58,14 @@ const Profliephotos = ({
   onAvatarFile,
   onAvatarDelete,
   avatarBusy = false,
+  coverObjectUrl = null,
+  hasCoverPhoto = false,
+  onCoverFile,
+  onCoverDelete,
+  coverBusy = false,
 }: ProfliphotosProps) => {
   const fileRef = useRef<HTMLInputElement>(null);
+  const coverFileRef = useRef<HTMLInputElement>(null);
   const vehicleLabel = mainBikeNameLine(vehicles);
   const letter = displayLetter ?? letterFromName(firstName, lastName);
 
@@ -66,8 +77,24 @@ const Profliephotos = ({
     void onAvatarFile(file);
   };
 
+  const onCoverFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !onCoverFile) return;
+    if (!file.type.startsWith("image/")) return;
+    void onCoverFile(file);
+  };
+
   return (
     <section className="w-full pt-8 pb-4">
+      <input
+        ref={coverFileRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/gif"
+        className="hidden"
+        aria-hidden
+        onChange={onCoverFileChange}
+      />
       <input
         ref={fileRef}
         type="file"
@@ -81,25 +108,49 @@ const Profliephotos = ({
         <div
           className="absolute inset-0 rounded-t-2xl overflow-hidden"
           style={{
-            background:
-              "linear-gradient(135deg, #bd162c 0%, #8b1a2a 35%, #6b1520 60%, #a01d28 80%, #4a1018 100%)",
+            ...(coverObjectUrl
+              ? {
+                  backgroundImage: `url(${coverObjectUrl})`,
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
+                }
+              : {
+                  background:
+                    "linear-gradient(135deg, #bd162c 0%, #8b1a2a 35%, #6b1520 60%, #a01d28 80%, #4a1018 100%)",
+                }),
           }}
         />
-        <div
-          className="absolute inset-0 rounded-t-2xl opacity-50"
-          style={{
-            backgroundImage: `
-              radial-gradient(ellipse 70% 50% at 30% 40%, rgba(220,60,60,0.35), transparent 50%),
-              radial-gradient(ellipse 50% 70% at 70% 60%, rgba(120,25,25,0.3), transparent 55%)
-            `,
-          }}
-        />
-        <button
-          type="button"
-          className="absolute top-4 right-4 z-10 px-4 py-2 rounded-full bg-white text-black text-sm font-medium border border-gray-200 hover:bg-gray-50 cursor-pointer"
-        >
-          Upload Cover
-        </button>
+        {!coverObjectUrl ? (
+          <div
+            className="absolute inset-0 rounded-t-2xl opacity-50"
+            style={{
+              backgroundImage: `
+                radial-gradient(ellipse 70% 50% at 30% 40%, rgba(220,60,60,0.35), transparent 50%),
+                radial-gradient(ellipse 50% 70% at 70% 60%, rgba(120,25,25,0.3), transparent 55%)
+              `,
+            }}
+          />
+        ) : null}
+        <div className="absolute top-4 right-4 z-10 flex items-center gap-3">
+          {hasCoverPhoto && onCoverDelete ? (
+            <button
+              type="button"
+              disabled={coverBusy}
+              onClick={() => void onCoverDelete()}
+              className="px-4 py-2 rounded-full bg-white text-black text-sm font-medium border border-gray-200 hover:bg-gray-50 cursor-pointer disabled:opacity-50"
+            >
+              Remove Cover
+            </button>
+          ) : null}
+          <button
+            type="button"
+            disabled={coverBusy || !onCoverFile}
+            onClick={() => coverFileRef.current?.click()}
+            className="px-4 py-2 rounded-full bg-white text-black text-sm font-medium border border-gray-200 hover:bg-gray-50 cursor-pointer disabled:opacity-50"
+          >
+            Upload Cover
+          </button>
+        </div>
         <div className="absolute left-[70px] bottom-0 z-10 translate-y-1/2">
           <div className="w-32 h-32 sm:w-36 sm:h-36 rounded-[28px] overflow-hidden border-4 border-white shadow-md bg-gray-100">
             {avatarObjectUrl ? (

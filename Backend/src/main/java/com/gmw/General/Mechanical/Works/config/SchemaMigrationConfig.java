@@ -46,6 +46,18 @@ public class SchemaMigrationConfig {
 			if (profilePictureExists == null || profilePictureExists == 0) {
 				jdbcTemplate.execute("ALTER TABLE `user` ADD COLUMN `profile_picture` VARCHAR(1024) NULL");
 			}
+
+			Integer coverPhotoExists = jdbcTemplate.queryForObject(
+					"""
+					SELECT COUNT(*) FROM information_schema.COLUMNS
+					WHERE TABLE_SCHEMA = DATABASE()
+					  AND TABLE_NAME = 'user'
+					  AND COLUMN_NAME = 'cover_photo'
+					""",
+					Integer.class);
+			if (coverPhotoExists == null || coverPhotoExists == 0) {
+				jdbcTemplate.execute("ALTER TABLE `user` ADD COLUMN `cover_photo` VARCHAR(1024) NULL");
+			}
 		};
 	}
 }

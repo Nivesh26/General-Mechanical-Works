@@ -15,6 +15,7 @@ public record UserProfileDto(
 		LocalDate dateOfBirth,
 		String location,
 		String profilePicture,
+		String coverPhoto,
 		boolean hasAvatar
 ) {
 }

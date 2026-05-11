@@ -49,8 +49,18 @@ public class AuthController {
 		return authService.uploadAvatar(principal.getName(), file);
 	}
 
+	@PostMapping(value = "/me/cover-photo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+	public UserProfileDto uploadCoverPhoto(Principal principal, @RequestPart("file") MultipartFile file) {
+		return authService.uploadCoverPhoto(principal.getName(), file);
+	}
+
 	@DeleteMapping("/me/avatar")
 	public UserProfileDto deleteAvatar(Principal principal) {
 		return authService.clearAvatar(principal.getName());
+	}
+
+	@DeleteMapping("/me/cover-photo")
+	public UserProfileDto deleteCoverPhoto(Principal principal) {
+		return authService.clearCoverPhoto(principal.getName());
 	}
 }

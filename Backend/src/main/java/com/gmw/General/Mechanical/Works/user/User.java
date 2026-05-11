@@ -50,6 +50,9 @@ public class User {
 	@Column(name = "profile_picture", length = 1024)
 	private String profilePicture;
 
+	@Column(name = "cover_photo", length = 1024)
+	private String coverPhoto;
+
 	public Long getId() {
 		return id;
 	}
@@ -124,5 +127,13 @@ public class User {
 
 	public void setProfilePicture(String profilePicture) {
 		this.profilePicture = profilePicture;
+	}
+
+	public String getCoverPhoto() {
+		return coverPhoto;
+	}
+
+	public void setCoverPhoto(String coverPhoto) {
+		this.coverPhoto = coverPhoto;
 	}
 }

@@ -14,6 +14,8 @@ export interface UserProfile {
   location: string | null
   /** Public path, e.g. /uploads/profiles/abc.png */
   profilePicture: string | null
+  /** Public path, e.g. /uploads/covers/abc.png */
+  coverPhoto: string | null
   /** True when user has a custom profile image in the database */
   hasAvatar: boolean
 }
@@ -138,6 +140,17 @@ export async function uploadUserAvatar(token: string, file: File): Promise<void>
   if (!res.ok) throw new Error(await parseErrorMessage(res))
 }
 
+export async function uploadUserCoverPhoto(token: string, file: File): Promise<void> {
+  const body = new FormData()
+  body.append('file', file)
+  const res = await fetch(`${getApiBase()}/api/auth/me/cover-photo`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body,
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+}
+
 export function toAbsoluteApiUrl(pathOrUrl: string | null | undefined): string | null {
   if (!pathOrUrl) return null
   if (pathOrUrl.startsWith('http://') || pathOrUrl.startsWith('https://')) return pathOrUrl
@@ -148,6 +161,14 @@ export function toAbsoluteApiUrl(pathOrUrl: string | null | undefined): string |
 
 export async function deleteUserAvatar(token: string): Promise<void> {
   const res = await fetch(`${getApiBase()}/api/auth/me/avatar`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+}
+
+export async function deleteUserCoverPhoto(token: string): Promise<void> {
+  const res = await fetch(`${getApiBase()}/api/auth/me/cover-photo`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
   })

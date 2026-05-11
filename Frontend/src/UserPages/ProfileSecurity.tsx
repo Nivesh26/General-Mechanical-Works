@@ -9,6 +9,7 @@ import Securityform from '../UserComponent/Securityform'
 import { initialVehicles } from '../UserComponent/Vehiclesform'
 import { useAuth } from '../context/AuthContext'
 import { useProfileAvatar } from '../hooks/useProfileAvatar'
+import { useProfileCover } from '../hooks/useProfileCover'
 
 function splitFullName(fullName: string): { first: string; last: string } {
   const t = fullName.trim()
@@ -19,11 +20,17 @@ function splitFullName(fullName: string): { first: string; last: string } {
 }
 
 const AVATAR_MAX_BYTES = 2 * 1024 * 1024
+const COVER_MAX_BYTES = 4 * 1024 * 1024
 
 const ProfileSecurity = () => {
   const { user, loading, token, refreshUser } = useAuth()
   const navigate = useNavigate()
   const { avatarUrl, busy: avatarBusy, uploadAvatar, removeAvatar } = useProfileAvatar(
+    user,
+    token,
+    refreshUser,
+  )
+  const { coverUrl, busy: coverBusy, uploadCover, removeCover } = useProfileCover(
     user,
     token,
     refreshUser,
@@ -75,6 +82,29 @@ const ProfileSecurity = () => {
     }
   }
 
+  const handleCoverFile = async (file: File) => {
+    if (file.size > COVER_MAX_BYTES) {
+      toast.error('Cover image must be 4 MB or smaller.')
+      return
+    }
+    try {
+      await uploadCover(file)
+      toast.success('Cover photo updated.')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not upload cover photo.')
+    }
+  }
+
+  const handleCoverDelete = async () => {
+    if (!window.confirm('Remove your cover photo?')) return
+    try {
+      await removeCover()
+      toast.success('Cover photo removed.')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not remove cover photo.')
+    }
+  }
+
   return (
     <div>
       <Header />
@@ -90,6 +120,11 @@ const ProfileSecurity = () => {
           onAvatarFile={handleAvatarFile}
           onAvatarDelete={handleAvatarDelete}
           avatarBusy={avatarBusy}
+          coverObjectUrl={coverUrl}
+          hasCoverPhoto={Boolean(user.coverPhoto)}
+          onCoverFile={handleCoverFile}
+          onCoverDelete={handleCoverDelete}
+          coverBusy={coverBusy}
         />
         <Securityform />
       </div>
