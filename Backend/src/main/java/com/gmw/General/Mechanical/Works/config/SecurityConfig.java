@@ -35,6 +35,7 @@ public class SecurityConfig {
 						.requestMatchers("/api/auth/signup", "/api/auth/login").permitAll()
 						.requestMatchers("/api/auth/me").authenticated()
 						.requestMatchers(HttpMethod.PATCH, "/api/users/me").authenticated()
+						.requestMatchers(HttpMethod.GET, "/api/admin/users").hasRole("ADMIN")
 						.anyRequest().denyAll())
 				.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 		return http.build();

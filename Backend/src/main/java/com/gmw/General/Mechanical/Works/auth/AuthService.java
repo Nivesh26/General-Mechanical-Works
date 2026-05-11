@@ -3,6 +3,8 @@ package com.gmw.General.Mechanical.Works.auth;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import java.util.List;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -59,6 +61,13 @@ public class AuthService {
 		User user = userRepository.findByEmailIgnoreCase(email.trim().toLowerCase())
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 		return toProfileDto(user);
+	}
+
+	@Transactional(readOnly = true)
+	public List<UserProfileDto> listAllUsersForAdmin() {
+		return userRepository.findAllByRoleOrderByIdAsc(Role.USER).stream()
+				.map(this::toProfileDto)
+				.toList();
 	}
 
 	@Transactional
