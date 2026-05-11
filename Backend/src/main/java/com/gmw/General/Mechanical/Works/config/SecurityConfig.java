@@ -4,6 +4,8 @@ import java.util.List;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -13,7 +15,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.access.intercept.AuthorizationFilter;
+import org.springframework.security.web.authentication.AnonymousAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -23,6 +25,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 public class SecurityConfig {
 
 	@Bean
+	@Order(Ordered.HIGHEST_PRECEDENCE)
 	public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationFilter jwtAuthenticationFilter)
 			throws Exception {
 		http
@@ -32,13 +35,18 @@ public class SecurityConfig {
 						session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-						.requestMatchers("/api/auth/signup", "/api/auth/login").permitAll()
-						// All other /api/auth/* (e.g. GET /me, POST /me/password) need a valid JWT — keep public routes above this line.
-						.requestMatchers("/api/auth/**").authenticated()
+						.requestMatchers("/uploads/**").permitAll()
+						.requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
+						.requestMatchers("/api/auth/login", "/api/auth/signup").permitAll()
+						.requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/signup").permitAll()
+						.requestMatchers(HttpMethod.GET, "/api/auth/me").authenticated()
+						.requestMatchers(HttpMethod.POST, "/api/auth/me/password").authenticated()
+						.requestMatchers(HttpMethod.POST, "/api/auth/me/avatar").authenticated()
+						.requestMatchers(HttpMethod.DELETE, "/api/auth/me/avatar").authenticated()
 						.requestMatchers(HttpMethod.PATCH, "/api/users/me").authenticated()
 						.requestMatchers(HttpMethod.GET, "/api/admin/users").hasRole("ADMIN")
 						.anyRequest().denyAll())
-				.addFilterBefore(jwtAuthenticationFilter, AuthorizationFilter.class);
+				.addFilterBefore(jwtAuthenticationFilter, AnonymousAuthenticationFilter.class);
 		return http.build();
 	}
 

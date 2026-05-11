@@ -1,10 +1,20 @@
 import { NavLink } from 'react-router-dom'
-import { HiOutlineMagnifyingGlass, HiOutlineUserCircle } from 'react-icons/hi2'
+import { HiOutlineMagnifyingGlass } from 'react-icons/hi2'
 import GMWlogo from '../assets/GMWlogo.png'
 import { useAuth } from '../context/AuthContext'
+import { useProfileAvatar } from '../hooks/useProfileAvatar'
+
+function profileInitialFromName(fullName: string): string {
+  const t = fullName.trim()
+  if (!t) return 'U'
+  const space = t.indexOf(' ')
+  const firstWord = space === -1 ? t : t.slice(0, space)
+  return firstWord.charAt(0).toUpperCase()
+}
 
 const Header = () => {
-  const { user, loading, token } = useAuth()
+  const { user, loading, token, refreshUser } = useAuth()
+  const { avatarUrl } = useProfileAvatar(user, token, refreshUser)
 
   const navLinks = [
     { to: '/', label: 'Home' },
@@ -68,11 +78,17 @@ const Header = () => {
           ) : user ? (
             <NavLink
               to="/profile"
-              className="flex-shrink-0 p-2 rounded-full text-black hover:bg-gray-100 transition-colors"
+              className="flex-shrink-0 flex items-center justify-center w-11 h-11 rounded-full text-black hover:bg-gray-100 transition-colors overflow-hidden border border-gray-200 bg-gray-50"
               aria-label="Profile"
               title="Profile"
             >
-              <HiOutlineUserCircle className="w-9 h-9 text-black" />
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-lg font-bold text-primary select-none" aria-hidden>
+                  {profileInitialFromName(user.name)}
+                </span>
+              )}
             </NavLink>
           ) : (
             <NavLink

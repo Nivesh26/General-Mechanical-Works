@@ -25,6 +25,31 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 		this.jwtService = jwtService;
 	}
 
+	/**
+	 * Do not run JWT parsing on public auth endpoints — avoids any interaction with
+	 * anonymous auth / matcher ordering that can surface as 403 on login.
+	 */
+	@Override
+	protected boolean shouldNotFilter(HttpServletRequest request) {
+		String path = pathWithoutContext(request);
+		if (path.startsWith("/uploads/")) {
+			return true;
+		}
+		if (!"POST".equals(request.getMethod())) {
+			return false;
+		}
+		return "/api/auth/login".equals(path) || "/api/auth/signup".equals(path);
+	}
+
+	private static String pathWithoutContext(HttpServletRequest request) {
+		String uri = request.getRequestURI();
+		String ctx = request.getContextPath();
+		if (ctx != null && !ctx.isEmpty() && uri.startsWith(ctx)) {
+			return uri.substring(ctx.length());
+		}
+		return uri;
+	}
+
 	@Override
 	protected void doFilterInternal(
 			@NonNull HttpServletRequest request,

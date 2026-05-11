@@ -8,6 +8,7 @@ import Profliephotos from "../UserComponent/Profliephotos";
 import { initialVehicles } from "../UserComponent/Vehiclesform";
 import { toast } from "react-toastify";
 import { useAuth } from "../context/AuthContext";
+import { useProfileAvatar } from "../hooks/useProfileAvatar";
 import { patchUserProfile, type ProfileUpdatePayload } from "../lib/api";
 
 function splitFullName(fullName: string): { first: string; last: string } {
@@ -18,11 +19,18 @@ function splitFullName(fullName: string): { first: string; last: string } {
   return { first: t.slice(0, i), last: t.slice(i + 1).trim() };
 }
 
+const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
+
 const Profile = () => {
   const { user, loading, logout, token, refreshUser, replaceToken } = useAuth();
   const navigate = useNavigate();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const { avatarUrl, busy: avatarBusy, uploadAvatar, removeAvatar } = useProfileAvatar(
+    user,
+    token,
+    refreshUser,
+  );
 
   useEffect(() => {
     if (!loading && !user) {
@@ -77,6 +85,29 @@ const Profile = () => {
     await refreshUser();
   };
 
+  const handleAvatarFile = async (file: File) => {
+    if (file.size > AVATAR_MAX_BYTES) {
+      toast.error("Image must be 2 MB or smaller.");
+      return;
+    }
+    try {
+      await uploadAvatar(file);
+      toast.success("Profile photo updated.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not upload photo.");
+    }
+  };
+
+  const handleAvatarDelete = async () => {
+    if (!window.confirm("Remove your profile photo?")) return;
+    try {
+      await removeAvatar();
+      toast.success("Profile photo removed.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not remove photo.");
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col bg-white">
@@ -103,6 +134,11 @@ const Profile = () => {
           firstName={firstName}
           lastName={lastName}
           vehicles={initialVehicles}
+          avatarObjectUrl={avatarUrl}
+          hasAvatar={user.hasAvatar === true}
+          onAvatarFile={handleAvatarFile}
+          onAvatarDelete={handleAvatarDelete}
+          avatarBusy={avatarBusy}
         />
         <Profileform
           profile={profileFields}

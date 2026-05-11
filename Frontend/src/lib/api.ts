@@ -12,6 +12,10 @@ export interface UserProfile {
   /** ISO date string yyyy-mm-dd */
   dateOfBirth: string | null
   location: string | null
+  /** Public path, e.g. /uploads/profiles/abc.png */
+  profilePicture: string | null
+  /** True when user has a custom profile image in the database */
+  hasAvatar: boolean
 }
 
 export type ProfileUpdatePayload = {
@@ -119,6 +123,33 @@ export async function changePassword(token: string, body: ChangePasswordPayload)
       Accept: 'application/json',
     },
     body: JSON.stringify(body),
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+}
+
+export async function uploadUserAvatar(token: string, file: File): Promise<void> {
+  const body = new FormData()
+  body.append('file', file)
+  const res = await fetch(`${getApiBase()}/api/auth/me/avatar`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body,
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+}
+
+export function toAbsoluteApiUrl(pathOrUrl: string | null | undefined): string | null {
+  if (!pathOrUrl) return null
+  if (pathOrUrl.startsWith('http://') || pathOrUrl.startsWith('https://')) return pathOrUrl
+  const base = getApiBase().replace(/\/+$/, '')
+  const path = pathOrUrl.startsWith('/') ? pathOrUrl : `/${pathOrUrl}`
+  return `${base}${path}`
+}
+
+export async function deleteUserAvatar(token: string): Promise<void> {
+  const res = await fetch(`${getApiBase()}/api/auth/me/avatar`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
   })
   if (!res.ok) throw new Error(await parseErrorMessage(res))
 }

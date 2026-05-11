@@ -47,6 +47,9 @@ public class User {
 	@Column(nullable = false, length = 32)
 	private Role role = Role.USER;
 
+	@Column(name = "profile_picture", length = 1024)
+	private String profilePicture;
+
 	public Long getId() {
 		return id;
 	}
@@ -113,5 +116,13 @@ public class User {
 
 	public void setRole(Role role) {
 		this.role = role;
+	}
+
+	public String getProfilePicture() {
+		return profilePicture;
+	}
+
+	public void setProfilePicture(String profilePicture) {
+		this.profilePicture = profilePicture;
 	}
 }

@@ -2,11 +2,15 @@ package com.gmw.General.Mechanical.Works.auth;
 
 import java.security.Principal;
 
+import org.springframework.http.MediaType;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import jakarta.validation.Valid;
 
@@ -38,5 +42,15 @@ public class AuthController {
 	@PostMapping("/me/password")
 	public void changePassword(Principal principal, @Valid @RequestBody ChangePasswordRequest request) {
 		authService.changePassword(principal.getName(), request);
+	}
+
+	@PostMapping(value = "/me/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+	public UserProfileDto uploadAvatar(Principal principal, @RequestPart("file") MultipartFile file) {
+		return authService.uploadAvatar(principal.getName(), file);
+	}
+
+	@DeleteMapping("/me/avatar")
+	public UserProfileDto deleteAvatar(Principal principal) {
+		return authService.clearAvatar(principal.getName());
 	}
 }

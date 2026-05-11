@@ -1,5 +1,5 @@
+import { useRef, type ChangeEvent } from "react";
 import { Link } from "react-router-dom";
-import niveshImg from "../assets/Nivesh.png";
 import type { Vehicle } from "./Vehiclesform";
 
 type ActiveTab = "profile" | "vehicles" | "security";
@@ -9,6 +9,23 @@ interface ProfliphotosProps {
   firstName?: string;
   lastName?: string;
   vehicles?: Vehicle[];
+  /** Blob URL from authenticated GET /api/auth/me/avatar */
+  avatarObjectUrl?: string | null;
+  /** Single letter when no custom photo */
+  displayLetter?: string;
+  /** Server says user has a stored image (show Delete) */
+  hasAvatar?: boolean;
+  onAvatarFile?: (file: File) => void;
+  onAvatarDelete?: () => void;
+  avatarBusy?: boolean;
+}
+
+function letterFromName(firstName: string, lastName: string): string {
+  const f = firstName.trim();
+  if (f) return f.charAt(0).toUpperCase();
+  const l = lastName.trim();
+  if (l) return l.charAt(0).toUpperCase();
+  return "U";
 }
 
 /** Subtitle under the user name: only the bike marked as main (company + model). */
@@ -25,10 +42,40 @@ function mainBikeNameLine(vehicles: Vehicle[]): string {
   return "Select your main bike";
 }
 
-const Profliephotos = ({ activeTab = "profile", firstName = "Nivesh", lastName = "Shrestha", vehicles = [] }: ProfliphotosProps) => {
+const Profliephotos = ({
+  activeTab = "profile",
+  firstName = "",
+  lastName = "",
+  vehicles = [],
+  avatarObjectUrl = null,
+  displayLetter,
+  hasAvatar = false,
+  onAvatarFile,
+  onAvatarDelete,
+  avatarBusy = false,
+}: ProfliphotosProps) => {
+  const fileRef = useRef<HTMLInputElement>(null);
   const vehicleLabel = mainBikeNameLine(vehicles);
+  const letter = displayLetter ?? letterFromName(firstName, lastName);
+
+  const onFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !onAvatarFile) return;
+    if (!file.type.startsWith("image/")) return;
+    void onAvatarFile(file);
+  };
+
   return (
     <section className="w-full pt-8 pb-4">
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/gif"
+        className="hidden"
+        aria-hidden
+        onChange={onFileChange}
+      />
       {/* Cover + Upload button; only profile photo in front */}
       <div className="relative rounded-t-2xl overflow-visible h-[200px] sm:h-[240px]">
         <div
@@ -38,7 +85,6 @@ const Profliephotos = ({ activeTab = "profile", firstName = "Nivesh", lastName =
               "linear-gradient(135deg, #bd162c 0%, #8b1a2a 35%, #6b1520 60%, #a01d28 80%, #4a1018 100%)",
           }}
         />
-        {/* Swirling red abstract overlay */}
         <div
           className="absolute inset-0 rounded-t-2xl opacity-50"
           style={{
@@ -54,35 +100,49 @@ const Profliephotos = ({ activeTab = "profile", firstName = "Nivesh", lastName =
         >
           Upload Cover
         </button>
-        {/* Only photo overlaps banner, in front - 70px left margin */}
         <div className="absolute left-[70px] bottom-0 z-10 translate-y-1/2">
           <div className="w-32 h-32 sm:w-36 sm:h-36 rounded-[28px] overflow-hidden border-4 border-white shadow-md bg-gray-100">
-            <img
-              src={niveshImg}
-              alt="Profile"
-              className="w-full h-full object-cover"
-            />
+            {avatarObjectUrl ? (
+              <img
+                src={avatarObjectUrl}
+                alt=""
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div
+                className="w-full h-full flex items-center justify-center bg-slate-200 text-primary text-4xl sm:text-5xl font-bold select-none"
+                aria-hidden
+              >
+                {letter}
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Name + Change/Delete + tabs - 70px left to align with photo */}
       <div className="flex flex-wrap items-end justify-between gap-4 pt-16 sm:pt-20 pl-[70px] sm:pl-[70px] pr-0 sm:pr-2">
         <div className="flex flex-wrap items-end gap-4 sm:gap-6">
-          {/* Spacer for pic width + Change/Delete */}
           <div className="w-32 sm:w-36 shrink-0 flex flex-col items-start">
             <div className="flex gap-10 ">
-              <button type="button" className="text-primary text-sm font-medium underline cursor-pointer">
+              <button
+                type="button"
+                disabled={avatarBusy || !onAvatarFile}
+                onClick={() => fileRef.current?.click()}
+                className="text-primary text-sm font-medium underline cursor-pointer disabled:opacity-50 disabled:no-underline"
+              >
                 Change
               </button>
-              <button type="button" className="text-primary text-sm font-medium underline cursor-pointer">
+              <button
+                type="button"
+                disabled={avatarBusy || !hasAvatar || !onAvatarDelete}
+                onClick={() => void onAvatarDelete?.()}
+                className="text-primary text-sm font-medium underline cursor-pointer disabled:opacity-40 disabled:no-underline"
+              >
                 Delete
               </button>
             </div>
           </div>
 
-
-          {/* Name + subtitle - a little up */}
           <div className="pb-10 -mt-24 sm:-mt-25">
             <h1 className="text-primary font-bold text-xl sm:text-2xl">
               {firstName} {lastName}
@@ -93,7 +153,6 @@ const Profliephotos = ({ activeTab = "profile", firstName = "Nivesh", lastName =
           </div>
         </div>
 
-        {/* Tabs: PROFILE | VEHICLES | SECURITY – active tab gets red underline */}
         <div className="flex gap-6 sm:gap-8 pb-3 border-b border-gray-200 shrink-0">
           <Link
             to="/profile"

@@ -13,6 +13,8 @@ public record UserProfileDto(
 		Role role,
 		Gender gender,
 		LocalDate dateOfBirth,
-		String location
+		String location,
+		String profilePicture,
+		boolean hasAvatar
 ) {
 }

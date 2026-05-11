@@ -16,9 +16,6 @@ function userSearchText(user: UserProfile): string {
     user.name,
     user.email,
     user.phone ?? '',
-    user.role,
-    user.gender ?? '',
-    user.dateOfBirth ?? '',
     user.location ?? '',
   ]
     .join(' ')
@@ -60,7 +57,7 @@ const AdminUsers = () => {
     return userSearchText(user).includes(searchInput.toLowerCase())
   })
 
-  const colCount = 9
+  const colCount = 6
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
@@ -148,16 +145,13 @@ const AdminUsers = () => {
             overflowX: 'auto',
           }}
         >
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '960px' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '720px' }}>
             <thead>
               <tr style={{ backgroundColor: '#f1f5f9' }}>
                 <th style={{ ...headerCellStyle, width: '52px', textAlign: 'center' }}>No.</th>
                 <th style={headerCellStyle}>Name</th>
                 <th style={headerCellStyle}>Email</th>
                 <th style={headerCellStyle}>Phone</th>
-                <th style={headerCellStyle}>Role</th>
-                <th style={headerCellStyle}>Gender</th>
-                <th style={headerCellStyle}>Date of birth</th>
                 <th style={headerCellStyle}>Location</th>
                 <th style={headerCellStyle}>Action</th>
               </tr>
@@ -185,9 +179,6 @@ const AdminUsers = () => {
                     </td>
                     <td style={bodyCellStyle}>{user.email}</td>
                     <td style={bodyCellStyle}>{displayOrDash(user.phone)}</td>
-                    <td style={bodyCellStyle}>{user.role}</td>
-                    <td style={bodyCellStyle}>{displayOrDash(user.gender)}</td>
-                    <td style={bodyCellStyle}>{displayOrDash(user.dateOfBirth)}</td>
                     <td style={bodyCellStyle}>{displayOrDash(user.location)}</td>
                     <td style={bodyCellStyle}>
                       <Link
