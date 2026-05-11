@@ -36,6 +36,8 @@ type AuthContextValue = {
   login: (email: string, password: string) => Promise<AuthResponse>
   logout: () => void
   refreshUser: () => Promise<void>
+  /** Call after email change so the JWT subject matches the new address. */
+  replaceToken: (accessToken: string) => void
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -94,11 +96,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   )
 
   const refreshUser = useCallback(async () => {
-    const t = token ?? sessionStorage.getItem(TOKEN_KEY)
+    const t = readStoredToken() ?? token
     if (!t) return
     const profile = await authFetchProfile(t)
     setUser(profile)
   }, [token])
+
+  const replaceToken = useCallback((accessToken: string) => {
+    sessionStorage.setItem(TOKEN_KEY, accessToken)
+    localStorage.removeItem(TOKEN_KEY)
+    setToken(accessToken)
+  }, [])
 
   const value = useMemo(
     () => ({
@@ -108,8 +116,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       login,
       logout,
       refreshUser,
+      replaceToken,
     }),
-    [user, token, loading, login, logout, refreshUser],
+    [user, token, loading, login, logout, refreshUser, replaceToken],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

@@ -71,9 +71,20 @@ public class AuthService {
 	}
 
 	@Transactional
-	public UserProfileDto updateProfile(String email, UpdateProfileRequest request) {
+	public ProfilePatchResponse updateProfile(String email, UpdateProfileRequest request) {
 		User user = userRepository.findByEmailIgnoreCase(email.trim().toLowerCase())
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+		boolean emailChanged = false;
+		if (request.getEmail() != null && StringUtils.hasText(request.getEmail())) {
+			String normalized = request.getEmail().trim().toLowerCase();
+			if (!normalized.equalsIgnoreCase(user.getEmail())) {
+				if (userRepository.existsByEmailIgnoreCase(normalized)) {
+					throw new EmailAlreadyRegisteredException(normalized);
+				}
+				user.setEmail(normalized);
+				emailChanged = true;
+			}
+		}
 		if (request.getName() != null && StringUtils.hasText(request.getName())) {
 			user.setName(request.getName().trim());
 		}
@@ -89,7 +100,10 @@ public class AuthService {
 		if (request.getLocation() != null) {
 			user.setLocation(StringUtils.hasText(request.getLocation()) ? request.getLocation().trim() : null);
 		}
-		return toProfileDto(userRepository.save(user));
+		User saved = userRepository.save(user);
+		UserProfileDto dto = toProfileDto(saved);
+		String newToken = emailChanged ? jwtService.generateToken(saved) : null;
+		return new ProfilePatchResponse(dto, newToken);
 	}
 
 	private AuthResponse buildAuthResponse(User user) {

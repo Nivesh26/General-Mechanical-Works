@@ -16,10 +16,16 @@ export interface UserProfile {
 
 export type ProfileUpdatePayload = {
   name?: string
+  email?: string
   phone?: string
   gender?: ProfileGender
   dateOfBirth?: string
   location?: string
+}
+
+export type ProfilePatchResult = {
+  profile: UserProfile
+  accessToken?: string | null
 }
 
 export interface AuthResponse extends UserProfile {
@@ -85,7 +91,7 @@ export async function fetchAdminUsers(token: string): Promise<UserProfile[]> {
 export async function patchUserProfile(
   token: string,
   body: ProfileUpdatePayload,
-): Promise<UserProfile> {
+): Promise<ProfilePatchResult> {
   const res = await fetch(`${getApiBase()}/api/users/me`, {
     method: 'PATCH',
     headers: {
@@ -96,5 +102,5 @@ export async function patchUserProfile(
     body: JSON.stringify(body),
   })
   if (!res.ok) throw new Error(await parseErrorMessage(res))
-  return res.json() as Promise<UserProfile>
+  return res.json() as Promise<ProfilePatchResult>
 }

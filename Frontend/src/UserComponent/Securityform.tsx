@@ -1,17 +1,26 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { HiEye, HiEyeSlash } from "react-icons/hi2";
+import { toast } from "react-toastify";
+import { useAuth } from "../context/AuthContext";
+import { patchUserProfile } from "../lib/api";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const Securityform = () => {
-  const [email, setEmail] = useState("nivesh@gmail.com");
+  const { token, user, refreshUser, replaceToken } = useAuth();
+  const [email, setEmail] = useState("");
   const [editingEmail, setEditingEmail] = useState(false);
   const [emailInput, setEmailInput] = useState("");
   const [emailError, setEmailError] = useState("");
+  const [savingEmail, setSavingEmail] = useState(false);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [showCurrent, setShowCurrent] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+
+  useEffect(() => {
+    if (user?.email) setEmail(user.email);
+  }, [user?.email]);
 
   const startEditEmail = () => {
     setEmailError("");
@@ -19,7 +28,7 @@ const Securityform = () => {
     setEditingEmail(true);
   };
 
-  const saveEmail = () => {
+  const saveEmail = async () => {
     const trimmed = emailInput.trim();
     if (trimmed.length === 0) {
       setEmailError("Email is required.");
@@ -29,16 +38,37 @@ const Securityform = () => {
       setEmailError("Please enter a valid email address.");
       return;
     }
+    if (!token) {
+      toast.error("You must be signed in to update email.");
+      return;
+    }
+    if (trimmed.toLowerCase() === email.toLowerCase()) {
+      setEmailError("");
+      setEditingEmail(false);
+      setEmailInput("");
+      return;
+    }
     setEmailError("");
-    setEmail(trimmed);
-    setEditingEmail(false);
-    setEmailInput("");
+    setSavingEmail(true);
+    try {
+      const { profile, accessToken } = await patchUserProfile(token, { email: trimmed });
+      if (accessToken) replaceToken(accessToken);
+      await refreshUser();
+      setEmail(profile.email);
+      setEditingEmail(false);
+      setEmailInput("");
+      toast.success("Email updated.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not update email.");
+    } finally {
+      setSavingEmail(false);
+    }
   };
 
   const handleEmailKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      saveEmail();
+      void saveEmail();
     }
   };
 
@@ -61,10 +91,11 @@ const Securityform = () => {
                   placeholder="Enter email"
                   className="w-full max-w-md bg-transparent border-0 border-b border-gray-200 py-2 px-0 text-[#1a1a1a] text-center text-[15px] sm:text-base focus:outline-none focus:border-primary"
                   autoFocus
+                  disabled={savingEmail}
                 />
               ) : (
                 <span className="text-center text-gray-500 text-[15px] sm:text-base truncate block w-full">
-                  {email}
+                  {email || "—"}
                 </span>
               )}
             </div>
@@ -77,8 +108,9 @@ const Securityform = () => {
           <div className="w-20 sm:w-24 shrink-0 flex justify-end">
             <button
               type="button"
-              onClick={editingEmail ? saveEmail : startEditEmail}
-              className="text-primary text-sm font-medium hover:underline cursor-pointer"
+              disabled={savingEmail}
+              onClick={() => void (editingEmail ? saveEmail() : startEditEmail())}
+              className="text-primary text-sm font-medium hover:underline cursor-pointer disabled:opacity-50"
             >
               {editingEmail ? "Save" : "Edit"}
             </button>

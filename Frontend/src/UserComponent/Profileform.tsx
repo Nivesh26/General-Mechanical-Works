@@ -5,7 +5,6 @@ import type { ProfileGender, ProfileUpdatePayload } from "../lib/api";
 export type ProfileFieldSource = {
   firstName: string;
   lastName: string;
-  email: string;
   phone: string;
   dateOfBirthIso: string | null;
   gender: ProfileGender | null;
@@ -41,7 +40,6 @@ function buildFields(source: ProfileFieldSource): FieldRow[] {
   return [
     { label: "First Name", value: source.firstName },
     { label: "Last Name", value: source.lastName },
-    { label: "Email", value: source.email },
     { label: "Phone Number", value: source.phone },
     { label: "Date of Birth", value: dobStore },
     { label: "Gender", value: genderDisplay(source.gender) },
@@ -117,7 +115,6 @@ const Profileform = ({ profile, onNameChange, onPersist }: ProfileformProps) => 
   }, [profile]);
 
   const startEdit = (label: string, value: string) => {
-    if (label === "Email") return;
     setValidationError("");
     setEditingLabel(label);
     if (label === "Date of Birth") {
@@ -184,7 +181,6 @@ const Profileform = ({ profile, onNameChange, onPersist }: ProfileformProps) => 
     <section className="w-full py-6 sm:py-8 px-2 sm:px-0">
       <div className="border-t border-gray-200">
         {fields.map(({ label, value }) => {
-          const readOnly = label === "Email";
           const isEditing = editingLabel === label;
           const showError = isEditing && validationError;
           const displayText =
@@ -244,18 +240,14 @@ const Profileform = ({ profile, onNameChange, onPersist }: ProfileformProps) => 
                   </p>
                 )}
               </div>
-              {readOnly ? (
-                <span className="shrink-0 w-10 sm:w-12" aria-hidden />
-              ) : (
-                <button
-                  type="button"
-                  disabled={saving}
-                  onClick={() => void (isEditing ? saveEdit() : startEdit(label, value))}
-                  className="text-primary text-sm font-medium hover:underline cursor-pointer shrink-0 w-fit disabled:opacity-50"
-                >
-                  {isEditing ? "Save" : "Edit"}
-                </button>
-              )}
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => void (isEditing ? saveEdit() : startEdit(label, value))}
+                className="text-primary text-sm font-medium hover:underline cursor-pointer shrink-0 w-fit disabled:opacity-50"
+              >
+                {isEditing ? "Save" : "Edit"}
+              </button>
             </div>
           );
         })}

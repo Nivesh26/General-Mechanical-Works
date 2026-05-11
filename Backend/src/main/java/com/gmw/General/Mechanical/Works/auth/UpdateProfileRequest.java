@@ -7,6 +7,7 @@ import com.gmw.General.Mechanical.Works.user.Gender;
 public class UpdateProfileRequest {
 
 	private String name;
+	private String email;
 	private String phone;
 	private Gender gender;
 	private LocalDate dateOfBirth;
@@ -18,6 +19,14 @@ public class UpdateProfileRequest {
 
 	public void setName(String name) {
 		this.name = name;
+	}
+
+	public String getEmail() {
+		return email;
+	}
+
+	public void setEmail(String email) {
+		this.email = email;
 	}
 
 	public String getPhone() {

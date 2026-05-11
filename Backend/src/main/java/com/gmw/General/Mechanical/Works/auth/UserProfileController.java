@@ -18,7 +18,7 @@ public class UserProfileController {
 	}
 
 	@PatchMapping("/me")
-	public UserProfileDto updateProfile(Principal principal, @RequestBody UpdateProfileRequest request) {
+	public ProfilePatchResponse updateProfile(Principal principal, @RequestBody UpdateProfileRequest request) {
 		return authService.updateProfile(principal.getName(), request);
 	}
 }

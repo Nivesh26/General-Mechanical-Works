@@ -19,7 +19,7 @@ function splitFullName(fullName: string): { first: string; last: string } {
 }
 
 const Profile = () => {
-  const { user, loading, logout, token, refreshUser } = useAuth();
+  const { user, loading, logout, token, refreshUser, replaceToken } = useAuth();
   const navigate = useNavigate();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -35,7 +35,6 @@ const Profile = () => {
       return {
         firstName: "",
         lastName: "",
-        email: "",
         phone: "",
         dateOfBirthIso: null,
         gender: null,
@@ -46,7 +45,6 @@ const Profile = () => {
     return {
       firstName: first,
       lastName: last,
-      email: user.email,
       phone: user.phone ?? "",
       dateOfBirthIso: user.dateOfBirth ?? null,
       gender: user.gender ?? null,
@@ -74,7 +72,8 @@ const Profile = () => {
 
   const handlePersist = async (patch: ProfileUpdatePayload) => {
     if (!token) return;
-    await patchUserProfile(token, patch);
+    const { accessToken } = await patchUserProfile(token, patch);
+    if (accessToken) replaceToken(accessToken);
     await refreshUser();
   };
 
