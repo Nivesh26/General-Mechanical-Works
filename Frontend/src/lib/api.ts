@@ -74,6 +74,14 @@ export async function authFetchProfile(token: string): Promise<UserProfile> {
   return res.json() as Promise<UserProfile>
 }
 
+export async function fetchAdminUsers(token: string): Promise<UserProfile[]> {
+  const res = await fetch(`${getApiBase()}/api/admin/users`, {
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<UserProfile[]>
+}
+
 export async function patchUserProfile(
   token: string,
   body: ProfileUpdatePayload,

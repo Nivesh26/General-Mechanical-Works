@@ -1,45 +1,66 @@
 import type { CSSProperties } from 'react'
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import AdminNavbar from '../AdminComponent/AdminNavbar'
 import { ADMIN_MAIN_SCROLL, ADMIN_PAGE_TITLE } from '../AdminComponent/adminMainStyles'
+import { useAuth } from '../context/AuthContext'
+import { fetchAdminUsers, type UserProfile } from '../lib/api'
 
-const USERS = [
-  {
-    name: 'Aarav Sharma',
-    email: 'aarav.sharma@example.com',
-    number: '+977 9849925333',
-    location: 'Patan, Nepal',
-  },
-  {
-    name: 'Diya Patel',
-    email: 'diya.patel@example.com',
-    number: '+977 9812345678',
-    location: 'Kathmandu, Nepal',
-  },
-  {
-    name: 'Rohan Verma',
-    email: 'rohan.verma@example.com',
-    number: '+977 9849925333',
-    location: 'Pokhara, Nepal',
-  },
-  {
-    name: 'Neha Singh',
-    email: 'neha.singh@example.com',
-    number: '+977 9849925333',
-    location: null,
-  },
-] as const
+function displayOrDash(value: string | null | undefined): string {
+  const t = value?.trim()
+  return t ? t : '-'
+}
+
+function userSearchText(user: UserProfile): string {
+  return [
+    user.name,
+    user.email,
+    user.phone ?? '',
+    user.role,
+    user.gender ?? '',
+    user.dateOfBirth ?? '',
+    user.location ?? '',
+  ]
+    .join(' ')
+    .toLowerCase()
+}
 
 const AdminUsers = () => {
+  const { token } = useAuth()
+  const [users, setUsers] = useState<UserProfile[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [searchInput, setSearchInput] = useState('')
 
-  const filteredUsers = [...USERS].filter((user) => {
-    if (!searchInput.trim()) return true
+  const loadUsers = useCallback(async () => {
+    if (!token) {
+      setUsers([])
+      setLoading(false)
+      return
+    }
+    setLoading(true)
+    setError(null)
+    try {
+      const list = await fetchAdminUsers(token)
+      setUsers(list)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load users')
+      setUsers([])
+    } finally {
+      setLoading(false)
+    }
+  }, [token])
 
-    const searchableText = `${user.name} ${user.email} ${user.number} ${user.location ?? ''}`.toLowerCase()
-    return searchableText.includes(searchInput.toLowerCase())
+  useEffect(() => {
+    void loadUsers()
+  }, [loadUsers])
+
+  const filteredUsers = users.filter((user) => {
+    if (!searchInput.trim()) return true
+    return userSearchText(user).includes(searchInput.toLowerCase())
   })
+
+  const colCount = 9
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
@@ -51,6 +72,8 @@ const AdminUsers = () => {
             alignItems: 'center',
             justifyContent: 'space-between',
             marginBottom: '16px',
+            flexWrap: 'wrap',
+            gap: '12px',
           }}
         >
           <h1 style={ADMIN_PAGE_TITLE}>Users</h1>
@@ -60,7 +83,7 @@ const AdminUsers = () => {
               type="text"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Search by name, email, number, location"
+              placeholder="Search by any field"
               autoComplete="off"
               autoCorrect="off"
               autoCapitalize="off"
@@ -93,43 +116,81 @@ const AdminUsers = () => {
           </div>
         </div>
 
+        {error ? (
+          <p style={{ color: '#b91c1c', fontSize: '14px', marginBottom: '12px' }}>
+            {error}{' '}
+            <button
+              type="button"
+              onClick={() => void loadUsers()}
+              style={{
+                marginLeft: '8px',
+                padding: '4px 10px',
+                fontSize: '13px',
+                fontWeight: 600,
+                color: '#bd162c',
+                backgroundColor: '#fff',
+                border: '1px solid #cbd5e1',
+                borderRadius: '6px',
+                cursor: 'pointer',
+              }}
+            >
+              Retry
+            </button>
+          </p>
+        ) : null}
+
         <div
           style={{
             backgroundColor: '#ffffff',
             border: '1px solid #e2e8f0',
             borderRadius: '12px',
-            overflow: 'hidden',
+            overflowX: 'auto',
           }}
         >
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '960px' }}>
             <thead>
               <tr style={{ backgroundColor: '#f1f5f9' }}>
                 <th style={{ ...headerCellStyle, width: '52px', textAlign: 'center' }}>No.</th>
                 <th style={headerCellStyle}>Name</th>
                 <th style={headerCellStyle}>Email</th>
-                <th style={headerCellStyle}>Number</th>
+                <th style={headerCellStyle}>Phone</th>
+                <th style={headerCellStyle}>Role</th>
+                <th style={headerCellStyle}>Gender</th>
+                <th style={headerCellStyle}>Date of birth</th>
                 <th style={headerCellStyle}>Location</th>
                 <th style={headerCellStyle}>Action</th>
               </tr>
             </thead>
             <tbody>
-              {filteredUsers.length > 0 ? (
+              {loading ? (
+                <tr style={{ borderTop: '1px solid #e2e8f0' }}>
+                  <td style={bodyCellStyle} colSpan={colCount}>
+                    Loading users…
+                  </td>
+                </tr>
+              ) : filteredUsers.length > 0 ? (
                 filteredUsers.map((user, index) => (
-                  <tr key={user.email} style={{ borderTop: '1px solid #e2e8f0' }}>
+                  <tr key={user.id} style={{ borderTop: '1px solid #e2e8f0' }}>
                     <td style={{ ...bodyCellStyle, textAlign: 'center', color: '#64748b', fontWeight: 600 }}>
                       {index + 1}
                     </td>
                     <td style={bodyCellStyle}>
-                      <Link to="/adminuserprofile" className="admin-users-name-link">
+                      <Link
+                        to={`/adminuserprofile?userId=${user.id}`}
+                        className="admin-users-name-link"
+                      >
                         {user.name}
                       </Link>
                     </td>
                     <td style={bodyCellStyle}>{user.email}</td>
-                    <td style={bodyCellStyle}>{user.number}</td>
-                    <td style={bodyCellStyle}>{user.location?.trim() ? user.location : '-'}</td>
+                    <td style={bodyCellStyle}>{displayOrDash(user.phone)}</td>
+                    <td style={bodyCellStyle}>{user.role}</td>
+                    <td style={bodyCellStyle}>{displayOrDash(user.gender)}</td>
+                    <td style={bodyCellStyle}>{displayOrDash(user.dateOfBirth)}</td>
+                    <td style={bodyCellStyle}>{displayOrDash(user.location)}</td>
                     <td style={bodyCellStyle}>
                       <Link
-                        to="/adminuserprofile"
+                        to={`/adminuserprofile?userId=${user.id}`}
                         style={{
                           padding: '6px 10px',
                           fontSize: '12px',
@@ -149,8 +210,8 @@ const AdminUsers = () => {
                 ))
               ) : (
                 <tr style={{ borderTop: '1px solid #e2e8f0' }}>
-                  <td style={bodyCellStyle} colSpan={6}>
-                    No users found.
+                  <td style={bodyCellStyle} colSpan={colCount}>
+                    {users.length === 0 ? 'No users in the database.' : 'No users match your search.'}
                   </td>
                 </tr>
               )}
