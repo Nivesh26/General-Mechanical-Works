@@ -25,7 +25,6 @@ function postLoginPath(role: Role, from: string): string {
 type LoginLocationState = {
   from?: string
   registered?: boolean
-  email?: string
 }
 
 const Userlogin = () => {
@@ -35,7 +34,7 @@ const Userlogin = () => {
   const routeState = (location.state ?? {}) as LoginLocationState
   const from = routeState.from ?? '/'
 
-  const [email, setEmail] = useState(routeState.email ?? '')
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [errors, setErrors] = useState<Partial<Record<'email' | 'password', string>>>({})

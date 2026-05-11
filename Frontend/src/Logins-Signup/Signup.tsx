@@ -9,8 +9,46 @@ import googleIcon from '../assets/google.png'
 import { authSignup } from '../lib/api'
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const PHONE_REGEX = /^\d{10}$/
+/** Matches backend SignupRequest / User constraints */
+const NAME_MAX = 255
+const PASSWORD_MAX = 128
 
 type SignupField = 'fullName' | 'email' | 'phone' | 'password' | 'confirmPassword'
+
+type SignupValues = {
+  fullName: string
+  email: string
+  phone: string
+  password: string
+  confirmPassword: string
+}
+
+function computeSignupErrors(v: SignupValues): Partial<Record<SignupField, string>> {
+  const next: Partial<Record<SignupField, string>> = {}
+  const nameTrim = v.fullName.trim()
+  if (!nameTrim) next.fullName = 'Full name is required.'
+  else if (nameTrim.length < 2) next.fullName = 'Enter at least 2 characters.'
+  else if (nameTrim.length > NAME_MAX) next.fullName = `Name must be at most ${NAME_MAX} characters.`
+
+  const emailTrim = v.email.trim()
+  if (!emailTrim) next.email = 'Email is required.'
+  else if (!emailRegex.test(emailTrim)) next.email = 'Enter a valid email address.'
+
+  const phoneDigits = v.phone.replace(/\D/g, '')
+  if (!phoneDigits) next.phone = 'Phone number is required.'
+  else if (!PHONE_REGEX.test(phoneDigits)) next.phone = 'Please enter exactly 10 digits.'
+
+  if (!v.password) next.password = 'Password is required.'
+  else if (v.password.length < 8) next.password = 'Password must be at least 8 characters.'
+  else if (v.password.length > PASSWORD_MAX)
+    next.password = `Password must be at most ${PASSWORD_MAX} characters.`
+
+  if (!v.confirmPassword) next.confirmPassword = 'Confirm your password.'
+  else if (v.password !== v.confirmPassword) next.confirmPassword = 'Passwords do not match.'
+
+  return next
+}
 
 const Usersignup = () => {
   const navigate = useNavigate()
@@ -25,28 +63,31 @@ const Usersignup = () => {
   const [errors, setErrors] = useState<Partial<Record<SignupField, string>>>({})
   const [submitting, setSubmitting] = useState(false)
 
+  const values = (): SignupValues => ({
+    fullName,
+    email,
+    phone,
+    password,
+    confirmPassword,
+  })
+
   const validate = () => {
-    const next: Partial<Record<SignupField, string>> = {}
-    const nameTrim = fullName.trim()
-    if (!nameTrim) next.fullName = 'Full name is required.'
-    else if (nameTrim.length < 2) next.fullName = 'Enter at least 2 characters.'
-
-    const emailTrim = email.trim()
-    if (!emailTrim) next.email = 'Email is required.'
-    else if (!emailRegex.test(emailTrim)) next.email = 'Enter a valid email address.'
-
-    const digits = phone.replace(/\D/g, '')
-    if (!phone.trim()) next.phone = 'Phone number is required.'
-    else if (digits.length < 10) next.phone = 'Enter at least 10 digits.'
-
-    if (!password) next.password = 'Password is required.'
-    else if (password.length < 8) next.password = 'Password must be at least 8 characters.'
-
-    if (!confirmPassword) next.confirmPassword = 'Confirm your password.'
-    else if (password !== confirmPassword) next.confirmPassword = 'Passwords do not match.'
-
+    const next = computeSignupErrors(values())
     setErrors(next)
     return Object.keys(next).length === 0
+  }
+
+  const syncErrorsForFields = (fields: SignupField[]) => {
+    const computed = computeSignupErrors(values())
+    setErrors((prev) => {
+      const n = { ...prev }
+      for (const field of fields) {
+        const msg = computed[field]
+        if (msg) n[field] = msg
+        else delete n[field]
+      }
+      return n
+    })
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -55,16 +96,17 @@ const Usersignup = () => {
     setSubmitting(true)
     try {
       const trimmedEmail = email.trim()
+      const phoneDigits = phone.replace(/\D/g, '')
       await authSignup({
         name: fullName.trim(),
         email: trimmedEmail,
         password,
-        phone: phone.trim(),
+        phone: phoneDigits,
       })
       toast.success('Account created. Please sign in.')
       navigate('/login', {
         replace: true,
-        state: { registered: true, email: trimmedEmail },
+        state: { registered: true },
       })
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Registration failed.')
@@ -111,10 +153,12 @@ const Usersignup = () => {
                   autoComplete="name"
                   placeholder="Full Name"
                   value={fullName}
+                  maxLength={NAME_MAX}
                   onChange={(e) => {
                     setFullName(e.target.value)
                     clearError('fullName')
                   }}
+                  onBlur={() => syncErrorsForFields(['fullName'])}
                   aria-invalid={Boolean(errors.fullName)}
                   aria-describedby={errors.fullName ? 'signup-name-error' : undefined}
                   className={inputBorder(Boolean(errors.fullName))}
@@ -136,6 +180,7 @@ const Usersignup = () => {
                     setEmail(e.target.value)
                     clearError('email')
                   }}
+                  onBlur={() => syncErrorsForFields(['email'])}
                   aria-invalid={Boolean(errors.email)}
                   aria-describedby={errors.email ? 'signup-email-error' : undefined}
                   className={inputBorder(Boolean(errors.email))}
@@ -151,12 +196,14 @@ const Usersignup = () => {
                   type="tel"
                   name="phone"
                   autoComplete="tel"
+                  inputMode="numeric"
                   placeholder="Phone Number"
                   value={phone}
                   onChange={(e) => {
-                    setPhone(e.target.value)
+                    setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))
                     clearError('phone')
                   }}
+                  onBlur={() => syncErrorsForFields(['phone'])}
                   aria-invalid={Boolean(errors.phone)}
                   aria-describedby={errors.phone ? 'signup-phone-error' : undefined}
                   className={inputBorder(Boolean(errors.phone))}
@@ -175,12 +222,18 @@ const Usersignup = () => {
                     autoComplete="new-password"
                     placeholder="Password"
                     value={password}
+                    maxLength={PASSWORD_MAX}
                     onChange={(e) => {
                       const v = e.target.value
                       setPassword(v)
                       clearError('password')
                       if (v === confirmPassword) clearError('confirmPassword')
                     }}
+                    onBlur={() =>
+                      syncErrorsForFields(
+                        confirmPassword !== '' ? ['password', 'confirmPassword'] : ['password'],
+                      )
+                    }
                     aria-invalid={Boolean(errors.password)}
                     aria-describedby={errors.password ? 'signup-password-error' : undefined}
                     className={`${inputBorder(Boolean(errors.password))} pr-9`}
@@ -208,10 +261,12 @@ const Usersignup = () => {
                     autoComplete="new-password"
                     placeholder="Confirm Password"
                     value={confirmPassword}
+                    maxLength={PASSWORD_MAX}
                     onChange={(e) => {
                       setConfirmPassword(e.target.value)
                       clearError('confirmPassword')
                     }}
+                    onBlur={() => syncErrorsForFields(['confirmPassword'])}
                     aria-invalid={Boolean(errors.confirmPassword)}
                     aria-describedby={errors.confirmPassword ? 'signup-confirm-error' : undefined}
                     className={`${inputBorder(Boolean(errors.confirmPassword))} pr-9`}

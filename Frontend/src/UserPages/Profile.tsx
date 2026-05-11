@@ -181,15 +181,13 @@ const Profile = () => {
           onPersist={handlePersist}
         />
 
-        <div className="flex justify-end pt-4 pb-2 mt-2">
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="px-6 py-2.5 rounded-full border border-gray-300 text-gray-800 text-sm font-medium hover:bg-gray-50 transition-colors"
-          >
-            Log out
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="px-6 py-2.5 rounded-full border border-gray-300 text-gray-800 text-sm font-medium hover:bg-gray-50 transition-colors mt-2 mb-2 ml-auto block"
+        >
+          Log out
+        </button>
       </div>
 
       <Footer />

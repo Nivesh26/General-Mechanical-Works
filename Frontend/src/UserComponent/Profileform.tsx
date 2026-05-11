@@ -17,7 +17,7 @@ interface ProfileformProps {
   onPersist?: (patch: ProfileUpdatePayload) => Promise<void>;
 }
 
-const PHONE_REGEX = /^[\d\s\-+()]{10,15}$/;
+const PHONE_REGEX = /^\d{10}$/;
 const MAX_LOCATION = 500;
 
 function formatDobDisplay(isoOrDash: string): string {
@@ -56,8 +56,8 @@ function getValidationError(label: string, value: string): string {
       return trimmed.length === 0 ? "Last name is required." : "";
     case "Phone Number":
       if (trimmed.length === 0) return "Phone number is required.";
-      if (!PHONE_REGEX.test(trimmed) || trimmed.replace(/\D/g, "").length < 10) {
-        return "Please enter a valid phone number (at least 10 digits).";
+      if (!PHONE_REGEX.test(trimmed)) {
+        return "Please enter exactly 10 digits.";
       }
       return "";
     case "Location":
@@ -200,7 +200,13 @@ const Profileform = ({ profile, onNameChange, onPersist }: ProfileformProps) => 
                     label === "Gender" ? (
                       <select
                         value={editingValue}
-                        onChange={(e) => setEditingValue(e.target.value)}
+                        onChange={(e) =>
+                          setEditingValue(
+                            label === "Phone Number"
+                              ? e.target.value.replace(/\D/g, "").slice(0, 10)
+                              : e.target.value,
+                          )
+                        }
                         onKeyDown={handleKeyDown}
                         className="w-full max-w-md bg-transparent border-0 border-b border-gray-200 py-2 px-0 text-[#1a1a1a] text-center text-[15px] sm:text-base focus:outline-none focus:border-primary cursor-pointer"
                         autoFocus
