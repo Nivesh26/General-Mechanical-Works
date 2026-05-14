@@ -34,6 +34,7 @@ import AdminUserProfile from './AdminPages/UserProfile'
 import AdminService from './AdminPages/AdminService'
 import Checkout from './UserPages/Checkout'
 import { AdminPrivateRoute } from './components/AdminPrivateRoute'
+import { UserPrivateRoute } from './components/UserPrivateRoute'
 
 /** Scroll to top on every navigation so new pages don’t open mid-page. */
 function ScrollToTop() {
@@ -69,6 +70,8 @@ function AppRoutes() {
   const withFade = (node: ReactNode) => <PageTransition>{node}</PageTransition>
   const adminPage = (node: ReactNode) =>
     withFade(<AdminPrivateRoute>{node}</AdminPrivateRoute>)
+  const userPage = (node: ReactNode) =>
+    withFade(<UserPrivateRoute>{node}</UserPrivateRoute>)
 
   return (
     <Routes>
@@ -82,10 +85,10 @@ function AppRoutes() {
       <Route path="/profilevehicles" element={withFade(<Vehicles />)} />
       <Route path="/profilesecurity" element={withFade(<ProfileSecurity />)} />
       <Route path="/productdetail" element={withFade(<Productdetail />)} />
-      <Route path="/cart" element={withFade(<Cart />)} />
-      <Route path="/ordertracking" element={withFade(<Ordertracking />)} />
+      <Route path="/cart" element={userPage(<Cart />)} />
+      <Route path="/ordertracking" element={userPage(<Ordertracking />)} />
       <Route path="/blogs" element={withFade(<Blogs />)} />
-      <Route path="/checkout" element={withFade(<Checkout />)} />
+      <Route path="/checkout" element={userPage(<Checkout />)} />
 
       {/* Login and Signup */}
       <Route path="/login" element={withFade(<Login />)} />

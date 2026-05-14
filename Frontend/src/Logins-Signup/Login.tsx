@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { HiEye, HiEyeSlash } from 'react-icons/hi2'
 import Header from '../UserComponent/Header'
@@ -11,28 +11,14 @@ import type { Role } from '../lib/api'
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
-/** After login: admins go to the dashboard; users go to `from` unless it is an admin URL. */
-function postLoginPath(role: Role, from: string): string {
-  if (role === 'ADMIN') {
-    return '/admindashboard'
-  }
-  if (from.startsWith('/admin')) {
-    return '/'
-  }
-  return from || '/'
-}
-
-type LoginLocationState = {
-  from?: string
-  registered?: boolean
+/** After login: admins go to the dashboard; everyone else goes to the homepage. */
+function postLoginPath(role: Role): string {
+  return role === 'ADMIN' ? '/admindashboard' : '/'
 }
 
 const Userlogin = () => {
   const { login } = useAuth()
   const navigate = useNavigate()
-  const location = useLocation()
-  const routeState = (location.state ?? {}) as LoginLocationState
-  const from = routeState.from ?? '/'
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -58,7 +44,7 @@ const Userlogin = () => {
     try {
       const auth = await login(email.trim(), password)
       toast.success('Signed in successfully.')
-      navigate(postLoginPath(auth.role, from), { replace: true })
+      navigate(postLoginPath(auth.role), { replace: true })
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Login failed.')
     } finally {

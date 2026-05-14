@@ -1,5 +1,9 @@
 import { NavLink } from 'react-router-dom'
-import { HiOutlineMagnifyingGlass } from 'react-icons/hi2'
+import {
+  HiOutlineMagnifyingGlass,
+  HiOutlineCalendarDays,
+  HiOutlineShoppingCart,
+} from 'react-icons/hi2'
 import GMWlogo from '../assets/GMWlogo.png'
 import { useAuth } from '../context/AuthContext'
 import { useProfileAvatar } from '../hooks/useProfileAvatar'
@@ -24,7 +28,10 @@ const Header = () => {
     { to: '/contactus', label: 'Contact' },
   ]
 
-  const accountLoading = Boolean(token) && loading
+  const showLoggedInActions = Boolean(token)
+
+  const iconNavClass =
+    'flex-shrink-0 flex items-center justify-center w-11 h-11 rounded-full text-gray-700 hover:bg-gray-100 transition-colors border border-transparent hover:border-gray-200'
 
   return (
     <header className="sticky top-0 z-50 bg-white py-2">
@@ -70,33 +77,53 @@ const Header = () => {
             </span>
           </div>
 
-          {accountLoading ? (
-            <span
-              className="flex-shrink-0 w-11 h-11 rounded-full bg-gray-100 animate-pulse"
-              aria-hidden
-            />
-          ) : user ? (
-            <NavLink
-              to="/profile"
-              className="flex-shrink-0 flex items-center justify-center w-11 h-11 rounded-full text-black hover:bg-gray-100 transition-colors overflow-hidden border border-gray-200 bg-gray-50"
-              aria-label="Profile"
-              title="Profile"
-            >
-              {avatarUrl ? (
-                <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
-              ) : (
-                <span className="text-lg font-bold text-primary select-none" aria-hidden>
-                  {profileInitialFromName(user.name)}
-                </span>
-              )}
-            </NavLink>
-          ) : (
+          {!showLoggedInActions ? (
             <NavLink
               to="/login"
               className="flex-shrink-0 px-6 py-2.5 rounded-full bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-colors"
             >
               Login
             </NavLink>
+          ) : (
+            <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+              <span
+                className={`${iconNavClass} cursor-default select-none`}
+                aria-hidden="true"
+              >
+                <HiOutlineCalendarDays className="w-6 h-6" />
+              </span>
+              <NavLink
+                to="/cart"
+                className={({ isActive }) =>
+                  `${iconNavClass}${isActive ? ' text-primary bg-gray-50 border-gray-200' : ''}`
+                }
+                aria-label="Cart"
+                title="Cart"
+              >
+                <HiOutlineShoppingCart className="w-6 h-6" aria-hidden />
+              </NavLink>
+              {loading && !user ? (
+                <span
+                  className="flex-shrink-0 w-11 h-11 rounded-full bg-gray-100 animate-pulse border border-gray-200"
+                  aria-hidden
+                />
+              ) : user ? (
+                <NavLink
+                  to="/profile"
+                  className="flex-shrink-0 flex items-center justify-center w-11 h-11 rounded-full text-black hover:bg-gray-100 transition-colors overflow-hidden border border-gray-200 bg-gray-50"
+                  aria-label="Profile"
+                  title="Profile"
+                >
+                  {avatarUrl ? (
+                    <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-lg font-bold text-primary select-none" aria-hidden>
+                      {profileInitialFromName(user.name)}
+                    </span>
+                  )}
+                </NavLink>
+              ) : null}
+            </div>
           )}
         </div>
       </div>
