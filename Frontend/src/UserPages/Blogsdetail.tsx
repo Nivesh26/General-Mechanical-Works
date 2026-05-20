@@ -1,20 +1,23 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { toast } from 'react-toastify'
 import { HiOutlineArrowLeft, HiOutlineHandThumbUp } from 'react-icons/hi2'
 import Header from '../UserComponent/Header'
 import Footer from '../UserComponent/Footer'
 import Copyright from '../UserComponent/Copyright'
-import { fetchBlog, likeBlog, type BlogPost } from '../lib/api'
+import { useAuth } from '../context/AuthContext'
+import { fetchBlog, likeBlog, unlikeBlog, type BlogPost } from '../lib/api'
 import { blogBodyToParagraphs, blogImageUrl } from '../lib/blogs'
 
 const Blogsdetail = () => {
   const { id: idParam } = useParams()
+  const navigate = useNavigate()
+  const { token } = useAuth()
   const blogId = Number.parseInt(idParam ?? '', 10)
 
   const [post, setPost] = useState<BlogPost | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [liked, setLiked] = useState(false)
   const [likeBusy, setLikeBusy] = useState(false)
 
   useEffect(() => {
@@ -27,7 +30,7 @@ const Blogsdetail = () => {
     let cancelled = false
     setLoading(true)
     setError(null)
-    fetchBlog(blogId)
+    fetchBlog(blogId, token)
       .then((data) => {
         if (!cancelled) setPost(data)
       })
@@ -43,15 +46,23 @@ const Blogsdetail = () => {
     return () => {
       cancelled = true
     }
-  }, [blogId])
+  }, [blogId, token])
+
+  const liked = post?.likedByCurrentUser ?? false
 
   const toggleLike = async () => {
-    if (!post || liked || likeBusy) return
+    if (!post || likeBusy) return
+    if (!token) {
+      toast.info('Please sign in to like this post.')
+      navigate('/login', { state: { from: `/blogs/${post.id}` } })
+      return
+    }
     setLikeBusy(true)
     try {
-      const updated = await likeBlog(post.id)
+      const updated = liked
+        ? await unlikeBlog(post.id, token)
+        : await likeBlog(post.id, token)
       setPost(updated)
-      setLiked(true)
     } catch {
       /* ignore — count unchanged */
     } finally {
@@ -112,14 +123,14 @@ const Blogsdetail = () => {
                 <button
                   type="button"
                   onClick={() => void toggleLike()}
-                  disabled={liked || likeBusy}
+                  disabled={likeBusy}
                   className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-colors disabled:opacity-60 ${
                     liked
-                      ? 'border-primary bg-primary/5 text-primary'
+                      ? 'border-primary bg-primary/5 text-primary hover:bg-primary/10'
                       : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
                   }`}
                   aria-pressed={liked}
-                  aria-label={liked ? 'Liked' : 'Like blog'}
+                  aria-label={liked ? 'Remove like' : 'Like blog'}
                 >
                   <HiOutlineHandThumbUp
                     className={`h-4 w-4 ${liked ? 'text-primary' : 'text-gray-500'}`}

@@ -288,6 +288,7 @@ export type BlogPost = {
   body: string
   imagePath: string
   likeCount: number
+  likedByCurrentUser: boolean
 }
 
 export async function fetchBlogs(): Promise<BlogSummary[]> {
@@ -298,18 +299,27 @@ export async function fetchBlogs(): Promise<BlogSummary[]> {
   return res.json() as Promise<BlogSummary[]>
 }
 
-export async function fetchBlog(id: number): Promise<BlogPost> {
-  const res = await fetch(`${getApiBase()}/api/blogs/${id}`, {
-    headers: { Accept: 'application/json' },
+export async function fetchBlog(id: number, token?: string | null): Promise<BlogPost> {
+  const headers: Record<string, string> = { Accept: 'application/json' }
+  if (token) headers.Authorization = `Bearer ${token}`
+  const res = await fetch(`${getApiBase()}/api/blogs/${id}`, { headers })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<BlogPost>
+}
+
+export async function likeBlog(id: number, token: string): Promise<BlogPost> {
+  const res = await fetch(`${getApiBase()}/api/blogs/${id}/like`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
   })
   if (!res.ok) throw new Error(await parseErrorMessage(res))
   return res.json() as Promise<BlogPost>
 }
 
-export async function likeBlog(id: number): Promise<BlogPost> {
+export async function unlikeBlog(id: number, token: string): Promise<BlogPost> {
   const res = await fetch(`${getApiBase()}/api/blogs/${id}/like`, {
-    method: 'POST',
-    headers: { Accept: 'application/json' },
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
   })
   if (!res.ok) throw new Error(await parseErrorMessage(res))
   return res.json() as Promise<BlogPost>

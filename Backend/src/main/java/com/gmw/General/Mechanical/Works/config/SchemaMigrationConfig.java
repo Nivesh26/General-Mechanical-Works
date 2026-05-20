@@ -113,6 +113,28 @@ public class SchemaMigrationConfig {
 						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
 						""");
 			}
+
+			Integer blogLikeTableExists = jdbcTemplate.queryForObject(
+					"""
+					SELECT COUNT(*) FROM information_schema.TABLES
+					WHERE TABLE_SCHEMA = DATABASE()
+					  AND TABLE_NAME = 'blog_like'
+					""",
+					Integer.class);
+			if (blogLikeTableExists == null || blogLikeTableExists == 0) {
+				jdbcTemplate.execute("""
+						CREATE TABLE `blog_like` (
+						  `id` BIGINT NOT NULL AUTO_INCREMENT,
+						  `blog_id` BIGINT NOT NULL,
+						  `user_id` BIGINT NOT NULL,
+						  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+						  PRIMARY KEY (`id`),
+						  UNIQUE KEY `uk_blog_like_blog_user` (`blog_id`, `user_id`),
+						  CONSTRAINT `fk_blog_like_blog` FOREIGN KEY (`blog_id`) REFERENCES `blogs` (`id`) ON DELETE CASCADE,
+						  CONSTRAINT `fk_blog_like_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON DELETE CASCADE
+						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+						""");
+			}
 		};
 	}
 }

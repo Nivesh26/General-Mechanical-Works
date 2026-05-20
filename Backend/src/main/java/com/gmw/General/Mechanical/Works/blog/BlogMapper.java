@@ -10,13 +10,18 @@ final class BlogMapper {
 	}
 
 	static BlogDto toDto(Blog blog) {
+		return toDto(blog, false);
+	}
+
+	static BlogDto toDto(Blog blog, boolean likedByCurrentUser) {
 		return new BlogDto(
 				blog.getId(),
 				blog.getTitle(),
 				blog.getDateLabel(),
 				blog.getBody(),
 				blog.getImagePath(),
-				blog.getLikeCount());
+				blog.getLikeCount(),
+				likedByCurrentUser);
 	}
 
 	static BlogSummaryDto toSummary(Blog blog) {

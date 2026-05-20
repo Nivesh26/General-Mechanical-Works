@@ -6,5 +6,6 @@ public record BlogDto(
 		String dateLabel,
 		String body,
 		String imagePath,
-		int likeCount) {
+		int likeCount,
+		boolean likedByCurrentUser) {
 }

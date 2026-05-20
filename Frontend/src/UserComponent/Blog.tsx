@@ -156,9 +156,11 @@ const Blog = () => {
                         {post.title}
                       </h3>
                     </div>
-                    <p className="text-black text-sm leading-relaxed px-4 pt-0 pb-4 flex-1 cursor-pointer">
-                      {post.description}
-                    </p>
+                    <div className="px-4 pt-0 pb-4 flex-1 overflow-hidden">
+                      <p className="text-black text-sm leading-relaxed line-clamp-6 break-words cursor-pointer">
+                        {post.description}
+                      </p>
+                    </div>
                     <div className="px-4 pb-4">
                       <button
                         type="button"

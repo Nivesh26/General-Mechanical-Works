@@ -18,6 +18,9 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.gmw.General.Mechanical.Works.user.User;
+import com.gmw.General.Mechanical.Works.user.UserRepository;
+
 @Service
 public class BlogService {
 
@@ -32,9 +35,16 @@ public class BlogService {
 	private static final Path BLOG_STORAGE_DIR = Path.of("uploads", "blogs");
 
 	private final BlogRepository blogRepository;
+	private final BlogLikeRepository blogLikeRepository;
+	private final UserRepository userRepository;
 
-	public BlogService(BlogRepository blogRepository) {
+	public BlogService(
+			BlogRepository blogRepository,
+			BlogLikeRepository blogLikeRepository,
+			UserRepository userRepository) {
 		this.blogRepository = blogRepository;
+		this.blogLikeRepository = blogLikeRepository;
+		this.userRepository = userRepository;
 	}
 
 	@Transactional(readOnly = true)
@@ -45,10 +55,12 @@ public class BlogService {
 	}
 
 	@Transactional(readOnly = true)
-	public BlogDto getById(Long id) {
+	public BlogDto getById(Long id, String userEmail) {
 		Blog blog = blogRepository.findById(id)
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Blog not found"));
-		return BlogMapper.toDto(blog);
+		Long userId = resolveUserId(userEmail);
+		boolean liked = userId != null && blogLikeRepository.existsByBlogIdAndUserId(id, userId);
+		return BlogMapper.toDto(blog, liked);
 	}
 
 	@Transactional(readOnly = true)
@@ -95,11 +107,48 @@ public class BlogService {
 	}
 
 	@Transactional
-	public BlogDto incrementLike(Long id) {
+	public BlogDto like(Long id, String userEmail) {
+		Long userId = resolveUserId(userEmail);
+		if (userId == null) {
+			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required");
+		}
 		Blog blog = blogRepository.findById(id)
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Blog not found"));
+		if (blogLikeRepository.existsByBlogIdAndUserId(id, userId)) {
+			return BlogMapper.toDto(blog, true);
+		}
+		BlogLike like = new BlogLike();
+		like.setBlogId(id);
+		like.setUserId(userId);
+		like.setCreatedAt(LocalDateTime.now());
+		blogLikeRepository.save(like);
 		blog.setLikeCount(blog.getLikeCount() + 1);
-		return BlogMapper.toDto(blogRepository.save(blog));
+		return BlogMapper.toDto(blogRepository.save(blog), true);
+	}
+
+	@Transactional
+	public BlogDto unlike(Long id, String userEmail) {
+		Long userId = resolveUserId(userEmail);
+		if (userId == null) {
+			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required");
+		}
+		Blog blog = blogRepository.findById(id)
+				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Blog not found"));
+		if (!blogLikeRepository.existsByBlogIdAndUserId(id, userId)) {
+			return BlogMapper.toDto(blog, false);
+		}
+		blogLikeRepository.deleteByBlogIdAndUserId(id, userId);
+		blog.setLikeCount(Math.max(0, blog.getLikeCount() - 1));
+		return BlogMapper.toDto(blogRepository.save(blog), false);
+	}
+
+	private Long resolveUserId(String userEmail) {
+		if (!StringUtils.hasText(userEmail)) {
+			return null;
+		}
+		return userRepository.findByEmailIgnoreCase(userEmail.trim().toLowerCase())
+				.map(User::getId)
+				.orElse(null);
 	}
 
 	private static void validateText(String title, String dateLabel, String body) {
