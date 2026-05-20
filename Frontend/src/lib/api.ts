@@ -174,3 +174,84 @@ export async function deleteUserCoverPhoto(token: string): Promise<void> {
   })
   if (!res.ok) throw new Error(await parseErrorMessage(res))
 }
+
+export type NepaliPlateFormat = 'embossed' | 'traditional'
+
+export type ApiVehicleDto = {
+  id: number
+  company: string
+  model: string
+  plate: string
+  color: string | null
+  plateFormat: NepaliPlateFormat
+  isMainBike: boolean
+  embossed?: { province: string; category: string; lot: string; digits: string } | null
+  traditional?: { zone: string; lot: string; category: string; digits: string } | null
+}
+
+export type VehicleUpsertPayload = {
+  company: string
+  model: string
+  plate: string
+  color: string
+  plateFormat: NepaliPlateFormat
+  embossed?: { province: string; category: string; lot: string; digits: string }
+  traditional?: { zone: string; lot: string; category: string; digits: string }
+}
+
+export async function fetchMyVehicles(token: string): Promise<ApiVehicleDto[]> {
+  const res = await fetch(`${getApiBase()}/api/vehicles/me`, {
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<ApiVehicleDto[]>
+}
+
+export async function createVehicle(token: string, body: VehicleUpsertPayload): Promise<ApiVehicleDto> {
+  const res = await fetch(`${getApiBase()}/api/vehicles/me`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<ApiVehicleDto>
+}
+
+export async function updateVehicle(
+  token: string,
+  id: number,
+  body: VehicleUpsertPayload,
+): Promise<ApiVehicleDto> {
+  const res = await fetch(`${getApiBase()}/api/vehicles/me/${id}`, {
+    method: 'PUT',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<ApiVehicleDto>
+}
+
+export async function deleteVehicle(token: string, id: number): Promise<void> {
+  const res = await fetch(`${getApiBase()}/api/vehicles/me/${id}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+}
+
+export async function setMainVehicle(token: string, id: number): Promise<ApiVehicleDto[]> {
+  const res = await fetch(`${getApiBase()}/api/vehicles/me/${id}/main`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<ApiVehicleDto[]>
+}

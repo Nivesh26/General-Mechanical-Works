@@ -46,6 +46,7 @@ public class SecurityConfig {
 						.requestMatchers(HttpMethod.DELETE, "/api/auth/me/avatar").authenticated()
 						.requestMatchers(HttpMethod.DELETE, "/api/auth/me/cover-photo").authenticated()
 						.requestMatchers(HttpMethod.PATCH, "/api/users/me").authenticated()
+						.requestMatchers("/api/vehicles/me", "/api/vehicles/me/**").authenticated()
 						.requestMatchers(HttpMethod.GET, "/api/admin/users").hasRole("ADMIN")
 						.anyRequest().denyAll())
 				.addFilterBefore(jwtAuthenticationFilter, AnonymousAuthenticationFilter.class);

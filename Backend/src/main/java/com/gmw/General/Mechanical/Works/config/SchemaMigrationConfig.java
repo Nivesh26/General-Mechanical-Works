@@ -58,6 +58,39 @@ public class SchemaMigrationConfig {
 			if (coverPhotoExists == null || coverPhotoExists == 0) {
 				jdbcTemplate.execute("ALTER TABLE `user` ADD COLUMN `cover_photo` VARCHAR(1024) NULL");
 			}
+
+			Integer vehicleTableExists = jdbcTemplate.queryForObject(
+					"""
+					SELECT COUNT(*) FROM information_schema.TABLES
+					WHERE TABLE_SCHEMA = DATABASE()
+					  AND TABLE_NAME = 'vehicle'
+					""",
+					Integer.class);
+			if (vehicleTableExists == null || vehicleTableExists == 0) {
+				jdbcTemplate.execute("""
+						CREATE TABLE `vehicle` (
+						  `id` BIGINT NOT NULL AUTO_INCREMENT,
+						  `user_id` BIGINT NOT NULL,
+						  `company` VARCHAR(64) NOT NULL,
+						  `model` VARCHAR(64) NOT NULL,
+						  `plate` VARCHAR(128) NOT NULL,
+						  `color` VARCHAR(32) NULL,
+						  `plate_format` VARCHAR(16) NOT NULL,
+						  `is_main_bike` TINYINT(1) NOT NULL DEFAULT 0,
+						  `embossed_province` VARCHAR(64) NULL,
+						  `embossed_category` VARCHAR(8) NULL,
+						  `embossed_lot` VARCHAR(8) NULL,
+						  `embossed_digits` VARCHAR(16) NULL,
+						  `traditional_zone` VARCHAR(16) NULL,
+						  `traditional_lot` VARCHAR(16) NULL,
+						  `traditional_category` VARCHAR(16) NULL,
+						  `traditional_digits` VARCHAR(16) NULL,
+						  PRIMARY KEY (`id`),
+						  UNIQUE KEY `uk_vehicle_user_plate` (`user_id`, `plate`),
+						  CONSTRAINT `fk_vehicle_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON DELETE CASCADE
+						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+						""");
+			}
 		};
 	}
 }

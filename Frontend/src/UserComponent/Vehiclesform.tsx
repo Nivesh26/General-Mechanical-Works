@@ -175,6 +175,7 @@ const Combobox = ({
 };
 
 export interface Vehicle {
+  id?: number;
   company: string;
   model: string;
   plate: string;
@@ -185,6 +186,12 @@ export interface Vehicle {
   embossed?: NepaliEmbossedParts;
   traditional?: NepaliTraditionalParts;
 }
+
+export type VehiclePersistApi = {
+  onSave: (vehicle: Vehicle, context: { isNew: boolean; previousPlate: string }) => Promise<Vehicle>;
+  onDelete: (vehicle: Vehicle) => Promise<void>;
+  onSetMainBike: (vehicle: Vehicle) => Promise<Vehicle[]>;
+};
 
 export function formatDisplayPlate(v: Vehicle): string {
   if (v.plate.startsWith("new-")) return "";
@@ -205,21 +212,13 @@ export function formatDisplayPlate(v: Vehicle): string {
   return v.plate;
 }
 
-export const initialVehicles: Vehicle[] = [
-  {
-    company: "Yamaha",
-    model: "R1",
-    plate: "BAGMATI B AB 0123",
-    color: "Black",
-    plateFormat: "embossed",
-    isMainBike: true,
-    embossed: { province: "Bagmati", category: "B", lot: "AB", digits: "0123" },
-  },
-];
+export const initialVehicles: Vehicle[] = [];
 
 interface VehiclesformProps {
   vehicles: Vehicle[];
   setVehicles: React.Dispatch<React.SetStateAction<Vehicle[]>>;
+  persistApi?: VehiclePersistApi;
+  busy?: boolean;
 }
 
 const REQUIRED_MSG = "Please fill the form (Company, Model and License Plate are required).";
@@ -345,8 +344,9 @@ function PlateFormatPicker({ value, onChange }: PlateFormatPickerProps) {
   );
 }
 
-const Vehiclesform = ({ vehicles, setVehicles }: VehiclesformProps) => {
+const Vehiclesform = ({ vehicles, setVehicles, persistApi, busy = false }: VehiclesformProps) => {
   const [editingPlate, setEditingPlate] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   const [editingCompany, setEditingCompany] = useState("");
   const [editingModel, setEditingModel] = useState("");
   const [editingColor, setEditingColor] = useState("");
@@ -419,8 +419,8 @@ const Vehiclesform = ({ vehicles, setVehicles }: VehiclesformProps) => {
     };
   };
 
-  const saveEdit = () => {
-    if (editingPlate === null) return;
+  const saveEdit = async () => {
+    if (editingPlate === null || saving || busy) return;
     const isNewVehicle = editingPlate.startsWith("new-");
     const plateErr = validatePlateParts(editingPlateFormat, editingEmbossed, editingTraditional);
     const plateOk = plateErr === "" && composedPlate() !== "";
@@ -448,18 +448,48 @@ const Vehiclesform = ({ vehicles, setVehicles }: VehiclesformProps) => {
     }
 
     const payload = buildVehiclePayload();
+    const current = vehicles.find((x) => x.plate === editingPlate);
+    const merged: Vehicle = {
+      ...(current ?? { plate: editingPlate, isMainBike: false }),
+      ...payload,
+      plate: payload.plate,
+      isMainBike: current?.isMainBike,
+    };
+
+    const finishEdit = () => {
+      setEditingPlate(null);
+      setEditingCompany("");
+      setEditingModel("");
+      setEditingColor("");
+      setEditingPlateFormat("embossed");
+      setEditingEmbossed(emptyEmbossed());
+      setEditingTraditional(emptyTraditional());
+    };
+
+    if (persistApi) {
+      setSaving(true);
+      try {
+        const saved = await persistApi.onSave(merged, { isNew: isNewVehicle, previousPlate: editingPlate });
+        setVehicles((prev) =>
+          prev.map((x) =>
+            x.plate === editingPlate ? { ...saved, isMainBike: saved.isMainBike ?? x.isMainBike } : x
+          )
+        );
+        finishEdit();
+      } catch {
+        /* parent shows toast */
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
+
     setVehicles((prev) =>
       prev.map((x) =>
         x.plate === editingPlate ? { ...x, ...payload, plate: payload.plate, isMainBike: x.isMainBike } : x
       )
     );
-    setEditingPlate(null);
-    setEditingCompany("");
-    setEditingModel("");
-    setEditingColor("");
-    setEditingPlateFormat("embossed");
-    setEditingEmbossed(emptyEmbossed());
-    setEditingTraditional(emptyTraditional());
+    finishEdit();
   };
 
   const cancelEdit = () => {
@@ -484,24 +514,62 @@ const Vehiclesform = ({ vehicles, setVehicles }: VehiclesformProps) => {
     }
   };
 
-  const removeVehicle = (plate: string) => {
-    setVehicles((prev) => {
-      const removed = prev.find((v) => v.plate === plate);
-      const next = prev.filter((v) => v.plate !== plate);
-      if (removed?.isMainBike && next.length > 0 && !next.some((v) => v.isMainBike)) {
-        return next.map((v, i) => ({ ...v, isMainBike: i === 0 }));
+  const removeVehicle = async (plate: string) => {
+    if (saving || busy) return;
+    const target = vehicles.find((v) => v.plate === plate);
+    if (!target) return;
+
+    if (persistApi && target.id != null) {
+      setSaving(true);
+      try {
+        await persistApi.onDelete(target);
+        setVehicles((prev) => {
+          const next = prev.filter((v) => v.plate !== plate);
+          if (target.isMainBike && next.length > 0 && !next.some((v) => v.isMainBike)) {
+            return next.map((v, i) => ({ ...v, isMainBike: i === 0 }));
+          }
+          return next;
+        });
+      } catch {
+        /* parent shows toast */
+      } finally {
+        setSaving(false);
       }
-      return next;
-    });
+    } else {
+      setVehicles((prev) => {
+        const removed = prev.find((v) => v.plate === plate);
+        const next = prev.filter((v) => v.plate !== plate);
+        if (removed?.isMainBike && next.length > 0 && !next.some((v) => v.isMainBike)) {
+          return next.map((v, i) => ({ ...v, isMainBike: i === 0 }));
+        }
+        return next;
+      });
+    }
     if (editingPlate === plate) cancelEdit();
   };
 
-  const setMainBike = (targetPlate: string) => {
-    if (targetPlate.startsWith("new-")) return;
+  const setMainBike = async (targetPlate: string) => {
+    if (targetPlate.startsWith("new-") || saving || busy) return;
+    const target = vehicles.find((v) => v.plate === targetPlate);
+    if (!target) return;
+
+    if (persistApi && target.id != null) {
+      setSaving(true);
+      try {
+        const updated = await persistApi.onSetMainBike(target);
+        setVehicles(updated);
+      } catch {
+        /* parent shows toast */
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
+
     setVehicles((prev) => prev.map((v) => ({ ...v, isMainBike: v.plate === targetPlate })));
   };
 
-  const addVehicle = () => {
+  const addVehicle = async () => {
     if (editingPlate?.startsWith("new-")) {
       if (!isNewVehicleFormValid()) {
         const plateErr = validatePlateParts(editingPlateFormat, editingEmbossed, editingTraditional);
@@ -513,11 +581,16 @@ const Vehiclesform = ({ vehicles, setVehicles }: VehiclesformProps) => {
         });
         return;
       }
-      setValidationErrors(null);
-      const payload = buildVehiclePayload();
-      setVehicles((prev) =>
-        prev.map((v) => (v.plate === editingPlate ? { ...v, ...payload, isMainBike: v.isMainBike } : v))
-      );
+      if (persistApi) {
+        await saveEdit();
+        if (editingPlate !== null) return;
+      } else {
+        setValidationErrors(null);
+        const payload = buildVehiclePayload();
+        setVehicles((prev) =>
+          prev.map((v) => (v.plate === editingPlate ? { ...v, ...payload, isMainBike: v.isMainBike } : v))
+        );
+      }
     }
     const tempId = `new-${Date.now()}`;
     const newVehicle: Vehicle = {
@@ -548,7 +621,8 @@ const Vehiclesform = ({ vehicles, setVehicles }: VehiclesformProps) => {
           <button
             type="button"
             onClick={addVehicle}
-            className="px-4 py-2 rounded-full bg-primary text-white text-sm font-medium hover:opacity-95 transition-opacity cursor-pointer justify-self-center"
+            disabled={busy || saving}
+            className="px-4 py-2 rounded-full bg-primary text-white text-sm font-medium hover:opacity-95 transition-opacity cursor-pointer justify-self-center disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Add Vehicle
           </button>
@@ -558,7 +632,7 @@ const Vehiclesform = ({ vehicles, setVehicles }: VehiclesformProps) => {
           const { company, model, plate, color } = v;
           const isEditing = editingPlate === plate;
           return (
-            <div key={plate} className="border-b border-gray-200">
+            <div key={v.id ?? plate} className="border-b border-gray-200">
               <div className="grid grid-cols-1 sm:grid-cols-[5rem_3rem_1fr_1fr_1fr_1fr_auto] sm:items-start gap-4 sm:gap-6 py-3 sm:py-4">
                 <div className="flex items-center justify-center sm:pt-2">
                   <button
