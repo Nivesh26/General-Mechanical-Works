@@ -7,14 +7,7 @@ import {
 import GMWlogo from '../assets/GMWlogo.png'
 import { useAuth } from '../context/AuthContext'
 import { useProfileAvatar } from '../hooks/useProfileAvatar'
-
-function profileInitialFromName(fullName: string): string {
-  const t = fullName.trim()
-  if (!t) return 'U'
-  const space = t.indexOf(' ')
-  const firstWord = space === -1 ? t : t.slice(0, space)
-  return firstWord.charAt(0).toUpperCase()
-}
+import { profileInitialFromName } from '../lib/profileInitial'
 
 const Header = () => {
   const { user, loading, token, refreshUser } = useAuth()

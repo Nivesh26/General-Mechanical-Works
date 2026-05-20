@@ -92,6 +92,16 @@ public class AuthService {
 				.toList();
 	}
 
+	@Transactional(readOnly = true)
+	public UserProfileDto getUserByIdForAdmin(Long userId) {
+		User user = userRepository.findById(userId)
+				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+		if (user.getRole() != Role.USER) {
+			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
+		}
+		return toProfileDto(user);
+	}
+
 	@Transactional
 	public ProfilePatchResponse updateProfile(String email, UpdateProfileRequest request) {
 		User user = userRepository.findByEmailIgnoreCase(email.trim().toLowerCase())

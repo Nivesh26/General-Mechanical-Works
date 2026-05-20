@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.gmw.General.Mechanical.Works.user.Role;
 import com.gmw.General.Mechanical.Works.user.User;
 import com.gmw.General.Mechanical.Works.user.UserRepository;
 
@@ -25,6 +26,16 @@ public class VehicleService {
 	@Transactional(readOnly = true)
 	public List<VehicleDto> listForUser(String email) {
 		User user = requireUser(email);
+		return listForUserId(user.getId());
+	}
+
+	@Transactional(readOnly = true)
+	public List<VehicleDto> listForUserId(Long userId) {
+		User user = userRepository.findById(userId)
+				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+		if (user.getRole() != Role.USER) {
+			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
+		}
 		return vehicleRepository.findAllByUser_IdOrderByIdAsc(user.getId()).stream()
 				.map(VehicleMapper::toDto)
 				.toList();

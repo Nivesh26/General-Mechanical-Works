@@ -1,9 +1,18 @@
 import type { CSSProperties } from 'react'
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
-import profilePhotoSrc from '../assets/Nivesh.png'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import AdminNavbar from '../AdminComponent/AdminNavbar'
 import { ADMIN_MAIN_SCROLL, ADMIN_PAGE_HEADER_SPACING } from '../AdminComponent/adminMainStyles'
+import { useAuth } from '../context/AuthContext'
+import {
+  fetchAdminUser,
+  fetchAdminUserVehicles,
+  toAbsoluteApiUrl,
+  type ApiVehicleDto,
+  type ProfileGender,
+  type UserProfile,
+} from '../lib/api'
+import { profileInitialFromName } from '../lib/profileInitial'
 
 type UserBike = {
   id: string
@@ -37,107 +46,93 @@ type ServiceRecord = {
   status: ServiceStatus
 }
 
-type AdminUserProfileData = {
-  name: string
-  email: string
-  phone: string
-  location: string
-  memberSince: string
-  bikes: UserBike[]
-  productOrders: ProductOrder[]
-  serviceHistory: ServiceRecord[]
-}
-
 type UserSectionTab = 'bikes' | 'orders' | 'history'
 
-/** Static profile — same for every user row until API wiring. */
-const STATIC_PROFILE: AdminUserProfileData = {
-  name: 'Nivesh Shrestha',
-  email: 'nivesh@gmail.com',
-  phone: '+977 9849925333',
-  location: 'Patan, Lalitpur, Nepal',
-  memberSince: 'March 2025',
-  bikes: [
-    {
-      id: 'b1',
-      company: 'Honda',
-      model: 'CB 350',
-      plate: 'BA 01 AB 1234',
-      color: 'Pearl Nightstar Black',
-      isMain: true,
-    },
-    {
-      id: 'b2',
-      company: 'Yamaha',
-      model: 'R15 V4',
-      plate: 'BA 02 CD 5678',
-      color: 'Racing Blue',
-      isMain: false,
-    },
-    {
-      id: 'b3',
-      company: 'Royal Enfield',
-      model: 'Classic 350',
-      plate: 'BA 03 EF 9012',
-      color: 'Gunmetal Grey',
-      isMain: false,
-    },
-  ],
-  productOrders: [
-    {
-      id: 'ord-104',
-      product: 'Engine oil (10W-40) — Motul',
-      quantity: 2,
-      date: '28 Apr 2026',
-      amount: 'NPR 3,400',
-      paymentMethod: 'COD',
-      status: 'Pending',
-    },
-    {
-      id: 'ord-089',
-      product: 'Brake pads — front (Honda CB 350)',
-      quantity: 1,
-      date: '12 Mar 2026',
-      amount: 'NPR 4,200',
-      paymentMethod: 'eSewa',
-      status: 'Completed',
-    },
-    {
-      id: 'ord-071',
-      product: 'Chain & sprocket kit',
-      quantity: 1,
-      date: '3 Feb 2026',
-      amount: 'NPR 12,500',
-      paymentMethod: 'Khalti',
-      status: 'Completed',
-    },
-  ],
-  serviceHistory: [
-    {
-      id: 'srv-221',
-      date: '15 Apr 2026',
-      bikeLabel: 'Honda CB 350 · BA 01 AB 1234',
-      serviceType: 'Full service & tune-up',
-      details: 'Oil change, filter, chain clean, brake check; all fluids topped.',
-      status: 'Completed',
-    },
-    {
-      id: 'srv-198',
-      date: '2 Apr 2026',
-      bikeLabel: 'Yamaha R15 V4 · BA 02 CD 5678',
-      serviceType: 'Electrical diagnostic',
-      details: 'Battery test OK; replaced faulty indicator relay.',
-      status: 'Completed',
-    },
-    {
-      id: 'srv-205',
-      date: '30 Apr 2026',
-      bikeLabel: 'Royal Enfield Classic 350 · BA 03 EF 9012',
-      serviceType: 'Clutch cable & adjustment',
-      details: 'Scheduled — customer drop-off 10:00 AM.',
-      status: 'Scheduled',
-    },
-  ],
+/** Product orders & service history — static until those tables exist. */
+const STATIC_ORDERS: ProductOrder[] = [
+  {
+    id: 'ord-104',
+    product: 'Engine oil (10W-40) — Motul',
+    quantity: 2,
+    date: '28 Apr 2026',
+    amount: 'NPR 3,400',
+    paymentMethod: 'COD',
+    status: 'Pending',
+  },
+  {
+    id: 'ord-089',
+    product: 'Brake pads — front (Honda CB 350)',
+    quantity: 1,
+    date: '12 Mar 2026',
+    amount: 'NPR 4,200',
+    paymentMethod: 'eSewa',
+    status: 'Completed',
+  },
+  {
+    id: 'ord-071',
+    product: 'Chain & sprocket kit',
+    quantity: 1,
+    date: '3 Feb 2026',
+    amount: 'NPR 12,500',
+    paymentMethod: 'Khalti',
+    status: 'Completed',
+  },
+]
+
+const STATIC_SERVICE_HISTORY: ServiceRecord[] = [
+  {
+    id: 'srv-221',
+    date: '15 Apr 2026',
+    bikeLabel: 'Honda CB 350 · BA 01 AB 1234',
+    serviceType: 'Full service & tune-up',
+    details: 'Oil change, filter, chain clean, brake check; all fluids topped.',
+    status: 'Completed',
+  },
+  {
+    id: 'srv-198',
+    date: '2 Apr 2026',
+    bikeLabel: 'Yamaha R15 V4 · BA 02 CD 5678',
+    serviceType: 'Electrical diagnostic',
+    details: 'Battery test OK; replaced faulty indicator relay.',
+    status: 'Completed',
+  },
+  {
+    id: 'srv-205',
+    date: '30 Apr 2026',
+    bikeLabel: 'Royal Enfield Classic 350 · BA 03 EF 9012',
+    serviceType: 'Clutch cable & adjustment',
+    details: 'Scheduled — customer drop-off 10:00 AM.',
+    status: 'Scheduled',
+  },
+]
+
+function displayOrDash(value: string | null | undefined): string {
+  const t = value?.trim()
+  return t ? t : '—'
+}
+
+function genderDisplay(g: ProfileGender | null | undefined): string {
+  if (g === 'MALE') return 'Male'
+  if (g === 'FEMALE') return 'Female'
+  return '—'
+}
+
+function dateOfBirthDisplay(iso: string | null | undefined): string {
+  if (!iso?.trim()) return '—'
+  const [y, m, d] = iso.split('-')
+  if (!y || !m || !d) return iso
+  return `${d}/${m}/${y}`
+}
+
+function vehicleToAdminBike(v: ApiVehicleDto): UserBike {
+  return {
+    id: String(v.id),
+    company: v.company,
+    model: v.model,
+    plate: v.plate,
+    color: v.color?.trim() ? v.color : '—',
+    isMain: v.isMainBike,
+  }
 }
 
 function orderStatusStyle(status: OrderStatus): CSSProperties {
@@ -188,7 +183,61 @@ const cardShell: CSSProperties = {
 }
 
 const AdminUserProfile = () => {
+  const { token } = useAuth()
+  const [searchParams] = useSearchParams()
+  const userIdParam = searchParams.get('userId')
+  const userId = userIdParam ? Number.parseInt(userIdParam, 10) : Number.NaN
+
   const [activeTab, setActiveTab] = useState<UserSectionTab>('bikes')
+  const [user, setUser] = useState<UserProfile | null>(null)
+  const [bikes, setBikes] = useState<UserBike[]>([])
+  const [loading, setLoading] = useState(true)
+  const [bikesLoading, setBikesLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const loadProfile = useCallback(async () => {
+    if (!token || !Number.isFinite(userId)) {
+      setUser(null)
+      setBikes([])
+      setLoading(false)
+      setBikesLoading(false)
+      if (!Number.isFinite(userId)) {
+        setError('No user selected. Open a profile from the Users list.')
+      }
+      return
+    }
+    setLoading(true)
+    setBikesLoading(true)
+    setError(null)
+    try {
+      const [profile, vehicles] = await Promise.all([
+        fetchAdminUser(token, userId),
+        fetchAdminUserVehicles(token, userId),
+      ])
+      setUser(profile)
+      setBikes(vehicles.map(vehicleToAdminBike))
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load user profile')
+      setUser(null)
+      setBikes([])
+    } finally {
+      setLoading(false)
+      setBikesLoading(false)
+    }
+  }, [token, userId])
+
+  useEffect(() => {
+    void loadProfile()
+  }, [loadProfile])
+
+  const avatarImageUrl = useMemo(() => {
+    if (user?.hasAvatar && user.profilePicture) {
+      return toAbsoluteApiUrl(user.profilePicture)
+    }
+    return null
+  }, [user])
+
+  const profileInitial = user ? profileInitialFromName(user.name) : 'U'
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
@@ -210,7 +259,36 @@ const AdminUserProfile = () => {
           </Link>
         </div>
 
-        <div
+        {error ? (
+          <p style={{ color: '#b91c1c', fontSize: '14px', marginBottom: '16px' }}>
+            {error}{' '}
+            {Number.isFinite(userId) ? (
+              <button
+                type="button"
+                onClick={() => void loadProfile()}
+                style={{
+                  marginLeft: '8px',
+                  padding: '4px 10px',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  color: '#bd162c',
+                  backgroundColor: '#fff',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                }}
+              >
+                Retry
+              </button>
+            ) : null}
+          </p>
+        ) : null}
+
+        {loading ? (
+          <p style={{ color: '#64748b', fontSize: '14px' }}>Loading profile…</p>
+        ) : user ? (
+          <>
+            <div
               style={{
                 display: 'flex',
                 flexWrap: 'wrap',
@@ -231,35 +309,65 @@ const AdminUserProfile = () => {
                   boxShadow: '0 4px 14px rgba(15, 23, 42, 0.08)',
                 }}
               >
-                <img
-                  src={profilePhotoSrc}
-                  alt={STATIC_PROFILE.name}
-                  width={140}
-                  height={140}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                />
+                {avatarImageUrl ? (
+                  <img
+                    src={avatarImageUrl}
+                    alt={user.name}
+                    width={140}
+                    height={140}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                  />
+                ) : (
+                  <div
+                    aria-hidden
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: '#e2e8f0',
+                      color: '#bd162c',
+                      fontSize: '56px',
+                      fontWeight: 700,
+                      userSelect: 'none',
+                    }}
+                  >
+                    {profileInitial}
+                  </div>
+                )}
               </div>
               <div style={{ flex: '1 1 280px', minWidth: 0 }}>
                 <h2 style={{ margin: '0 0 8px', fontSize: '22px', fontWeight: 700, color: '#0f172a' }}>
-                  {STATIC_PROFILE.name}
+                  {user.name}
                 </h2>
                 <p style={{ margin: '0 0 6px', fontSize: '14px', color: '#475569' }}>
                   <span style={{ fontWeight: 600, color: '#334155' }}>Email:</span>{' '}
-                  <a href={`mailto:${STATIC_PROFILE.email}`} style={{ color: '#bd162c', fontWeight: 500 }}>
-                    {STATIC_PROFILE.email}
+                  <a href={`mailto:${user.email}`} style={{ color: '#bd162c', fontWeight: 500 }}>
+                    {user.email}
                   </a>
                 </p>
                 <p style={{ margin: '0 0 6px', fontSize: '14px', color: '#475569' }}>
                   <span style={{ fontWeight: 600, color: '#334155' }}>Phone:</span>{' '}
-                  <a href={`tel:${STATIC_PROFILE.phone.replace(/\s/g, '')}`} style={{ color: '#0f172a' }}>
-                    {STATIC_PROFILE.phone}
-                  </a>
+                  {user.phone ? (
+                    <a href={`tel:${user.phone.replace(/\s/g, '')}`} style={{ color: '#0f172a' }}>
+                      {user.phone}
+                    </a>
+                  ) : (
+                    '—'
+                  )}
                 </p>
                 <p style={{ margin: '0 0 6px', fontSize: '14px', color: '#475569' }}>
-                  <span style={{ fontWeight: 600, color: '#334155' }}>Location:</span> {STATIC_PROFILE.location}
+                  <span style={{ fontWeight: 600, color: '#334155' }}>Date of Birth:</span>{' '}
+                  {dateOfBirthDisplay(user.dateOfBirth)}
                 </p>
-                <p style={{ margin: '0 0 14px', fontSize: '13px', color: '#64748b' }}>
-                  Member since {STATIC_PROFILE.memberSince}
+                <p style={{ margin: '0 0 6px', fontSize: '14px', color: '#475569' }}>
+                  <span style={{ fontWeight: 600, color: '#334155' }}>Gender:</span>{' '}
+                  {genderDisplay(user.gender)}
+                </p>
+                <p style={{ margin: '0 0 14px', fontSize: '14px', color: '#475569' }}>
+                  <span style={{ fontWeight: 600, color: '#334155' }}>Location:</span>{' '}
+                  {displayOrDash(user.location)}
                 </p>
                 <Link
                   to="/adminmessages"
@@ -329,7 +437,7 @@ const AdminUserProfile = () => {
                     }}
                   >
                     <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: '#1e293b' }}>
-                      Registered bikes ({STATIC_PROFILE.bikes.length})
+                      Registered bikes ({bikes.length})
                     </h3>
                   </div>
                   <div style={{ overflowX: 'auto' }}>
@@ -345,40 +453,54 @@ const AdminUserProfile = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {STATIC_PROFILE.bikes.map((bike, index) => (
-                          <tr key={bike.id} style={{ borderTop: '1px solid #e2e8f0' }}>
-                            <td style={{ ...td, textAlign: 'center', color: '#64748b', fontWeight: 600 }}>
-                              {index + 1}
-                            </td>
-                            <td style={td}>{bike.company}</td>
-                            <td style={td}>
-                              <span style={{ fontWeight: 600, color: '#1e293b' }}>{bike.model}</span>
-                            </td>
-                            <td style={{ ...td, fontFamily: 'ui-monospace, monospace', fontSize: '13px' }}>
-                              {bike.plate}
-                            </td>
-                            <td style={td}>{bike.color}</td>
-                            <td style={td}>
-                              {bike.isMain ? (
-                                <span
-                                  style={{
-                                    display: 'inline-block',
-                                    padding: '4px 10px',
-                                    borderRadius: '999px',
-                                    fontSize: '12px',
-                                    fontWeight: 700,
-                                    backgroundColor: '#dcfce7',
-                                    color: '#166534',
-                                  }}
-                                >
-                                  Main bike
-                                </span>
-                              ) : (
-                                <span style={{ color: '#94a3b8', fontSize: '13px' }}>—</span>
-                              )}
+                        {bikesLoading ? (
+                          <tr style={{ borderTop: '1px solid #e2e8f0' }}>
+                            <td style={td} colSpan={6}>
+                              Loading bikes…
                             </td>
                           </tr>
-                        ))}
+                        ) : bikes.length > 0 ? (
+                          bikes.map((bike, index) => (
+                            <tr key={bike.id} style={{ borderTop: '1px solid #e2e8f0' }}>
+                              <td style={{ ...td, textAlign: 'center', color: '#64748b', fontWeight: 600 }}>
+                                {index + 1}
+                              </td>
+                              <td style={td}>{bike.company}</td>
+                              <td style={td}>
+                                <span style={{ fontWeight: 600, color: '#1e293b' }}>{bike.model}</span>
+                              </td>
+                              <td style={{ ...td, fontFamily: 'ui-monospace, monospace', fontSize: '13px' }}>
+                                {bike.plate}
+                              </td>
+                              <td style={td}>{bike.color}</td>
+                              <td style={td}>
+                                {bike.isMain ? (
+                                  <span
+                                    style={{
+                                      display: 'inline-block',
+                                      padding: '4px 10px',
+                                      borderRadius: '999px',
+                                      fontSize: '12px',
+                                      fontWeight: 700,
+                                      backgroundColor: '#dcfce7',
+                                      color: '#166534',
+                                    }}
+                                  >
+                                    Main bike
+                                  </span>
+                                ) : (
+                                  <span style={{ color: '#94a3b8', fontSize: '13px' }}>—</span>
+                                )}
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr style={{ borderTop: '1px solid #e2e8f0' }}>
+                            <td style={td} colSpan={6}>
+                              No bikes registered for this customer yet.
+                            </td>
+                          </tr>
+                        )}
                       </tbody>
                     </table>
                   </div>
@@ -414,7 +536,7 @@ const AdminUserProfile = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {STATIC_PROFILE.productOrders.map((order, index) => (
+                        {STATIC_ORDERS.map((order, index) => (
                           <tr key={order.id} style={{ borderTop: '1px solid #e2e8f0' }}>
                             <td style={{ ...td, textAlign: 'center', color: '#64748b', fontWeight: 600 }}>
                               {index + 1}
@@ -467,7 +589,7 @@ const AdminUserProfile = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {STATIC_PROFILE.serviceHistory.map((row, index) => (
+                        {STATIC_SERVICE_HISTORY.map((row, index) => (
                           <tr key={row.id} style={{ borderTop: '1px solid #e2e8f0' }}>
                             <td style={{ ...td, textAlign: 'center', color: '#64748b', fontWeight: 600 }}>
                               {index + 1}
@@ -489,6 +611,10 @@ const AdminUserProfile = () => {
                 </div>
               )}
             </div>
+          </>
+        ) : !error ? (
+          <p style={{ color: '#64748b', fontSize: '14px' }}>User not found.</p>
+        ) : null}
       </main>
     </div>
   )

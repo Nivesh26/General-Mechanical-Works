@@ -99,6 +99,22 @@ export async function fetchAdminUsers(token: string): Promise<UserProfile[]> {
   return res.json() as Promise<UserProfile[]>
 }
 
+export async function fetchAdminUser(token: string, userId: number): Promise<UserProfile> {
+  const res = await fetch(`${getApiBase()}/api/admin/users/${userId}`, {
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<UserProfile>
+}
+
+export async function fetchAdminUserVehicles(token: string, userId: number): Promise<ApiVehicleDto[]> {
+  const res = await fetch(`${getApiBase()}/api/admin/users/${userId}/vehicles`, {
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<ApiVehicleDto[]>
+}
+
 export async function patchUserProfile(
   token: string,
   body: ProfileUpdatePayload,
