@@ -91,6 +91,28 @@ public class SchemaMigrationConfig {
 						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
 						""");
 			}
+
+			Integer blogsTableExists = jdbcTemplate.queryForObject(
+					"""
+					SELECT COUNT(*) FROM information_schema.TABLES
+					WHERE TABLE_SCHEMA = DATABASE()
+					  AND TABLE_NAME = 'blogs'
+					""",
+					Integer.class);
+			if (blogsTableExists == null || blogsTableExists == 0) {
+				jdbcTemplate.execute("""
+						CREATE TABLE `blogs` (
+						  `id` BIGINT NOT NULL AUTO_INCREMENT,
+						  `title` VARCHAR(512) NOT NULL,
+						  `date_label` VARCHAR(64) NOT NULL,
+						  `body` TEXT NOT NULL,
+						  `image_path` VARCHAR(1024) NOT NULL,
+						  `like_count` INT NOT NULL DEFAULT 0,
+						  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+						  PRIMARY KEY (`id`)
+						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+						""");
+			}
 		};
 	}
 }

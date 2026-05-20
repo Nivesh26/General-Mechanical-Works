@@ -271,3 +271,101 @@ export async function setMainVehicle(token: string, id: number): Promise<ApiVehi
   if (!res.ok) throw new Error(await parseErrorMessage(res))
   return res.json() as Promise<ApiVehicleDto[]>
 }
+
+export type BlogSummary = {
+  id: number
+  title: string
+  dateLabel: string
+  description: string
+  imagePath: string
+  likeCount: number
+}
+
+export type BlogPost = {
+  id: number
+  title: string
+  dateLabel: string
+  body: string
+  imagePath: string
+  likeCount: number
+}
+
+export async function fetchBlogs(): Promise<BlogSummary[]> {
+  const res = await fetch(`${getApiBase()}/api/blogs`, {
+    headers: { Accept: 'application/json' },
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<BlogSummary[]>
+}
+
+export async function fetchBlog(id: number): Promise<BlogPost> {
+  const res = await fetch(`${getApiBase()}/api/blogs/${id}`, {
+    headers: { Accept: 'application/json' },
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<BlogPost>
+}
+
+export async function likeBlog(id: number): Promise<BlogPost> {
+  const res = await fetch(`${getApiBase()}/api/blogs/${id}/like`, {
+    method: 'POST',
+    headers: { Accept: 'application/json' },
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<BlogPost>
+}
+
+export async function fetchAdminBlogs(token: string): Promise<BlogPost[]> {
+  const res = await fetch(`${getApiBase()}/api/admin/blogs`, {
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<BlogPost[]>
+}
+
+export async function createAdminBlog(
+  token: string,
+  fields: { title: string; dateLabel: string; body: string },
+  file: File,
+): Promise<BlogPost> {
+  const body = new FormData()
+  body.append('title', fields.title)
+  body.append('dateLabel', fields.dateLabel)
+  body.append('body', fields.body)
+  body.append('file', file)
+  const res = await fetch(`${getApiBase()}/api/admin/blogs`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body,
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<BlogPost>
+}
+
+export async function updateAdminBlog(
+  token: string,
+  id: number,
+  fields: { title: string; dateLabel: string; body: string },
+  file?: File | null,
+): Promise<BlogPost> {
+  const body = new FormData()
+  body.append('title', fields.title)
+  body.append('dateLabel', fields.dateLabel)
+  body.append('body', fields.body)
+  if (file) body.append('file', file)
+  const res = await fetch(`${getApiBase()}/api/admin/blogs/${id}`, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${token}` },
+    body,
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<BlogPost>
+}
+
+export async function deleteAdminBlog(token: string, id: number): Promise<void> {
+  const res = await fetch(`${getApiBase()}/api/admin/blogs/${id}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+}

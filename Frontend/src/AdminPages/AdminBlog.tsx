@@ -1,47 +1,18 @@
 import type { CSSProperties } from 'react'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { HiOutlineHeart } from 'react-icons/hi2'
+import { toast } from 'react-toastify'
 import AdminNavbar from '../AdminComponent/AdminNavbar'
 import { ADMIN_MAIN_SCROLL, ADMIN_PAGE_HEADER_SPACING, ADMIN_PAGE_SUBTITLE, ADMIN_PAGE_TITLE } from '../AdminComponent/adminMainStyles'
-import Blog1Img from '../assets/Blog1.png'
-import Blog2Img from '../assets/Blog2.png'
-import Blog3Img from '../assets/Blog3.png'
-
-type BlogPost = {
-  id: string
-  title: string
-  dateLabel: string
-  body: string
-  imageUrl: string
-  likes: number
-}
-
-const initialBlogs: BlogPost[] = [
-  {
-    id: 'b1',
-    title: 'R15 V4 RACING INSTINCT - PASSING ON THE "R SERIES" DNA.',
-    dateLabel: 'January 22, 2025',
-    body: 'The all new R15 V4 is the 4th generation of legendry R15 which shares the same DNA with super sports YZF R1. The R15 V4 is equipped with a Traction Control System in all models and a Quick Shifter in Racing Blue.',
-    imageUrl: Blog1Img,
-    likes: 128,
-  },
-  {
-    id: 'b2',
-    title: 'THE ALL NEW CLASSIC 350 REBORN',
-    dateLabel: 'March 1, 2025',
-    body: 'After increasing the prices of its entire range a few months back, Royal Enfield has now slashed the price of the Meteor 350 and the Classic 350.',
-    imageUrl: Blog2Img,
-    likes: 94,
-  },
-  {
-    id: 'b3',
-    title: 'YATRI OFFICIALLY LAUNCH IN NEPAL',
-    dateLabel: 'April 2, 2025',
-    body: 'Coming out as the Nepali prodigy of bikes, Yatri Motorcycles started its journey in 2017, with founder Ashim Pandey and his cousin/business partner Batshal Pandey.',
-    imageUrl: Blog3Img,
-    likes: 256,
-  },
-]
+import { useAuth } from '../context/AuthContext'
+import {
+  createAdminBlog,
+  deleteAdminBlog,
+  fetchAdminBlogs,
+  updateAdminBlog,
+  type BlogPost,
+} from '../lib/api'
+import { blogImageUrl } from '../lib/blogs'
 
 type FormState = {
   title: string
@@ -59,14 +30,39 @@ const borderNormal = '1px solid #cbd5e1'
 const borderError = '1px solid #dc2626'
 
 const AdminBlog = () => {
-  const [blogs, setBlogs] = useState<BlogPost[]>(initialBlogs)
+  const { token } = useAuth()
+  const [blogs, setBlogs] = useState<BlogPost[]>([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
   const [form, setForm] = useState<FormState>(emptyForm)
-  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<number | null>(null)
   const [uploadFile, setUploadFile] = useState<File | null>(null)
   const [fileInputKey, setFileInputKey] = useState(0)
   const [objectUrl, setObjectUrl] = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<'title' | 'body' | 'dateLabel' | 'image', string>>>({})
   const [searchInput, setSearchInput] = useState('')
+
+  const loadBlogs = useCallback(async () => {
+    if (!token) {
+      setBlogs([])
+      setLoading(false)
+      return
+    }
+    setLoading(true)
+    try {
+      const list = await fetchAdminBlogs(token)
+      setBlogs(list)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to load blogs')
+      setBlogs([])
+    } finally {
+      setLoading(false)
+    }
+  }, [token])
+
+  useEffect(() => {
+    void loadBlogs()
+  }, [loadBlogs])
 
   useEffect(() => {
     if (!uploadFile) {
@@ -79,11 +75,12 @@ const AdminBlog = () => {
   }, [uploadFile])
 
   const editingBlog = useMemo(
-    () => (editingId ? blogs.find((b) => b.id === editingId) : undefined),
-    [blogs, editingId]
+    () => (editingId != null ? blogs.find((b) => b.id === editingId) : undefined),
+    [blogs, editingId],
   )
 
-  const previewSrc = objectUrl ?? editingBlog?.imageUrl ?? null
+  const previewSrc =
+    objectUrl ?? (editingBlog ? blogImageUrl(editingBlog.imagePath) : null)
 
   const resetForm = () => {
     setForm(emptyForm)
@@ -91,10 +88,6 @@ const AdminBlog = () => {
     setUploadFile(null)
     setFileInputKey((k) => k + 1)
     setFieldErrors({})
-  }
-
-  const revokeIfBlob = (url: string) => {
-    if (url.startsWith('blob:')) URL.revokeObjectURL(url)
   }
 
   const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -117,51 +110,38 @@ const AdminBlog = () => {
     if (!form.title.trim()) e.title = 'Title is required.'
     if (!form.dateLabel.trim()) e.dateLabel = 'Date is required.'
     if (!form.body.trim()) e.body = 'Content is required.'
-    const needsImage = editingId == null ? !uploadFile : false
+    const needsImage = editingId == null && !uploadFile
     if (needsImage) e.image = 'Add one cover image.'
     setFieldErrors(e)
     return Object.keys(e).length === 0
   }
 
-  const onSubmit = (ev: React.FormEvent) => {
+  const onSubmit = async (ev: React.FormEvent) => {
     ev.preventDefault()
-    if (!validate()) return
+    if (!token || !validate()) return
 
-    let nextImageUrl: string
-    if (uploadFile) {
-      if (editingBlog?.imageUrl && editingBlog.imageUrl.startsWith('blob:')) {
-        revokeIfBlob(editingBlog.imageUrl)
+    setSaving(true)
+    try {
+      const fields = {
+        title: form.title.trim(),
+        dateLabel: form.dateLabel.trim(),
+        body: form.body.trim(),
       }
-      nextImageUrl = URL.createObjectURL(uploadFile)
-    } else if (editingBlog) {
-      nextImageUrl = editingBlog.imageUrl
-    } else {
-      return
+      if (editingId != null) {
+        await updateAdminBlog(token, editingId, fields, uploadFile)
+        toast.success('Blog updated.')
+      } else {
+        if (!uploadFile) return
+        await createAdminBlog(token, fields, uploadFile)
+        toast.success('Blog published.')
+      }
+      await loadBlogs()
+      resetForm()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not save blog')
+    } finally {
+      setSaving(false)
     }
-
-    if (editingId) {
-      setBlogs((prev) =>
-        prev.map((b) =>
-          b.id === editingId
-            ? { ...b, title: form.title.trim(), dateLabel: form.dateLabel.trim(), body: form.body.trim(), imageUrl: nextImageUrl }
-            : b
-        )
-      )
-    } else {
-      const id = `b-${Date.now()}`
-      setBlogs((prev) => [
-        ...prev,
-        {
-          id,
-          title: form.title.trim(),
-          dateLabel: form.dateLabel.trim(),
-          body: form.body.trim(),
-          imageUrl: nextImageUrl,
-          likes: 0,
-        },
-      ])
-    }
-    resetForm()
   }
 
   const onEdit = (post: BlogPost) => {
@@ -176,11 +156,16 @@ const AdminBlog = () => {
     setFieldErrors({})
   }
 
-  const onDelete = (post: BlogPost) => {
-    if (!window.confirm('Delete this blog post?')) return
-    revokeIfBlob(post.imageUrl)
-    setBlogs((prev) => prev.filter((b) => b.id !== post.id))
-    if (editingId === post.id) resetForm()
+  const onDelete = async (post: BlogPost) => {
+    if (!token || !window.confirm('Delete this blog post?')) return
+    try {
+      await deleteAdminBlog(token, post.id)
+      toast.success('Blog deleted.')
+      if (editingId === post.id) resetForm()
+      await loadBlogs()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not delete blog')
+    }
   }
 
   const filtered = useMemo(() => {
@@ -190,7 +175,7 @@ const AdminBlog = () => {
       (b) =>
         b.title.toLowerCase().includes(q) ||
         b.body.toLowerCase().includes(q) ||
-        b.dateLabel.toLowerCase().includes(q)
+        b.dateLabel.toLowerCase().includes(q),
     )
   }, [blogs, searchInput])
 
@@ -201,7 +186,7 @@ const AdminBlog = () => {
         <div style={ADMIN_PAGE_HEADER_SPACING}>
           <h1 style={ADMIN_PAGE_TITLE}>Blog</h1>
           <p style={ADMIN_PAGE_SUBTITLE}>
-            Create posts with one cover image, edit or remove them, and view like counts.
+            Create posts with one cover image. They appear on the home page and open as full articles.
           </p>
         </div>
 
@@ -215,9 +200,9 @@ const AdminBlog = () => {
           }}
         >
           <h2 style={{ margin: '0 0 14px', fontSize: '16px', fontWeight: 700, color: '#0f172a' }}>
-            {editingId ? 'Edit blog' : 'Add blog'}
+            {editingId != null ? 'Edit blog' : 'Add blog'}
           </h2>
-          <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <form onSubmit={(e) => void onSubmit(e)} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '14px' }}>
               <label style={labelStyle}>
                 Title
@@ -269,7 +254,7 @@ const AdminBlog = () => {
                     return n
                   })
                 }}
-                placeholder="Article body"
+                placeholder="Article body (use blank lines between paragraphs)"
                 rows={5}
                 style={{
                   ...inputStyle,
@@ -283,7 +268,7 @@ const AdminBlog = () => {
 
             <div>
               <div style={{ fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
-                Cover image (1){editingId ? ' — leave empty to keep current' : ''}
+                Cover image (1){editingId != null ? ' — leave empty to keep current' : ''}
               </div>
               <input
                 key={fileInputKey}
@@ -312,11 +297,11 @@ const AdminBlog = () => {
             </div>
 
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-              <button type="submit" style={btnPrimary}>
-                {editingId ? 'Save changes' : 'Publish'}
+              <button type="submit" style={btnPrimary} disabled={saving}>
+                {saving ? 'Saving…' : editingId != null ? 'Save changes' : 'Publish'}
               </button>
-              {editingId && (
-                <button type="button" onClick={resetForm} style={btnGhost}>
+              {editingId != null && (
+                <button type="button" onClick={resetForm} style={btnGhost} disabled={saving}>
                   Cancel edit
                 </button>
               )}
@@ -390,59 +375,72 @@ const AdminBlog = () => {
                 </tr>
               </thead>
               <tbody>
-                {filtered.length > 0 ? (
-                  filtered.map((post) => (
-                    <tr key={post.id} style={{ borderTop: '1px solid #e2e8f0' }}>
-                      <td style={tdStyle}>
-                        <img
-                          src={post.imageUrl}
-                          alt=""
-                          style={{
-                            width: '72px',
-                            height: '48px',
-                            objectFit: 'cover',
-                            borderRadius: '8px',
-                            border: '1px solid #e2e8f0',
-                            display: 'block',
-                          }}
-                        />
-                      </td>
-                      <td style={{ ...tdStyle, fontWeight: 600, color: '#0f172a', maxWidth: '240px' }}>{post.title}</td>
-                      <td style={tdStyle}>{post.dateLabel}</td>
-                      <td style={tdStyle}>
-                        <span
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            fontWeight: 600,
-                            color: '#475569',
-                            fontSize: '14px',
-                          }}
-                        >
-                          <HiOutlineHeart style={{ color: '#bd162c', fontSize: '18px' }} aria-hidden />
-                          {post.likes.toLocaleString('en-IN')}
-                        </span>
-                      </td>
-                      <td style={{ ...tdStyle, color: '#64748b', fontSize: '13px', maxWidth: '280px' }}>
-                        {post.body.length > 100 ? `${post.body.slice(0, 100)}…` : post.body}
-                      </td>
-                      <td style={tdStyle}>
-                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                          <button type="button" onClick={() => onEdit(post)} style={btnEdit}>
-                            Edit
-                          </button>
-                          <button type="button" onClick={() => onDelete(post)} style={btnDelete}>
-                            Delete
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
+                {loading ? (
+                  <tr>
+                    <td colSpan={6} style={{ ...tdStyle, textAlign: 'center', color: '#64748b' }}>
+                      Loading blogs…
+                    </td>
+                  </tr>
+                ) : filtered.length > 0 ? (
+                  filtered.map((post) => {
+                    const thumb = blogImageUrl(post.imagePath)
+                    return (
+                      <tr key={post.id} style={{ borderTop: '1px solid #e2e8f0' }}>
+                        <td style={tdStyle}>
+                          {thumb ? (
+                            <img
+                              src={thumb}
+                              alt=""
+                              style={{
+                                width: '72px',
+                                height: '48px',
+                                objectFit: 'cover',
+                                borderRadius: '8px',
+                                border: '1px solid #e2e8f0',
+                                display: 'block',
+                              }}
+                            />
+                          ) : (
+                            <span style={{ color: '#94a3b8', fontSize: '12px' }}>—</span>
+                          )}
+                        </td>
+                        <td style={{ ...tdStyle, fontWeight: 600, color: '#0f172a', maxWidth: '240px' }}>{post.title}</td>
+                        <td style={tdStyle}>{post.dateLabel}</td>
+                        <td style={tdStyle}>
+                          <span
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              fontWeight: 600,
+                              color: '#475569',
+                              fontSize: '14px',
+                            }}
+                          >
+                            <HiOutlineHeart style={{ color: '#bd162c', fontSize: '18px' }} aria-hidden />
+                            {post.likeCount.toLocaleString('en-IN')}
+                          </span>
+                        </td>
+                        <td style={{ ...tdStyle, color: '#64748b', fontSize: '13px', maxWidth: '280px' }}>
+                          {post.body.length > 100 ? `${post.body.slice(0, 100)}…` : post.body}
+                        </td>
+                        <td style={tdStyle}>
+                          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                            <button type="button" onClick={() => onEdit(post)} style={btnEdit}>
+                              Edit
+                            </button>
+                            <button type="button" onClick={() => void onDelete(post)} style={btnDelete}>
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })
                 ) : (
                   <tr>
                     <td colSpan={6} style={{ ...tdStyle, textAlign: 'center', color: '#64748b' }}>
-                      No blog posts match your search.
+                      {blogs.length === 0 ? 'No blog posts yet.' : 'No blog posts match your search.'}
                     </td>
                   </tr>
                 )}

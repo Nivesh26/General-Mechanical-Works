@@ -6,10 +6,10 @@ import GMWlogoWhite from "../assets/GMWlogowhite.png";
 
 const quickLinks = [
   { to: "/", label: "Home" },
-  { to: "/aboutus", label: "About us" },
   { to: "/services", label: "Services" },
   { to: "/products", label: "Products" },
-  { to: "/contactus", label: "Contact Us" },
+  { to: "/aboutus", label: "About Us" },
+  { to: "/contactus", label: "Contact" },
 ];
 
 const Footer = () => {

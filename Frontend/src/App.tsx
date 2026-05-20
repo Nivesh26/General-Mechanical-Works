@@ -87,7 +87,7 @@ function AppRoutes() {
       <Route path="/productdetail" element={withFade(<Productdetail />)} />
       <Route path="/cart" element={userPage(<Cart />)} />
       <Route path="/ordertracking" element={userPage(<Ordertracking />)} />
-      <Route path="/blogs" element={withFade(<Blogs />)} />
+      <Route path="/blogs/:id" element={withFade(<Blogs />)} />
       <Route path="/checkout" element={userPage(<Checkout />)} />
 
       {/* Login and Signup */}
