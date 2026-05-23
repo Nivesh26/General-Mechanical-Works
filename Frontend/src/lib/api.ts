@@ -379,3 +379,50 @@ export async function deleteAdminBlog(token: string, id: number): Promise<void> 
   })
   if (!res.ok) throw new Error(await parseErrorMessage(res))
 }
+
+export type OfferItem = {
+  id: number
+  description: string
+  imagePath: string
+}
+
+export async function fetchOffers(): Promise<OfferItem[]> {
+  const res = await fetch(`${getApiBase()}/api/offers`, {
+    headers: { Accept: 'application/json' },
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<OfferItem[]>
+}
+
+export async function fetchAdminOffers(token: string): Promise<OfferItem[]> {
+  const res = await fetch(`${getApiBase()}/api/admin/offers`, {
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<OfferItem[]>
+}
+
+export async function createAdminOffer(
+  token: string,
+  description: string,
+  file: File,
+): Promise<OfferItem> {
+  const body = new FormData()
+  body.append('description', description)
+  body.append('file', file)
+  const res = await fetch(`${getApiBase()}/api/admin/offers`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body,
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<OfferItem>
+}
+
+export async function deleteAdminOffer(token: string, id: number): Promise<void> {
+  const res = await fetch(`${getApiBase()}/api/admin/offers/${id}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+}

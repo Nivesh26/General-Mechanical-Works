@@ -1,39 +1,58 @@
 import type { CSSProperties } from 'react'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { toast } from 'react-toastify'
 import AdminNavbar from '../AdminComponent/AdminNavbar'
 import { ADMIN_MAIN_SCROLL, ADMIN_PAGE_HEADER_SPACING, ADMIN_PAGE_SUBTITLE, ADMIN_PAGE_TITLE } from '../AdminComponent/adminMainStyles'
-import Poster1 from '../assets/Poster1.png'
-import Poster2 from '../assets/Poster2.png'
-import Poster3 from '../assets/Poster3.png'
-
-type OfferRow = {
-  id: string
-  image: string
-  alt: string
-}
-
-const initialOffers: OfferRow[] = [
-  { id: '1', image: Poster1, alt: 'Shreshtho - 40% discount on motorcycles' },
-  { id: '2', image: Poster2, alt: 'Zemech - We can fix everything' },
-  { id: '3', image: Poster3, alt: 'Garage on Call - Bike repair service at doorstep' },
-]
+import { useAuth } from '../context/AuthContext'
+import {
+  createAdminOffer,
+  deleteAdminOffer,
+  fetchAdminOffers,
+  type OfferItem,
+} from '../lib/api'
+import { offerImageUrl } from '../lib/offers'
 
 const MAX_FILE_BYTES = 2.5 * 1024 * 1024
 const borderNormal = '1px solid #cbd5e1'
 const borderError = '1px solid #dc2626'
 
 const AdminOffer = () => {
-  const [offers, setOffers] = useState<OfferRow[]>(() => [...initialOffers])
+  const { token } = useAuth()
+  const [offers, setOffers] = useState<OfferItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
   const [description, setDescription] = useState('')
   const [uploadFile, setUploadFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [fileInputKey, setFileInputKey] = useState(0)
   const [fieldErrors, setFieldErrors] = useState<{ poster?: string; description?: string }>({})
-  const [lightboxId, setLightboxId] = useState<string | null>(null)
+  const [lightboxId, setLightboxId] = useState<number | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
-  const lightboxOffer = lightboxId ? offers.find((o) => o.id === lightboxId) : undefined
+  const lightboxOffer = lightboxId != null ? offers.find((o) => o.id === lightboxId) : undefined
+
+  const loadOffers = useCallback(async () => {
+    if (!token) {
+      setOffers([])
+      setLoading(false)
+      return
+    }
+    setLoading(true)
+    try {
+      const list = await fetchAdminOffers(token)
+      setOffers(list)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to load offers')
+      setOffers([])
+    } finally {
+      setLoading(false)
+    }
+  }, [token])
+
+  useEffect(() => {
+    void loadOffers()
+  }, [loadOffers])
 
   useEffect(() => {
     if (!uploadFile) {
@@ -85,8 +104,9 @@ const AdminOffer = () => {
     setFieldErrors({})
   }
 
-  const onSubmitAdd = (e: React.FormEvent) => {
+  const onSubmitAdd = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!token) return
     const err: { poster?: string; description?: string } = {}
     if (!uploadFile) err.poster = 'Choose one poster image from your computer.'
     const trimmed = description.trim()
@@ -94,30 +114,36 @@ const AdminOffer = () => {
     setFieldErrors(err)
     if (Object.keys(err).length > 0) return
 
-    const reader = new FileReader()
-    reader.onload = () => {
-      const dataUrl = reader.result as string
-      if (typeof dataUrl !== 'string' || !dataUrl.startsWith('data:image/')) return
-      setOffers((prev) => [
-        ...prev,
-        {
-          id: crypto.randomUUID(),
-          image: dataUrl,
-          alt: trimmed,
-        },
-      ])
+    setSaving(true)
+    try {
+      await createAdminOffer(token, trimmed, uploadFile!)
+      toast.success('Offer added.')
       resetForm()
+      await loadOffers()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not add offer')
+    } finally {
+      setSaving(false)
     }
-    reader.readAsDataURL(uploadFile!)
   }
 
-  const onRemove = (id: string) => {
-    if (!window.confirm('Remove this poster from the list?')) return
-    setOffers((prev) => prev.filter((o) => o.id !== id))
+  const onRemove = async (id: number) => {
+    if (!token || !window.confirm('Remove this poster from the list?')) return
+    try {
+      await deleteAdminOffer(token, id)
+      toast.success('Offer removed.')
+      if (lightboxId === id) setLightboxId(null)
+      await loadOffers()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not remove offer')
+    }
   }
+
+  const lightboxSrc = lightboxOffer ? offerImageUrl(lightboxOffer.imagePath) : null
 
   const lightbox =
     lightboxOffer &&
+    lightboxSrc &&
     createPortal(
       <div
         className="fixed inset-0 z-200 flex items-center justify-center bg-black/80 p-4 cursor-pointer"
@@ -141,13 +167,13 @@ const AdminOffer = () => {
           onClick={(e) => e.stopPropagation()}
         >
           <img
-            src={lightboxOffer.image}
-            alt={lightboxOffer.alt}
+            src={lightboxSrc}
+            alt={lightboxOffer.description}
             className="max-w-full max-h-[95vh] w-auto h-auto object-contain rounded-lg shadow-2xl"
           />
         </div>
       </div>,
-      document.body
+      document.body,
     )
 
   return (
@@ -174,7 +200,7 @@ const AdminOffer = () => {
           }}
         >
           <h2 style={{ margin: '0 0 28px', fontSize: '22px', fontWeight: 700, color: '#0f172a' }}>Add Offer</h2>
-          <form onSubmit={onSubmitAdd} noValidate style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          <form onSubmit={(e) => void onSubmitAdd(e)} noValidate style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             <div
               style={{
                 display: 'flex',
@@ -257,8 +283,8 @@ const AdminOffer = () => {
               </label>
             </div>
 
-            <button type="submit" style={btnAddOffer}>
-              Add Offer
+            <button type="submit" disabled={saving} style={btnAddOffer}>
+              {saving ? 'Saving…' : 'Add Offer'}
             </button>
           </form>
         </section>
@@ -271,59 +297,80 @@ const AdminOffer = () => {
             overflow: 'hidden',
           }}
         >
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '640px' }}>
-              <thead>
-                <tr style={{ backgroundColor: '#f1f5f9' }}>
-                  <th style={thStyle}>Poster</th>
-                  <th style={thStyle}>Image description</th>
-                  <th style={thStyle}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {offers.map((row) => (
-                  <tr key={row.id} style={{ borderTop: '1px solid #e2e8f0' }}>
-                    <td style={tdStyle}>
-                      <button
-                        type="button"
-                        onClick={() => setLightboxId(row.id)}
-                        aria-label={`View larger: ${row.alt}`}
-                        style={{
-                          padding: 0,
-                          margin: 0,
-                          border: 'none',
-                          background: 'transparent',
-                          cursor: 'pointer',
-                          borderRadius: '8px',
-                          display: 'block',
-                          lineHeight: 0,
-                        }}
-                      >
-                        <img
-                          src={row.image}
-                          alt=""
-                          style={{
-                            width: '120px',
-                            height: '72px',
-                            objectFit: 'cover',
-                            borderRadius: '8px',
-                            border: '1px solid #e2e8f0',
-                            display: 'block',
-                          }}
-                        />
-                      </button>
-                    </td>
-                    <td style={{ ...tdStyle, color: '#334155' }}>{row.alt}</td>
-                    <td style={tdStyle}>
-                      <button type="button" onClick={() => onRemove(row.id)} style={btnDelete}>
-                        Remove
-                      </button>
-                    </td>
+          {loading ? (
+            <p style={{ padding: '24px', color: '#64748b', margin: 0 }}>Loading offers…</p>
+          ) : offers.length === 0 ? (
+            <p style={{ padding: '24px', color: '#64748b', margin: 0 }}>No offers yet. Add a poster above.</p>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '640px' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#f1f5f9' }}>
+                    <th style={thStyle}>Poster</th>
+                    <th style={thStyle}>Image description</th>
+                    <th style={thStyle}>Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {offers.map((row) => {
+                    const thumbSrc = offerImageUrl(row.imagePath)
+                    return (
+                      <tr key={row.id} style={{ borderTop: '1px solid #e2e8f0' }}>
+                        <td style={tdStyle}>
+                          <button
+                            type="button"
+                            onClick={() => setLightboxId(row.id)}
+                            aria-label={`View larger: ${row.description}`}
+                            style={{
+                              padding: 0,
+                              margin: 0,
+                              border: 'none',
+                              background: 'transparent',
+                              cursor: 'pointer',
+                              borderRadius: '8px',
+                              display: 'block',
+                              lineHeight: 0,
+                            }}
+                          >
+                            {thumbSrc ? (
+                              <img
+                                src={thumbSrc}
+                                alt=""
+                                style={{
+                                  width: '120px',
+                                  height: '72px',
+                                  objectFit: 'cover',
+                                  borderRadius: '8px',
+                                  border: '1px solid #e2e8f0',
+                                  display: 'block',
+                                }}
+                              />
+                            ) : (
+                              <div
+                                style={{
+                                  width: '120px',
+                                  height: '72px',
+                                  borderRadius: '8px',
+                                  border: '1px solid #e2e8f0',
+                                  backgroundColor: '#f1f5f9',
+                                }}
+                              />
+                            )}
+                          </button>
+                        </td>
+                        <td style={{ ...tdStyle, color: '#334155' }}>{row.description}</td>
+                        <td style={tdStyle}>
+                          <button type="button" onClick={() => void onRemove(row.id)} style={btnDelete}>
+                            Remove
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </main>
     </div>
@@ -339,7 +386,6 @@ const labelStyle: CSSProperties = {
   color: '#334155',
 }
 
-/** Compact single-line description field */
 const inputStyleCompact: CSSProperties = {
   padding: '8px 12px',
   borderRadius: '8px',
@@ -354,7 +400,6 @@ const inputStyleCompact: CSSProperties = {
 
 const errStyle: CSSProperties = { fontSize: '13px', color: '#dc2626', fontWeight: 500 }
 
-/** Same as Admin Blog Publish */
 const btnAddOffer: CSSProperties = {
   padding: '10px 18px',
   fontSize: '14px',

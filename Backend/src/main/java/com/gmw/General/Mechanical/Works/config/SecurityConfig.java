@@ -50,8 +50,10 @@ public class SecurityConfig {
 						.requestMatchers(HttpMethod.GET, "/api/blogs", "/api/blogs/*").permitAll()
 						.requestMatchers(HttpMethod.POST, "/api/blogs/*/like").authenticated()
 						.requestMatchers(HttpMethod.DELETE, "/api/blogs/*/like").authenticated()
+						.requestMatchers(HttpMethod.GET, "/api/offers").permitAll()
 						.requestMatchers(HttpMethod.GET, "/api/admin/users", "/api/admin/users/**").hasRole("ADMIN")
 						.requestMatchers("/api/admin/blogs", "/api/admin/blogs/**").hasRole("ADMIN")
+						.requestMatchers("/api/admin/offers", "/api/admin/offers/**").hasRole("ADMIN")
 						.anyRequest().denyAll())
 				.addFilterBefore(jwtAuthenticationFilter, AnonymousAuthenticationFilter.class);
 		return http.build();

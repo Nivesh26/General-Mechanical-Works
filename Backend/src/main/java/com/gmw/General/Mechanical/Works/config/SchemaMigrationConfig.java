@@ -135,6 +135,25 @@ public class SchemaMigrationConfig {
 						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
 						""");
 			}
+
+			Integer offerTableExists = jdbcTemplate.queryForObject(
+					"""
+					SELECT COUNT(*) FROM information_schema.TABLES
+					WHERE TABLE_SCHEMA = DATABASE()
+					  AND TABLE_NAME = 'offer'
+					""",
+					Integer.class);
+			if (offerTableExists == null || offerTableExists == 0) {
+				jdbcTemplate.execute("""
+						CREATE TABLE `offer` (
+						  `id` BIGINT NOT NULL AUTO_INCREMENT,
+						  `description` VARCHAR(512) NOT NULL,
+						  `image_path` VARCHAR(1024) NOT NULL,
+						  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+						  PRIMARY KEY (`id`)
+						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+						""");
+			}
 		};
 	}
 }
