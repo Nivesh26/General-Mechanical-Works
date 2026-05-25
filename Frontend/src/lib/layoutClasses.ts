@@ -9,12 +9,12 @@ export const ADMIN_PAGE_ROOT_CLASS =
 export const ADMIN_SIDEBAR_WIDTH_PX = 280
 /** Gap between fixed sidebar and main content on lg+ */
 export const ADMIN_SIDEBAR_GAP_PX = 24
-/** Top gap for main content on lg+ (sidebar is full-height; main gets breathing room) */
-export const ADMIN_MAIN_TOP_GAP_PX = 16
+/** Top/bottom gap for main content on lg+ (sidebar is full-height; main gets breathing room) */
+export const ADMIN_MAIN_GAP_PX = 16
 
 /** Admin main — left offset for sidebar+gap is in index.css (avoids Tailwind dynamic-class purge) */
 export const ADMIN_MAIN_SCROLL_CLASS =
-  'admin-main-scroll min-w-0 w-full max-w-full box-border pt-14 lg:pt-0 pr-3 sm:pr-4 lg:pr-6 pb-8 min-h-screen max-h-screen overflow-y-auto overflow-x-hidden'
+  'admin-main-scroll min-w-0 w-full max-w-full box-border pt-14 lg:pt-0 pr-3 sm:pr-4 lg:pr-6 pb-6 lg:pb-4 min-h-screen max-h-screen overflow-y-auto overflow-x-hidden'
 
 export const ADMIN_MAIN_MESSAGES_CLASS =
   'admin-main-scroll admin-main-messages min-w-0 w-full max-w-full box-border pt-14 lg:pt-0 pr-3 sm:pr-4 lg:pr-6 h-screen max-h-screen overflow-hidden flex flex-col'

@@ -161,7 +161,7 @@ const Profile = () => {
     <div>
       <Header />
 
-      <div className={PAGE_GUTTER}>
+      <div className={`${PAGE_GUTTER} pb-6 sm:pb-8`}>
         <Profliephotos
           firstName={firstName}
           lastName={lastName}
@@ -184,13 +184,15 @@ const Profile = () => {
           onPersist={handlePersist}
         />
 
-        <button
-          type="button"
-          onClick={handleLogout}
-          className="px-6 py-2.5 rounded-full border border-gray-300 text-gray-800 text-sm font-medium hover:bg-gray-50 transition-colors mt-2 mb-2 ml-auto block"
-        >
-          Log out
-        </button>
+        <div className="flex justify-center mt-6 mb-6">
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="px-8 py-2.5 rounded-full border border-gray-300 text-gray-800 text-sm font-medium hover:bg-gray-50 transition-colors"
+          >
+            Log out
+          </button>
+        </div>
       </div>
 
       <Footer />

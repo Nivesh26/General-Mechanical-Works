@@ -83,16 +83,18 @@ const Header = () => {
         }`}
       >
         <div className="flex flex-col flex-1 min-h-0 overflow-y-auto px-3.5 py-4">
-          <div className="relative mb-4 pb-4 border-b border-gray-100 shrink-0">
-            <input
-              type="search"
-              placeholder="Search"
-              className="w-full h-9 pl-3 pr-9 text-sm rounded-full bg-gray-100 border-0 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-200"
-              aria-label="Search"
-            />
-            <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">
-              <HiOutlineMagnifyingGlass className="w-4 h-4" />
-            </span>
+          <div className="mb-4 pb-4 border-b border-gray-100 shrink-0">
+            <div className="relative">
+              <input
+                type="search"
+                placeholder="Search"
+                className="w-full h-9 pl-3 pr-9 text-sm rounded-full bg-gray-100 border-0 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-200"
+                aria-label="Search"
+              />
+              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none flex items-center justify-center">
+                <HiOutlineMagnifyingGlass className="w-4 h-4 shrink-0" aria-hidden />
+              </span>
+            </div>
           </div>
           <nav className="flex flex-col" aria-label="Mobile">
             {navLinks.map(({ to, label }) => (
