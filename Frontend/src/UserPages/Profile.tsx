@@ -5,11 +5,11 @@ import Copyright from "../UserComponent/Copyright";
 import Header from "../UserComponent/Header";
 import Profileform from "../UserComponent/Profileform";
 import Profliephotos from "../UserComponent/Profliephotos";
-import { initialVehicles } from "../UserComponent/Vehiclesform";
 import { toast } from "react-toastify";
 import { useAuth } from "../context/AuthContext";
 import { useProfileAvatar } from "../hooks/useProfileAvatar";
 import { useProfileCover } from "../hooks/useProfileCover";
+import { useProfileVehicles } from "../hooks/useProfileVehicles";
 import { patchUserProfile, type ProfileUpdatePayload } from "../lib/api";
 
 function splitFullName(fullName: string): { first: string; last: string } {
@@ -38,6 +38,7 @@ const Profile = () => {
     token,
     refreshUser,
   );
+  const { vehicles, vehiclesLoading } = useProfileVehicles(token, Boolean(user && !loading));
 
   useEffect(() => {
     if (!loading && !user) {
@@ -163,7 +164,8 @@ const Profile = () => {
         <Profliephotos
           firstName={firstName}
           lastName={lastName}
-          vehicles={initialVehicles}
+          vehicles={vehicles}
+          vehiclesLoading={vehiclesLoading}
           avatarObjectUrl={avatarUrl}
           hasAvatar={user.hasAvatar === true}
           onAvatarFile={handleAvatarFile}

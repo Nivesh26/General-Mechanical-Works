@@ -1,21 +1,16 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import Copyright from '../UserComponent/Copyright'
 import Header from '../UserComponent/Header'
 import Footer from '../UserComponent/Footer'
 import Profliephotos from '../UserComponent/Profliephotos'
-import Vehiclesform, { type Vehicle, type VehiclePersistApi } from '../UserComponent/Vehiclesform'
+import Vehiclesform, { type VehiclePersistApi } from '../UserComponent/Vehiclesform'
 import { useAuth } from '../context/AuthContext'
 import { useProfileAvatar } from '../hooks/useProfileAvatar'
 import { useProfileCover } from '../hooks/useProfileCover'
-import {
-  createVehicle,
-  deleteVehicle,
-  fetchMyVehicles,
-  setMainVehicle,
-  updateVehicle,
-} from '../lib/api'
+import { createVehicle, deleteVehicle, fetchMyVehicles, setMainVehicle, updateVehicle } from '../lib/api'
+import { useProfileVehicles } from '../hooks/useProfileVehicles'
 import { apiVehicleToForm, formVehicleToPayload } from '../lib/vehicles'
 
 const AVATAR_MAX_BYTES = 2 * 1024 * 1024
@@ -32,8 +27,10 @@ function splitFullName(fullName: string): { first: string; last: string } {
 const ProfileVehicles = () => {
   const { user, loading, token, refreshUser } = useAuth()
   const navigate = useNavigate()
-  const [vehicles, setVehicles] = useState<Vehicle[]>([])
-  const [vehiclesLoading, setVehiclesLoading] = useState(true)
+  const { vehicles, setVehicles, vehiclesLoading } = useProfileVehicles(
+    token,
+    Boolean(user && !loading),
+  )
   const { avatarUrl, busy: avatarBusy, uploadAvatar, removeAvatar } = useProfileAvatar(
     user,
     token,
@@ -45,35 +42,11 @@ const ProfileVehicles = () => {
     refreshUser,
   )
 
-  const loadVehicles = useCallback(async () => {
-    if (!token) {
-      setVehicles([])
-      setVehiclesLoading(false)
-      return
-    }
-    setVehiclesLoading(true)
-    try {
-      const list = await fetchMyVehicles(token)
-      setVehicles(list.map(apiVehicleToForm))
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Could not load vehicles.')
-      setVehicles([])
-    } finally {
-      setVehiclesLoading(false)
-    }
-  }, [token])
-
   useEffect(() => {
     if (!loading && !user) {
       navigate('/login', { replace: true, state: { from: '/profilevehicles' } })
     }
   }, [loading, user, navigate])
-
-  useEffect(() => {
-    if (!loading && user && token) {
-      void loadVehicles()
-    }
-  }, [loading, user, token, loadVehicles])
 
   const persistApi = useMemo((): VehiclePersistApi | undefined => {
     if (!token) return undefined
@@ -175,6 +148,7 @@ const ProfileVehicles = () => {
           firstName={first}
           lastName={last}
           vehicles={vehicles}
+          vehiclesLoading={vehiclesLoading}
           avatarObjectUrl={avatarUrl}
           hasAvatar={user.hasAvatar === true}
           onAvatarFile={handleAvatarFile}

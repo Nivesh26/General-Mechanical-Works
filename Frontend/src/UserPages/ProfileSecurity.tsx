@@ -6,10 +6,10 @@ import Footer from '../UserComponent/Footer'
 import Copyright from '../UserComponent/Copyright'
 import Profliephotos from '../UserComponent/Profliephotos'
 import Securityform from '../UserComponent/Securityform'
-import { initialVehicles } from '../UserComponent/Vehiclesform'
 import { useAuth } from '../context/AuthContext'
 import { useProfileAvatar } from '../hooks/useProfileAvatar'
 import { useProfileCover } from '../hooks/useProfileCover'
+import { useProfileVehicles } from '../hooks/useProfileVehicles'
 
 function splitFullName(fullName: string): { first: string; last: string } {
   const t = fullName.trim()
@@ -35,6 +35,7 @@ const ProfileSecurity = () => {
     token,
     refreshUser,
   )
+  const { vehicles, vehiclesLoading } = useProfileVehicles(token, Boolean(user && !loading))
 
   useEffect(() => {
     if (!loading && !user) {
@@ -114,7 +115,8 @@ const ProfileSecurity = () => {
           activeTab="security"
           firstName={first}
           lastName={last}
-          vehicles={initialVehicles}
+          vehicles={vehicles}
+          vehiclesLoading={vehiclesLoading}
           avatarObjectUrl={avatarUrl}
           hasAvatar={user.hasAvatar === true}
           onAvatarFile={handleAvatarFile}

@@ -9,6 +9,8 @@ interface ProfliphotosProps {
   firstName?: string;
   lastName?: string;
   vehicles?: Vehicle[];
+  /** While vehicles are loading from the API */
+  vehiclesLoading?: boolean;
   /** Blob URL from authenticated GET /api/auth/me/avatar */
   avatarObjectUrl?: string | null;
   /** Single letter when no custom photo */
@@ -34,7 +36,8 @@ function letterFromName(firstName: string, lastName: string): string {
 }
 
 /** Subtitle under the user name: only the bike marked as main (company + model). */
-function mainBikeNameLine(vehicles: Vehicle[]): string {
+function mainBikeNameLine(vehicles: Vehicle[], loading: boolean): string {
+  if (loading) return "Loading…";
   const saved = vehicles.filter(
     (v) => !v.plate.startsWith("new-") && (v.company.trim() || v.model.trim())
   );
@@ -52,6 +55,7 @@ const Profliephotos = ({
   firstName = "",
   lastName = "",
   vehicles = [],
+  vehiclesLoading = false,
   avatarObjectUrl = null,
   displayLetter,
   hasAvatar = false,
@@ -66,7 +70,7 @@ const Profliephotos = ({
 }: ProfliphotosProps) => {
   const fileRef = useRef<HTMLInputElement>(null);
   const coverFileRef = useRef<HTMLInputElement>(null);
-  const vehicleLabel = mainBikeNameLine(vehicles);
+  const vehicleLabel = mainBikeNameLine(vehicles, vehiclesLoading);
   const letter = displayLetter ?? letterFromName(firstName, lastName);
 
   const onFileChange = (e: ChangeEvent<HTMLInputElement>) => {
