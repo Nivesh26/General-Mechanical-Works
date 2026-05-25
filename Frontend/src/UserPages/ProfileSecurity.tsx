@@ -10,6 +10,7 @@ import { useAuth } from '../context/AuthContext'
 import { useProfileAvatar } from '../hooks/useProfileAvatar'
 import { useProfileCover } from '../hooks/useProfileCover'
 import { useProfileVehicles } from '../hooks/useProfileVehicles'
+import { PAGE_GUTTER } from '../lib/layoutClasses'
 
 function splitFullName(fullName: string): { first: string; last: string } {
   const t = fullName.trim()
@@ -110,7 +111,7 @@ const ProfileSecurity = () => {
     <div>
       <Header />
 
-      <div className="mx-[80px]">
+      <div className={PAGE_GUTTER}>
         <Profliephotos
           activeTab="security"
           firstName={first}

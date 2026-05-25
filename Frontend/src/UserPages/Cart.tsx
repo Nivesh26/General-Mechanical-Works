@@ -6,6 +6,7 @@ import Copyright from '../UserComponent/Copyright'
 import EngineOil from '../assets/EngineOil.png'
 import Brakes from '../assets/Brakekit.png'
 import { HiOutlineTrash, HiOutlineMinus, HiOutlinePlus } from 'react-icons/hi2'
+import { PAGE_GUTTER } from '../lib/layoutClasses'
 
 type CartItem = {
   id: number
@@ -112,7 +113,7 @@ const Cart = () => {
     <div className="min-h-screen flex flex-col bg-white">
       <Header />
 
-      <main className="flex-1 mx-[80px] py-10">
+      <main className={`flex-1 ${PAGE_GUTTER} py-8 sm:py-10`}>
         <div className="mb-8 text-left">
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
             <span className="text-primary font-sec">Cart</span>

@@ -5,6 +5,7 @@ import Copyright from '../UserComponent/Copyright'
 import ServicePickupPanel from '../UserComponent/ServicePickupPanel'
 import ServiceWorkshopPanel from '../UserComponent/ServiceWorkshopPanel'
 import { HiOutlineBuildingStorefront, HiOutlineTruck } from 'react-icons/hi2'
+import { PAGE_GUTTER } from '../lib/layoutClasses'
 
 /** Bring bike to the workshop vs we collect from your location */
 const bookingModeOptions = [
@@ -30,7 +31,7 @@ const Service = () => {
       <Header />
 
       <section>
-        <div className="mx-[80px] py-12 text-center">
+        <div className={`${PAGE_GUTTER} py-8 sm:py-12 text-center`}>
           <h1 className="text-primary font-sec text-3xl sm:text-4xl font-bold tracking-[4px] uppercase">
             Book a service
           </h1>
@@ -40,7 +41,7 @@ const Service = () => {
         </div>
       </section>
 
-      <main className="flex-1 mx-[80px] pb-16">
+      <main className={`flex-1 ${PAGE_GUTTER} pb-12 sm:pb-16`}>
         <div className="max-w-4xl xl:max-w-6xl mx-auto">
           <section>
             <h2 className="text-xl font-bold text-gray-900 mb-4">Workshop or pickup</h2>

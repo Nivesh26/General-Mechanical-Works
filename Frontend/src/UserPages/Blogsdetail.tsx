@@ -6,6 +6,7 @@ import Header from '../UserComponent/Header'
 import Footer from '../UserComponent/Footer'
 import Copyright from '../UserComponent/Copyright'
 import { useAuth } from '../context/AuthContext'
+import { PAGE_GUTTER } from '../lib/layoutClasses'
 import { fetchBlog, likeBlog, unlikeBlog, type BlogPost } from '../lib/api'
 import { blogBodyToParagraphs, blogImageUrl } from '../lib/blogs'
 
@@ -77,7 +78,7 @@ const Blogsdetail = () => {
   return (
     <div className="min-h-screen flex flex-col bg-white">
       <Header />
-      <main className="flex-1 mx-[80px] py-10">
+      <main className={`flex-1 ${PAGE_GUTTER} py-8 sm:py-10`}>
         <div className="max-w-4xl mx-auto">
           <div className="mb-6">
             <Link

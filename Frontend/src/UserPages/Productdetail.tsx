@@ -8,6 +8,7 @@ import EngineOil from '../assets/EngineOil.png'
 import Brakes from '../assets/Brakekit.png'
 import Battery from '../assets/Battery.png'
 import Tyre from '../assets/Tyre.png'
+import { PAGE_GUTTER } from '../lib/layoutClasses'
 import GMWlogo from '../assets/GMWlogo.png'
 import { HiOutlineCheck, HiStar, HiOutlineHandThumbUp, HiHandThumbUp } from 'react-icons/hi2'
 import { DEMO_PRODUCT_ID, useProductReviewsState } from '../lib/useProductReviewsState'
@@ -41,7 +42,7 @@ const Productdetail = () => {
 
       <main className="flex-1">
         <div className="border-b border-gray-100 bg-gray-50/50">
-          <div className="mx-[80px] py-4">
+          <div className={`${PAGE_GUTTER} py-4`}>
             <nav className="flex items-center gap-2 text-sm text-gray-500">
               <Link to="/" className="hover:text-primary transition-colors">Home</Link>
               <span aria-hidden>/</span>
@@ -52,7 +53,7 @@ const Productdetail = () => {
           </div>
         </div>
 
-        <div className="mx-[80px] py-10 lg:py-14">
+        <div className={`${PAGE_GUTTER} py-8 sm:py-10 lg:py-14`}>
           <div className="max-w-6xl mx-auto">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-start">
               <div>

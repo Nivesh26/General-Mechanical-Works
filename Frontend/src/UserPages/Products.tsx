@@ -9,6 +9,7 @@ import Battery from '../assets/Battery.png'
 import Tyre from '../assets/Tyre.png'
 import Clutch from '../assets/Clutch.png'
 import Detailing from '../assets/cleaner.png'
+import { PAGE_GUTTER } from '../lib/layoutClasses'
 
 type ProductCategory = 'All' | 'EngineOil' | 'Brakes' | 'Tyres' | 'Electrical' | 'Detailing'
 
@@ -110,7 +111,7 @@ const Products = () => {
     <div className="min-h-screen flex flex-col bg-white">
       <Header />
 
-      <main className="flex-1 mx-[80px] py-10">
+      <main className={`flex-1 ${PAGE_GUTTER} py-8 sm:py-10`}>
         <div className="mb-8 flex justify-center">
           <div className="text-center">
             <h1 className="text-3xl font-bold mb-2">

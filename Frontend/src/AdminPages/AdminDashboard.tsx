@@ -5,7 +5,7 @@ import Upcomingbooking from '../AdminComponent/Upcomingbooking'
 import ChatInbox from '../AdminComponent/chat&inbox'
 import SalesGraph from '../AdminComponent/SalesGraph'
 import ServiceAvailabilityCard from '../AdminComponent/ServiceAvailabilityCard'
-import { ADMIN_MAIN_SCROLL, ADMIN_PAGE_SUBTITLE, ADMIN_PAGE_TITLE } from '../AdminComponent/adminMainStyles'
+import { ADMIN_MAIN_SCROLL_CLASS, ADMIN_PAGE_SUBTITLE, ADMIN_PAGE_TITLE } from '../AdminComponent/adminMainStyles'
 import { FiBell } from 'react-icons/fi'
 
 const AdminDashboard = () => {
@@ -14,17 +14,9 @@ const AdminDashboard = () => {
   return (
     <div style={{ minHeight: '100vh', width: '100%', backgroundColor: '#f8fafc' }}>
       <AdminNavbar />
-      <main style={ADMIN_MAIN_SCROLL}>
+      <main className={ADMIN_MAIN_SCROLL_CLASS}>
         <section style={{ width: '100%', boxSizing: 'border-box' }}>
-          <header
-            style={{
-              marginBottom: '16px',
-              display: 'flex',
-              alignItems: 'flex-start',
-              justifyContent: 'space-between',
-              gap: '16px',
-            }}
-          >
+          <header className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div style={{ minWidth: 0, flex: '1 1 auto' }}>
               <h1 style={ADMIN_PAGE_TITLE}>Admin Dashboard</h1>
               <p style={ADMIN_PAGE_SUBTITLE}>
@@ -89,27 +81,13 @@ const AdminDashboard = () => {
               marginTop: '1rem',
             }}
           >
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-                gap: '1rem',
-                alignItems: 'stretch',
-              }}
-            >
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
               <RecentOrder />
 
             <Upcomingbooking />
             </div>
 
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-                gap: '1rem',
-                alignItems: 'stretch',
-              }}
-            >
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
               <ChatInbox />
               <ServiceAvailabilityCard />
             </div>

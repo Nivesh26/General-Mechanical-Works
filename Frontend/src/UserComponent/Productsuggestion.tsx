@@ -1,9 +1,9 @@
-import React from 'react'
 import { Link } from 'react-router-dom'
 import EngineOil from '../assets/EngineOil.png'
 import Brakes from '../assets/Brakekit.png'
 import Battery from '../assets/Battery.png'
 import Tyre from '../assets/Tyre.png'
+import { PAGE_GUTTER } from '../lib/layoutClasses'
 
 const bestSellingProducts = [
   { id: 1, name: 'Engine Oil', price: 'Rs. 3,500', image: EngineOil },
@@ -15,7 +15,7 @@ const bestSellingProducts = [
 const Productsuggestion = () => {
   return (
     <section className="w-full py-12 border-t border-gray-100">
-      <div className="mx-[80px]">
+      <div className={PAGE_GUTTER}>
         <h2 className="text-xl font-bold text-gray-900 mb-6">Best selling</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
           {bestSellingProducts.map((product) => (

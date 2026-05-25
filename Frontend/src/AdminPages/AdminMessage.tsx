@@ -3,7 +3,7 @@ import { FiImage, FiMoreHorizontal, FiTrash2 } from 'react-icons/fi'
 import { HiOutlineMagnifyingGlass, HiOutlineShieldCheck } from 'react-icons/hi2'
 import { LuBan, LuBell, LuBellOff, LuMailOpen, LuPin, LuPinOff } from 'react-icons/lu'
 import AdminNavbar from '../AdminComponent/AdminNavbar'
-import { ADMIN_MAIN_MESSAGES, ADMIN_PAGE_HEADER_SPACING, ADMIN_PAGE_TITLE } from '../AdminComponent/adminMainStyles'
+import { ADMIN_MAIN_MESSAGES_CLASS, ADMIN_PAGE_HEADER_SPACING, ADMIN_PAGE_TITLE } from '../AdminComponent/adminMainStyles'
 import GMWLogo from '../assets/GMWlogo.png'
 
 const CHATBOT_USER_ID = 'chatbot'
@@ -285,23 +285,12 @@ const AdminMessage = () => {
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
       <AdminNavbar />
-      <main style={ADMIN_MAIN_MESSAGES}>
+      <main className={ADMIN_MAIN_MESSAGES_CLASS}>
         <div style={{ ...ADMIN_PAGE_HEADER_SPACING, flexShrink: 0 }}>
           <h1 style={ADMIN_PAGE_TITLE}>Messages</h1>
         </div>
 
-        <div
-          style={{
-            flex: 1,
-            minHeight: 0,
-            display: 'grid',
-            gridTemplateColumns: '300px 1fr',
-            border: '1px solid #e2e8f0',
-            borderRadius: '12px',
-            backgroundColor: '#ffffff',
-            overflow: 'hidden',
-          }}
-        >
+        <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[minmax(240px,300px)_1fr] border border-slate-200 rounded-xl bg-white overflow-hidden">
           <aside
             style={{
               borderRight: '1px solid #e2e8f0',

@@ -1,9 +1,7 @@
-import React from 'react'
-
 const Copyright = () => {
   return (
-    <div className="bg-[#be1e2d] text-white p-4 text-center text-[16px]">
-    <p>
+    <div className="bg-[#be1e2d] text-white px-4 py-3 sm:p-4 text-center text-xs sm:text-base">
+    <p className="leading-relaxed">
       &copy; 2025 General Mechanical Works | All rights reserved | Designed
       by{" "}
       <a href="#" className="underline">

@@ -2,7 +2,7 @@ import type { CSSProperties } from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import AdminNavbar from '../AdminComponent/AdminNavbar'
-import { ADMIN_MAIN_SCROLL, ADMIN_PAGE_HEADER_SPACING } from '../AdminComponent/adminMainStyles'
+import { ADMIN_MAIN_SCROLL_CLASS, ADMIN_PAGE_HEADER_SPACING } from '../AdminComponent/adminMainStyles'
 import { useAuth } from '../context/AuthContext'
 import {
   fetchAdminUser,
@@ -242,7 +242,7 @@ const AdminUserProfile = () => {
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
       <AdminNavbar />
-      <main style={ADMIN_MAIN_SCROLL}>
+      <main className={ADMIN_MAIN_SCROLL_CLASS}>
         <div style={ADMIN_PAGE_HEADER_SPACING}>
           <Link
             to="/adminusers"

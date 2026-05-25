@@ -2,7 +2,7 @@ import type { CSSProperties, FormEvent } from 'react'
 import { useMemo, useState } from 'react'
 import { FiPlus, FiPrinter, FiTrash2 } from 'react-icons/fi'
 import AdminNavbar from '../AdminComponent/AdminNavbar'
-import { ADMIN_MAIN_SCROLL, ADMIN_PAGE_SUBTITLE, ADMIN_PAGE_TITLE } from '../AdminComponent/adminMainStyles'
+import { ADMIN_MAIN_SCROLL_CLASS, ADMIN_PAGE_SUBTITLE, ADMIN_PAGE_TITLE } from '../AdminComponent/adminMainStyles'
 import GMWLogo from '../assets/GMWlogo.png'
 
 type InvoiceLine = {
@@ -294,7 +294,7 @@ const AdminBill = () => {
       `}</style>
       <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
         <AdminNavbar />
-        <main style={ADMIN_MAIN_SCROLL}>
+        <main className={ADMIN_MAIN_SCROLL_CLASS}>
           <div
             className="admin-bill-no-print"
             style={{

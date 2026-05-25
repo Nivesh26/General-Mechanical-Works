@@ -2,7 +2,7 @@ import type { CSSProperties } from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import AdminNavbar from '../AdminComponent/AdminNavbar'
-import { ADMIN_MAIN_SCROLL, ADMIN_PAGE_TITLE } from '../AdminComponent/adminMainStyles'
+import { ADMIN_MAIN_SCROLL_CLASS, ADMIN_PAGE_TITLE } from '../AdminComponent/adminMainStyles'
 import { useAuth } from '../context/AuthContext'
 import { fetchAdminUsers, type UserProfile } from '../lib/api'
 
@@ -62,7 +62,7 @@ const AdminUsers = () => {
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
       <AdminNavbar />
-      <main style={ADMIN_MAIN_SCROLL}>
+      <main className={ADMIN_MAIN_SCROLL_CLASS}>
         <div
           style={{
             display: 'flex',

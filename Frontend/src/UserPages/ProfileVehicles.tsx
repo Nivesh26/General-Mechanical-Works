@@ -12,6 +12,7 @@ import { useProfileCover } from '../hooks/useProfileCover'
 import { createVehicle, deleteVehicle, fetchMyVehicles, setMainVehicle, updateVehicle } from '../lib/api'
 import { useProfileVehicles } from '../hooks/useProfileVehicles'
 import { apiVehicleToForm, formVehicleToPayload } from '../lib/vehicles'
+import { PAGE_GUTTER } from '../lib/layoutClasses'
 
 const AVATAR_MAX_BYTES = 2 * 1024 * 1024
 const COVER_MAX_BYTES = 4 * 1024 * 1024
@@ -142,7 +143,7 @@ const ProfileVehicles = () => {
     <div>
       <Header />
 
-      <div className="mx-[80px]">
+      <div className={PAGE_GUTTER}>
         <Profliephotos
           activeTab="vehicles"
           firstName={first}

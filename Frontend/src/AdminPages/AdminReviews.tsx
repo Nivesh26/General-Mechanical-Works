@@ -1,7 +1,7 @@
 import { useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import AdminNavbar from '../AdminComponent/AdminNavbar'
-import { ADMIN_MAIN_SCROLL, ADMIN_PAGE_HEADER_SPACING, ADMIN_PAGE_SUBTITLE, ADMIN_PAGE_TITLE } from '../AdminComponent/adminMainStyles'
+import { ADMIN_MAIN_SCROLL_CLASS, ADMIN_PAGE_HEADER_SPACING, ADMIN_PAGE_SUBTITLE, ADMIN_PAGE_TITLE } from '../AdminComponent/adminMainStyles'
 import {
   HiStar,
   HiOutlineHandThumbUp,
@@ -96,7 +96,7 @@ const AdminReviews = () => {
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f1f5f9' }}>
       <AdminNavbar />
-      <main style={{ ...ADMIN_MAIN_SCROLL, backgroundColor: '#f1f5f9' }}>
+      <main className={`${ADMIN_MAIN_SCROLL_CLASS} bg-slate-100`}>
         <div style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
           <header style={pageHeader}>
             <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '12px 16px' }}>

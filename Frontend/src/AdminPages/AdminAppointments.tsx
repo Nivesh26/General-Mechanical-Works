@@ -2,7 +2,7 @@ import type { CSSProperties, FormEvent } from 'react'
 import { Fragment, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import AdminNavbar from '../AdminComponent/AdminNavbar'
-import { ADMIN_MAIN_SCROLL, ADMIN_PAGE_SUBTITLE, ADMIN_PAGE_TITLE } from '../AdminComponent/adminMainStyles'
+import { ADMIN_MAIN_SCROLL_CLASS, ADMIN_PAGE_SUBTITLE, ADMIN_PAGE_TITLE } from '../AdminComponent/adminMainStyles'
 
 /** Static demo data — replace with API when backend is ready. */
 type ServiceAppointmentStatus = 'pending' | 'accepted' | 'declined' | 'completed'
@@ -225,7 +225,7 @@ const AdminAppointments = () => {
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
       <AdminNavbar />
-      <main style={ADMIN_MAIN_SCROLL}>
+      <main className={ADMIN_MAIN_SCROLL_CLASS}>
         <div
           style={{
             display: 'flex',

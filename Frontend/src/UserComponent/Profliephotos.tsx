@@ -209,7 +209,7 @@ const Profliephotos = ({
           </div>
         </div>
 
-        <div className="flex gap-6 sm:gap-8 pb-3 border-b border-gray-200 shrink-0">
+        <div className="flex flex-wrap gap-4 sm:gap-8 pb-3 border-b border-gray-200">
           <Link
             to="/profile"
             className={`text-black text-sm font-medium uppercase tracking-wide border-b-2 pb-3 -mb-[13px] ${

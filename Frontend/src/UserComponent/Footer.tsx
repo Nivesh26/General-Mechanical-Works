@@ -3,6 +3,7 @@ import { HiOutlinePhone, HiOutlineEnvelope, HiOutlineMapPin } from "react-icons/
 import { FaFacebook, FaInstagram, FaTiktok, FaLinkedin } from "react-icons/fa";
 
 import GMWlogoWhite from "../assets/GMWlogowhite.png";
+import { PAGE_GUTTER } from "../lib/layoutClasses";
 
 const quickLinks = [
   { to: "/", label: "Home" },
@@ -15,10 +16,10 @@ const quickLinks = [
 const Footer = () => {
   return (
     <footer className="bg-[#1e1e1f] text-white font-sans py-2 overflow-hidden [&_a]:no-underline [&_*]:outline-none [&_*]:ring-0">
-      <div className="mx-[80px]">
-        <div className="flex flex-wrap justify-between py-10">
+      <div className={PAGE_GUTTER}>
+        <div className="flex flex-col sm:flex-row flex-wrap justify-between gap-8 py-8 sm:py-10">
           {/* Logo Section  */}
-          <div className="flex-shrink-0 basis-[250px] max-w-[300px]">
+          <div className="w-full sm:flex-shrink-0 sm:basis-[250px] sm:max-w-[300px]">
             <img src={GMWlogoWhite} alt="GMW" className="w-[120px] mb-2.5 border-0" />
             <p className="text-sm my-2.5">
               Every service is rigorously screened and constantly rated to
@@ -42,7 +43,7 @@ const Footer = () => {
           </div>
 
           {/* Quick Links */}
-          <div className="flex-shrink-0 basis-[200px] my-5">
+          <div className="w-full sm:flex-shrink-0 sm:basis-[200px]">
             <h4 className="text-base mb-4 font-bold">Quick links</h4>
             <ul className="list-none p-0 border-0 outline-none">
               {quickLinks.map(({ to, label }) => (
@@ -63,7 +64,7 @@ const Footer = () => {
           </div>
 
           {/* Popular Services */}
-          <div className="flex-shrink-0 basis-[200px] my-5">
+          <div className="w-full sm:flex-shrink-0 sm:basis-[200px]">
             <h4 className="text-base mb-4 font-bold">Popular Services</h4>
             <ul className="list-none p-0 text-sm border-0 outline-none">
               <li className="mb-2.5 cursor-pointer">Service Work</li>
@@ -75,7 +76,7 @@ const Footer = () => {
           </div>
 
           {/* Contact Us */}
-          <div className="flex-shrink-0 basis-[220px] my-5">
+          <div className="w-full sm:flex-shrink-0 sm:basis-[220px]">
             <h4 className="text-base mb-4 font-bold">Contact Us</h4>
             <div className="flex items-center gap-3 my-2.5 text-sm">
               <HiOutlinePhone className="w-5 h-5 flex-shrink-0" />

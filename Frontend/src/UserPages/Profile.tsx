@@ -11,6 +11,7 @@ import { useProfileAvatar } from "../hooks/useProfileAvatar";
 import { useProfileCover } from "../hooks/useProfileCover";
 import { useProfileVehicles } from "../hooks/useProfileVehicles";
 import { patchUserProfile, type ProfileUpdatePayload } from "../lib/api";
+import { PAGE_GUTTER } from "../lib/layoutClasses";
 
 function splitFullName(fullName: string): { first: string; last: string } {
   const t = fullName.trim();
@@ -160,7 +161,7 @@ const Profile = () => {
     <div>
       <Header />
 
-      <div className="mx-[80px]">
+      <div className={PAGE_GUTTER}>
         <Profliephotos
           firstName={firstName}
           lastName={lastName}

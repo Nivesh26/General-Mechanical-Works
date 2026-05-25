@@ -2,7 +2,7 @@ import type { CSSProperties } from 'react'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import AdminNavbar from '../AdminComponent/AdminNavbar'
-import { ADMIN_MAIN_SCROLL, ADMIN_PAGE_SUBTITLE, ADMIN_PAGE_TITLE } from '../AdminComponent/adminMainStyles'
+import { ADMIN_MAIN_SCROLL_CLASS, ADMIN_PAGE_SUBTITLE, ADMIN_PAGE_TITLE } from '../AdminComponent/adminMainStyles'
 
 type PaymentSource = 'service' | 'ecommerce'
 type PaymentMethod = 'COD' | 'eSewa' | 'Khalti'
@@ -176,7 +176,7 @@ const AdminPayments = () => {
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
       <AdminNavbar />
-      <main style={ADMIN_MAIN_SCROLL}>
+      <main className={ADMIN_MAIN_SCROLL_CLASS}>
         <div style={{ marginBottom: '16px' }}>
           <h1 style={ADMIN_PAGE_TITLE}>Payments</h1>
           <p style={ADMIN_PAGE_SUBTITLE}>

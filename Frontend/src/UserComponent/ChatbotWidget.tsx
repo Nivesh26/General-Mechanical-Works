@@ -3,24 +3,10 @@ import { HiOutlineChatBubbleBottomCenterText } from 'react-icons/hi2'
 const ChatbotWidget = () => {
   return (
     <div
-      style={{
-        position: 'fixed',
-        right: '24px',
-        bottom: '24px',
-        width: '56px',
-        height: '56px',
-        borderRadius: '999px',
-        backgroundColor: '#b91c1c',
-        color: '#ffffff',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        boxShadow: '0 10px 24px rgba(185, 28, 28, 0.35)',
-        zIndex: 70,
-      }}
+      className="fixed right-4 bottom-4 sm:right-6 sm:bottom-6 z-[70] w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-primary text-white flex items-center justify-center shadow-lg shadow-red-900/30"
       aria-hidden
     >
-      <HiOutlineChatBubbleBottomCenterText size={24} />
+      <HiOutlineChatBubbleBottomCenterText className="w-6 h-6 sm:w-7 sm:h-7" />
     </div>
   )
 }
