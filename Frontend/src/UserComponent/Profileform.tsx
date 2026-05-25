@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import type { ProfileGender, ProfileUpdatePayload } from "../lib/api";
+import { phoneValidationError, sanitizePhoneDigits } from "../lib/phone";
 
 export type ProfileFieldSource = {
   firstName: string;
@@ -17,7 +18,6 @@ interface ProfileformProps {
   onPersist?: (patch: ProfileUpdatePayload) => Promise<void>;
 }
 
-const PHONE_REGEX = /^\d{10}$/;
 const MAX_LOCATION = 500;
 
 function formatDobDisplay(isoOrDash: string): string {
@@ -55,11 +55,7 @@ function getValidationError(label: string, value: string): string {
     case "Last Name":
       return trimmed.length === 0 ? "Last name is required." : "";
     case "Phone Number":
-      if (trimmed.length === 0) return "Phone number is required.";
-      if (!PHONE_REGEX.test(trimmed)) {
-        return "Please enter exactly 10 digits.";
-      }
-      return "";
+      return phoneValidationError(sanitizePhoneDigits(trimmed));
     case "Location":
       if (trimmed === "" || trimmed === "—") return "";
       if (trimmed.length > MAX_LOCATION) return `Use at most ${MAX_LOCATION} characters.`;
@@ -81,7 +77,7 @@ function buildPatch(editingLabel: string | null, rows: FieldRow[]): ProfileUpdat
     return name ? { name } : {};
   }
   if (editingLabel === "Phone Number") {
-    return { phone: get("Phone Number") };
+    return { phone: sanitizePhoneDigits(get("Phone Number")) };
   }
   if (editingLabel === "Date of Birth") {
     const raw = get("Date of Birth");
@@ -123,6 +119,8 @@ const Profileform = ({ profile, onNameChange, onPersist }: ProfileformProps) => 
       setEditingValue(value === "—" ? "" : value);
     } else if (label === "Gender") {
       setEditingValue(value === "—" ? "Male" : value);
+    } else if (label === "Phone Number") {
+      setEditingValue(sanitizePhoneDigits(value === "—" ? "" : value));
     } else {
       setEditingValue(value);
     }
@@ -140,7 +138,9 @@ const Profileform = ({ profile, onNameChange, onPersist }: ProfileformProps) => 
     const trimmedValue =
       editingLabel === "Date of Birth" || editingLabel === "Gender"
         ? editingValue
-        : editingValue.trim();
+        : editingLabel === "Phone Number"
+          ? sanitizePhoneDigits(editingValue)
+          : editingValue.trim();
 
     const updatedFields = fields.map((f) =>
       f.label === editingLabel ? { ...f, value: trimmedValue } : f,
@@ -200,13 +200,7 @@ const Profileform = ({ profile, onNameChange, onPersist }: ProfileformProps) => 
                     label === "Gender" ? (
                       <select
                         value={editingValue}
-                        onChange={(e) =>
-                          setEditingValue(
-                            label === "Phone Number"
-                              ? e.target.value.replace(/\D/g, "").slice(0, 10)
-                              : e.target.value,
-                          )
-                        }
+                        onChange={(e) => setEditingValue(e.target.value)}
                         onKeyDown={handleKeyDown}
                         className="w-full max-w-md bg-transparent border-0 border-b border-gray-200 py-2 px-0 text-[#1a1a1a] text-center text-[15px] sm:text-base focus:outline-none focus:border-primary cursor-pointer"
                         autoFocus
@@ -226,12 +220,22 @@ const Profileform = ({ profile, onNameChange, onPersist }: ProfileformProps) => 
                     ) : (
                       <input
                         type={label === "Phone Number" ? "tel" : "text"}
+                        inputMode={label === "Phone Number" ? "numeric" : undefined}
+                        maxLength={label === "Phone Number" ? 10 : undefined}
                         value={editingValue}
-                        onChange={(e) => setEditingValue(e.target.value)}
+                        onChange={(e) =>
+                          setEditingValue(
+                            label === "Phone Number"
+                              ? sanitizePhoneDigits(e.target.value)
+                              : e.target.value,
+                          )
+                        }
                         onKeyDown={handleKeyDown}
                         className="w-full max-w-md bg-transparent border-0 border-b border-gray-200 py-2 px-0 text-[#1a1a1a] text-center text-[15px] sm:text-base focus:outline-none focus:border-primary"
                         autoFocus
-                        placeholder={label === "Phone Number" ? "Phone Number" : undefined}
+                        placeholder={
+                          label === "Phone Number" ? "10-digit mobile number" : undefined
+                        }
                       />
                     )
                   ) : (

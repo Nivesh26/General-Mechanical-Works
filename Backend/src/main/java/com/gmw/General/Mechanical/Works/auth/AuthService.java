@@ -68,7 +68,15 @@ public class AuthService {
 		user.setEmail(normalizedEmail);
 		user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
 		String phone = request.getPhone();
-		user.setPhone(StringUtils.hasText(phone) ? phone.trim() : null);
+		if (StringUtils.hasText(phone)) {
+			String phoneDigits = phone.replaceAll("\\D", "");
+			if (!phoneDigits.matches("\\d{10}")) {
+				throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Phone must be exactly 10 digits");
+			}
+			user.setPhone(phoneDigits);
+		} else {
+			user.setPhone(null);
+		}
 		user.setRole(Role.USER);
 		User saved = userRepository.save(user);
 		return buildAuthResponse(saved);
@@ -226,7 +234,11 @@ public class AuthService {
 			user.setName(request.getName().trim());
 		}
 		if (request.getPhone() != null) {
-			user.setPhone(StringUtils.hasText(request.getPhone()) ? request.getPhone().trim() : null);
+			String phoneDigits = request.getPhone().replaceAll("\\D", "");
+			if (StringUtils.hasText(phoneDigits) && !phoneDigits.matches("\\d{10}")) {
+				throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Phone must be exactly 10 digits");
+			}
+			user.setPhone(StringUtils.hasText(phoneDigits) ? phoneDigits : null);
 		}
 		if (request.getGender() != null) {
 			user.setGender(request.getGender());
