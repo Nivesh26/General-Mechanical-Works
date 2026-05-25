@@ -26,7 +26,10 @@ public class SecurityConfig {
 
 	@Bean
 	@Order(Ordered.HIGHEST_PRECEDENCE)
-	public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationFilter jwtAuthenticationFilter)
+	public SecurityFilterChain securityFilterChain(
+			HttpSecurity http,
+			JwtAuthenticationFilter jwtAuthenticationFilter,
+			PublicAuthEndpointFilter publicAuthEndpointFilter)
 			throws Exception {
 		http
 				.cors(Customizer.withDefaults())
@@ -37,8 +40,9 @@ public class SecurityConfig {
 						.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 						.requestMatchers("/uploads/**").permitAll()
 						.requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
-						.requestMatchers("/api/auth/login", "/api/auth/signup").permitAll()
-						.requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/signup").permitAll()
+						.requestMatchers("/api/auth/login", "/api/auth/signup", "/api/auth/google").permitAll()
+						.requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/signup", "/api/auth/google")
+						.permitAll()
 						.requestMatchers(HttpMethod.GET, "/api/auth/me").authenticated()
 						.requestMatchers(HttpMethod.POST, "/api/auth/me/password").authenticated()
 						.requestMatchers(HttpMethod.POST, "/api/auth/me/avatar").authenticated()
@@ -55,7 +59,8 @@ public class SecurityConfig {
 						.requestMatchers("/api/admin/blogs", "/api/admin/blogs/**").hasRole("ADMIN")
 						.requestMatchers("/api/admin/offers", "/api/admin/offers/**").hasRole("ADMIN")
 						.anyRequest().denyAll())
-				.addFilterBefore(jwtAuthenticationFilter, AnonymousAuthenticationFilter.class);
+				.addFilterBefore(jwtAuthenticationFilter, AnonymousAuthenticationFilter.class)
+				.addFilterBefore(publicAuthEndpointFilter, AnonymousAuthenticationFilter.class);
 		return http.build();
 	}
 

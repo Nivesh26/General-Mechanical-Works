@@ -19,6 +19,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import com.gmw.General.Mechanical.Works.config.JwtService;
 import com.gmw.General.Mechanical.Works.user.Role;
 import com.gmw.General.Mechanical.Works.user.User;
@@ -43,11 +44,17 @@ public class AuthService {
 	private final UserRepository userRepository;
 	private final PasswordEncoder passwordEncoder;
 	private final JwtService jwtService;
+	private final GoogleTokenVerifier googleTokenVerifier;
 
-	public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtService jwtService) {
+	public AuthService(
+			UserRepository userRepository,
+			PasswordEncoder passwordEncoder,
+			JwtService jwtService,
+			GoogleTokenVerifier googleTokenVerifier) {
 		this.userRepository = userRepository;
 		this.passwordEncoder = passwordEncoder;
 		this.jwtService = jwtService;
+		this.googleTokenVerifier = googleTokenVerifier;
 	}
 
 	@Transactional
@@ -72,10 +79,108 @@ public class AuthService {
 		String normalizedEmail = request.getEmail().trim().toLowerCase();
 		User user = userRepository.findByEmailIgnoreCase(normalizedEmail)
 				.orElseThrow(() -> new BadCredentialsException("Invalid email or password"));
-		if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+		String passwordHash = user.getPasswordHash();
+		if (!StringUtils.hasText(passwordHash)
+				|| !passwordEncoder.matches(request.getPassword(), passwordHash)) {
 			throw new BadCredentialsException("Invalid email or password");
 		}
 		return buildAuthResponse(user);
+	}
+
+	@Transactional
+	public AuthResponse loginWithGoogle(String idToken) {
+		GoogleIdToken.Payload payload = googleTokenVerifier.verify(idToken);
+		String googleSub = payload.getSubject();
+		if (!StringUtils.hasText(googleSub)) {
+			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid Google sign-in token");
+		}
+		Boolean emailVerified = payload.getEmailVerified();
+		if (emailVerified == null || !emailVerified) {
+			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Google email is not verified");
+		}
+		String email = payload.getEmail();
+		if (!StringUtils.hasText(email)) {
+			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Google account has no email");
+		}
+		String normalizedEmail = email.trim().toLowerCase();
+
+		User user = userRepository.findByGoogleSub(googleSub).orElse(null);
+		if (user != null) {
+			applyGooglePictureIfNoLocalUpload(user, payload);
+			return buildAuthResponse(userRepository.save(user));
+		}
+
+		user = userRepository.findByEmailIgnoreCase(normalizedEmail).orElse(null);
+		if (user != null) {
+			String existingSub = user.getGoogleSub();
+			if (StringUtils.hasText(existingSub) && !existingSub.equals(googleSub)) {
+				throw new ResponseStatusException(HttpStatus.CONFLICT,
+						"This email is linked to a different Google account");
+			}
+			user.setGoogleSub(googleSub);
+			applyGoogleNameIfBlank(user, payload);
+			applyGooglePictureIfNoLocalUpload(user, payload);
+			return buildAuthResponse(userRepository.save(user));
+		}
+
+		User created = new User();
+		created.setGoogleSub(googleSub);
+		created.setEmail(normalizedEmail);
+		created.setName(resolveGoogleDisplayName(payload));
+		// Unusable random hash — satisfies NOT NULL DB columns; Google users sign in via Google only.
+		created.setPasswordHash(passwordEncoder.encode("google-oauth:" + UUID.randomUUID()));
+		created.setRole(Role.USER);
+		applyGooglePictureIfNoLocalUpload(created, payload);
+		return buildAuthResponse(userRepository.save(created));
+	}
+
+	private static void applyGoogleNameIfBlank(User user, GoogleIdToken.Payload payload) {
+		if (StringUtils.hasText(user.getName())) {
+			return;
+		}
+		user.setName(resolveGoogleDisplayName(payload));
+	}
+
+	/** Sets profile image from Google `picture` claim unless the user uploaded a local avatar. */
+	private static void applyGooglePictureIfNoLocalUpload(User user, GoogleIdToken.Payload payload) {
+		if (hasLocalUploadedAvatar(user)) {
+			return;
+		}
+		String picture = stringClaim(payload, "picture");
+		if (StringUtils.hasText(picture)) {
+			user.setProfilePicture(picture);
+		}
+	}
+
+	private static boolean hasLocalUploadedAvatar(User user) {
+		String path = user.getProfilePicture();
+		return StringUtils.hasText(path) && path.startsWith(AVATAR_WEB_PREFIX);
+	}
+
+	private static String stringClaim(GoogleIdToken.Payload payload, String key) {
+		Object value = payload.get(key);
+		if (value instanceof String s && StringUtils.hasText(s)) {
+			return s.trim();
+		}
+		return null;
+	}
+
+	private static String resolveGoogleDisplayName(GoogleIdToken.Payload payload) {
+		Object name = payload.get("name");
+		if (name instanceof String s && StringUtils.hasText(s)) {
+			return s.trim();
+		}
+		String given = stringClaim(payload, "given_name");
+		String family = stringClaim(payload, "family_name");
+		String combined = ((given != null ? given : "") + " " + (family != null ? family : "")).trim();
+		if (StringUtils.hasText(combined)) {
+			return combined;
+		}
+		String email = payload.getEmail();
+		if (StringUtils.hasText(email) && email.contains("@")) {
+			return email.substring(0, email.indexOf('@'));
+		}
+		return "User";
 	}
 
 	@Transactional(readOnly = true)
@@ -142,10 +247,15 @@ public class AuthService {
 	public void changePassword(String email, ChangePasswordRequest request) {
 		User user = userRepository.findByEmailIgnoreCase(email.trim().toLowerCase())
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
-		if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
+		String passwordHash = user.getPasswordHash();
+		if (!StringUtils.hasText(passwordHash)) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+					"This account uses Google sign-in and has no password to change");
+		}
+		if (!passwordEncoder.matches(request.getCurrentPassword(), passwordHash)) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Current password is incorrect");
 		}
-		if (passwordEncoder.matches(request.getNewPassword(), user.getPasswordHash())) {
+		if (passwordEncoder.matches(request.getNewPassword(), passwordHash)) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
 					"New password must be different from your current password");
 		}

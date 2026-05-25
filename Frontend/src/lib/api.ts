@@ -83,6 +83,17 @@ export async function authLogin(email: string, password: string): Promise<AuthRe
   return res.json() as Promise<AuthResponse>
 }
 
+export async function authGoogle(idToken: string): Promise<AuthResponse> {
+  const res = await fetch(`${getApiBase()}/api/auth/google`, {
+    method: 'POST',
+    credentials: 'omit',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({ idToken }),
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<AuthResponse>
+}
+
 export async function authFetchProfile(token: string): Promise<UserProfile> {
   const res = await fetch(`${getApiBase()}/api/auth/me`, {
     headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },

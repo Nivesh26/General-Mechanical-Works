@@ -231,7 +231,7 @@ const AdminUserProfile = () => {
   }, [loadProfile])
 
   const avatarImageUrl = useMemo(() => {
-    if (user?.hasAvatar && user.profilePicture) {
+    if (user?.profilePicture) {
       return toAbsoluteApiUrl(user.profilePicture)
     }
     return null

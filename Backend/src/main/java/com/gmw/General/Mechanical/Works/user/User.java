@@ -25,8 +25,13 @@ public class User {
 	@Column(nullable = false, unique = true, length = 255)
 	private String email;
 
-	@Column(name = "password_hash", nullable = false, length = 255)
+	/** Null for accounts that only sign in with Google. */
+	@Column(name = "password_hash", length = 255)
 	private String passwordHash;
+
+	/** Google account subject (`sub` claim); used to link and sign in without duplicating users. */
+	@Column(name = "google_sub", unique = true, length = 64)
+	private String googleSub;
 
 	@Column(length = 32)
 	private String phone;
@@ -79,6 +84,14 @@ public class User {
 
 	public void setPasswordHash(String passwordHash) {
 		this.passwordHash = passwordHash;
+	}
+
+	public String getGoogleSub() {
+		return googleSub;
+	}
+
+	public void setGoogleSub(String googleSub) {
+		this.googleSub = googleSub;
 	}
 
 	public String getPhone() {

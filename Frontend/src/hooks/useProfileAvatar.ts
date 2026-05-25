@@ -10,9 +10,8 @@ export function useProfileAvatar(
   const [busy, setBusy] = useState(false)
 
   const avatarUrl = useMemo(
-    () =>
-      user?.hasAvatar ? toAbsoluteApiUrl(user.profilePicture ?? null) : null,
-    [user?.hasAvatar, user?.profilePicture],
+    () => toAbsoluteApiUrl(user?.profilePicture ?? null),
+    [user?.profilePicture],
   )
 
   const uploadAvatar = useCallback(

@@ -108,7 +108,12 @@ const Header = () => {
                   title="Profile"
                 >
                   {avatarUrl ? (
-                    <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
+                    <img
+                      src={avatarUrl}
+                      alt=""
+                      className="w-full h-full object-cover"
+                      referrerPolicy="no-referrer"
+                    />
                   ) : (
                     <span className="text-lg font-bold text-primary select-none" aria-hidden>
                       {profileInitialFromName(user.name)}

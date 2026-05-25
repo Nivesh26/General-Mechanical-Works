@@ -31,23 +31,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 	 */
 	@Override
 	protected boolean shouldNotFilter(HttpServletRequest request) {
-		String path = pathWithoutContext(request);
+		String path = PublicAuthEndpointFilter.normalizePath(PublicAuthEndpointFilter.pathWithoutContext(request));
 		if (path.startsWith("/uploads/")) {
 			return true;
 		}
-		if (!"POST".equals(request.getMethod())) {
+		if (!"POST".equalsIgnoreCase(request.getMethod())) {
 			return false;
 		}
-		return "/api/auth/login".equals(path) || "/api/auth/signup".equals(path);
-	}
-
-	private static String pathWithoutContext(HttpServletRequest request) {
-		String uri = request.getRequestURI();
-		String ctx = request.getContextPath();
-		if (ctx != null && !ctx.isEmpty() && uri.startsWith(ctx)) {
-			return uri.substring(ctx.length());
-		}
-		return uri;
+		return "/api/auth/login".equals(path)
+				|| "/api/auth/signup".equals(path)
+				|| "/api/auth/google".equals(path);
 	}
 
 	@Override

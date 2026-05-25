@@ -9,6 +9,7 @@ import {
 } from 'react'
 import {
   authFetchProfile,
+  authGoogle,
   authLogin,
   type UserProfile,
   type AuthResponse,
@@ -34,6 +35,7 @@ type AuthContextValue = {
   token: string | null
   loading: boolean
   login: (email: string, password: string) => Promise<AuthResponse>
+  loginWithGoogle: (idToken: string) => Promise<AuthResponse>
   logout: () => void
   refreshUser: () => Promise<void>
   /** Call after email change so the JWT subject matches the new address. */
@@ -95,6 +97,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [applySession],
   )
 
+  const loginWithGoogle = useCallback(
+    async (idToken: string): Promise<AuthResponse> => {
+      const auth = await authGoogle(idToken)
+      applySession(auth)
+      return auth
+    },
+    [applySession],
+  )
+
   const refreshUser = useCallback(async () => {
     const t = readStoredToken() ?? token
     if (!t) return
@@ -114,11 +125,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       token,
       loading,
       login,
+      loginWithGoogle,
       logout,
       refreshUser,
       replaceToken,
     }),
-    [user, token, loading, login, logout, refreshUser, replaceToken],
+    [user, token, loading, login, loginWithGoogle, logout, refreshUser, replaceToken],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

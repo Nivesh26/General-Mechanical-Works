@@ -5,7 +5,7 @@ import { HiEye, HiEyeSlash } from 'react-icons/hi2'
 import Header from '../UserComponent/Header'
 import Footer from '../UserComponent/Footer'
 import Copyright from '../UserComponent/Copyright'
-import googleIcon from '../assets/google.png'
+import { GoogleSignInButton } from '../components/GoogleSignInButton'
 import { authSignup } from '../lib/api'
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -302,13 +302,7 @@ const Usersignup = () => {
               <span className="flex-1 h-px bg-gray-300" />
             </div>
 
-            <button
-              type="button"
-              className="w-full py-3 rounded-lg border border-gray-300 bg-white text-black font-medium flex items-center justify-center gap-3 hover:bg-gray-50 transition-colors"
-            >
-              <img src={googleIcon} alt="" className="w-5 h-5" />
-              Continue with Google
-            </button>
+            <GoogleSignInButton disabled={submitting} />
 
             <p className="text-xs text-black mt-8 text-center">
               By joining, you agree to the{' '}

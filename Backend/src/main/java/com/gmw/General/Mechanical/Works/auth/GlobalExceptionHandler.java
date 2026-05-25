@@ -1,7 +1,9 @@
 package com.gmw.General.Mechanical.Works.auth;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -15,6 +17,18 @@ public class GlobalExceptionHandler {
 	@ExceptionHandler(EmailAlreadyRegisteredException.class)
 	public ResponseEntity<ErrorBody> handleDuplicateEmail(EmailAlreadyRegisteredException ex) {
 		return ResponseEntity.status(HttpStatus.CONFLICT).body(new ErrorBody(ex.getMessage()));
+	}
+
+	@ExceptionHandler(DataIntegrityViolationException.class)
+	public ResponseEntity<ErrorBody> handleDataIntegrity(DataIntegrityViolationException ex) {
+		return ResponseEntity.status(HttpStatus.CONFLICT)
+				.body(new ErrorBody("Could not create or update account. The email may already be registered."));
+	}
+
+	@ExceptionHandler(AccessDeniedException.class)
+	public ResponseEntity<ErrorBody> handleAccessDenied(AccessDeniedException ex) {
+		return ResponseEntity.status(HttpStatus.FORBIDDEN)
+				.body(new ErrorBody("Access denied"));
 	}
 
 	@ExceptionHandler(BadCredentialsException.class)
