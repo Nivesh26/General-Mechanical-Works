@@ -122,7 +122,7 @@ const AdminSetting = () => {
   }
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
+    <div className="admin-page-root">
       <AdminNavbar />
       <main className={ADMIN_MAIN_SCROLL_CLASS}>
         <div style={{ width: '100%' }}>

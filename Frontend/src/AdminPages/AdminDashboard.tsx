@@ -12,7 +12,7 @@ const AdminDashboard = () => {
   const notificationCount = 3
 
   return (
-    <div style={{ minHeight: '100vh', width: '100%', backgroundColor: '#f8fafc' }}>
+    <div className="admin-page-root">
       <AdminNavbar />
       <main className={ADMIN_MAIN_SCROLL_CLASS}>
         <section style={{ width: '100%', boxSizing: 'border-box' }}>

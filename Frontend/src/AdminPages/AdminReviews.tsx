@@ -94,7 +94,7 @@ const AdminReviews = () => {
   }
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f1f5f9' }}>
+    <div className="admin-page-root bg-[#f1f5f9]">
       <AdminNavbar />
       <main className={`${ADMIN_MAIN_SCROLL_CLASS} bg-slate-100`}>
         <div style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>

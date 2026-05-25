@@ -71,7 +71,7 @@ const AdminService = () => {
   }
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
+    <div className="admin-page-root">
       <AdminNavbar />
       <main className={ADMIN_MAIN_SCROLL_CLASS}>
         <div style={ADMIN_PAGE_HEADER_SPACING}>
@@ -135,7 +135,7 @@ const AdminService = () => {
 
         <section style={cardStyle}>
           <h2 style={sectionTitleStyle}>Available schedule ({availability.length} dates)</h2>
-          <div style={{ overflowX: 'auto' }}>
+          <div className="admin-table-wrap">
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '760px' }}>
               <thead>
                 <tr style={{ backgroundColor: '#f1f5f9' }}>

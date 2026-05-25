@@ -174,7 +174,7 @@ const AdminPayments = () => {
   }
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
+    <div className="admin-page-root">
       <AdminNavbar />
       <main className={ADMIN_MAIN_SCROLL_CLASS}>
         <div style={{ marginBottom: '16px' }}>
@@ -235,7 +235,7 @@ const AdminPayments = () => {
         </div>
 
         <div style={cardStyle}>
-          <div style={{ overflowX: 'auto' }}>
+          <div className="admin-table-wrap">
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '980px' }}>
               <thead>
                 <tr style={{ backgroundColor: '#f1f5f9' }}>

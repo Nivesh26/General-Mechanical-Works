@@ -1,9 +1,11 @@
 import type { CSSProperties } from 'react'
 
 export {
+  ADMIN_PAGE_ROOT_CLASS,
   ADMIN_MAIN_SCROLL_CLASS,
   ADMIN_MAIN_MESSAGES_CLASS,
   ADMIN_TABLE_WRAP,
+  ADMIN_CONTENT_MAX,
 } from '../lib/layoutClasses'
 
 /** @deprecated Use ADMIN_MAIN_SCROLL_CLASS with className */

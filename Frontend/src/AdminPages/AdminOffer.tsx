@@ -177,7 +177,7 @@ const AdminOffer = () => {
     )
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
+    <div className="admin-page-root">
       {lightbox}
       <AdminNavbar />
       <main className={ADMIN_MAIN_SCROLL_CLASS}>
@@ -302,7 +302,7 @@ const AdminOffer = () => {
           ) : offers.length === 0 ? (
             <p style={{ padding: '24px', color: '#64748b', margin: 0 }}>No offers yet. Add a poster above.</p>
           ) : (
-            <div style={{ overflowX: 'auto' }}>
+            <div className="admin-table-wrap">
               <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '640px' }}>
                 <thead>
                   <tr style={{ backgroundColor: '#f1f5f9' }}>

@@ -60,7 +60,7 @@ const AdminUsers = () => {
   const colCount = 6
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
+    <div className="admin-page-root">
       <AdminNavbar />
       <main className={ADMIN_MAIN_SCROLL_CLASS}>
         <div
@@ -137,12 +137,12 @@ const AdminUsers = () => {
         ) : null}
 
         <div
+          className="admin-table-wrap"
           style={{
             marginTop: '28px',
             backgroundColor: '#ffffff',
             border: '1px solid #e2e8f0',
             borderRadius: '12px',
-            overflowX: 'auto',
           }}
         >
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '720px' }}>

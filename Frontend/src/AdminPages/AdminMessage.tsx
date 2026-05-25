@@ -283,7 +283,7 @@ const AdminMessage = () => {
   }
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
+    <div className="admin-page-root">
       <AdminNavbar />
       <main className={ADMIN_MAIN_MESSAGES_CLASS}>
         <div style={{ ...ADMIN_PAGE_HEADER_SPACING, flexShrink: 0 }}>

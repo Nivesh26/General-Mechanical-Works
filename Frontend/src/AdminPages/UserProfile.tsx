@@ -240,7 +240,7 @@ const AdminUserProfile = () => {
   const profileInitial = user ? profileInitialFromName(user.name) : 'U'
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
+    <div className="admin-page-root">
       <AdminNavbar />
       <main className={ADMIN_MAIN_SCROLL_CLASS}>
         <div style={ADMIN_PAGE_HEADER_SPACING}>
@@ -440,7 +440,7 @@ const AdminUserProfile = () => {
                       Registered bikes ({bikes.length})
                     </h3>
                   </div>
-                  <div style={{ overflowX: 'auto' }}>
+                  <div className="admin-table-wrap">
                     <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '680px' }}>
                       <thead>
                         <tr style={{ backgroundColor: '#f1f5f9' }}>
@@ -521,7 +521,7 @@ const AdminUserProfile = () => {
                       Parts and products linked to this customer (purchased or pending).
                     </p>
                   </div>
-                  <div style={{ overflowX: 'auto' }}>
+                  <div className="admin-table-wrap">
                     <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '720px' }}>
                       <thead>
                         <tr style={{ backgroundColor: '#f1f5f9' }}>
@@ -576,7 +576,7 @@ const AdminUserProfile = () => {
                       Workshop visits and maintenance records for this customer.
                     </p>
                   </div>
-                  <div style={{ overflowX: 'auto' }}>
+                  <div className="admin-table-wrap">
                     <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '760px' }}>
                       <thead>
                         <tr style={{ backgroundColor: '#f1f5f9' }}>

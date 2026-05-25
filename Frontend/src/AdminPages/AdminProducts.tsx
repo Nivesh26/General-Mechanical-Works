@@ -352,11 +352,11 @@ const AdminProducts = () => {
   })
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
+    <div className="admin-page-root">
       <AdminNavbar />
 
-      <main className={ADMIN_MAIN_SCROLL_CLASS}>
-        <div style={ADMIN_PAGE_HEADER_SPACING}>
+      <main className={`${ADMIN_MAIN_SCROLL_CLASS} overflow-x-hidden`}>
+        <div style={{ ...ADMIN_PAGE_HEADER_SPACING, maxWidth: '100%', minWidth: 0 }}>
           <h1 style={ADMIN_PAGE_TITLE}>Admin Products</h1>
           <p style={ADMIN_PAGE_SUBTITLE}>Add, update, and manage product inventory.</p>
         </div>
@@ -368,6 +368,9 @@ const AdminProducts = () => {
             borderRadius: '16px',
             padding: '20px',
             marginBottom: '18px',
+            maxWidth: '100%',
+            minWidth: 0,
+            boxSizing: 'border-box',
           }}
         >
           <h2 style={{ margin: '0 0 14px', fontSize: '18px', fontWeight: 700, color: '#111827' }}>
@@ -760,6 +763,7 @@ const AdminProducts = () => {
         </section>
 
         <section
+          className="admin-product-list-section"
           style={{
             background: '#fff',
             border: '1px solid #e5e7eb',
@@ -772,6 +776,7 @@ const AdminProducts = () => {
               padding: '14px 16px',
               borderBottom: '1px solid #f3f4f6',
               display: 'flex',
+              flexWrap: 'wrap',
               alignItems: 'center',
               justifyContent: 'space-between',
               gap: '12px',
@@ -780,17 +785,30 @@ const AdminProducts = () => {
             <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#111827' }}>
               Product List
             </h2>
-            <form onSubmit={onSearch} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <form
+              onSubmit={onSearch}
+              style={{
+                display: 'flex',
+                flexWrap: 'nowrap',
+                gap: '8px',
+                alignItems: 'center',
+                flexShrink: 0,
+              }}
+            >
               <input
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 placeholder="Search products"
                 style={{
-                  width: '260px',
+                  width: '220px',
+                  maxWidth: 'min(260px, 42vw)',
+                  minWidth: '120px',
+                  flex: '0 1 auto',
                   border: '1px solid #d1d5db',
                   borderRadius: '8px',
                   padding: '9px 10px',
                   fontSize: '14px',
+                  boxSizing: 'border-box',
                 }}
               />
               <button type="submit" style={btnPrimary}>
@@ -799,8 +817,8 @@ const AdminProducts = () => {
             </form>
           </div>
 
-          <div style={{ overflowX: 'auto', padding: '8px 10px 10px' }}>
-            <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
+          <div className="admin-product-list-table-wrap" style={{ padding: '8px 10px 10px' }}>
+            <table style={{ borderCollapse: 'separate', borderSpacing: 0 }}>
               <thead>
                 <tr style={{ background: '#f9fafb' }}>
                   {['ID', 'Images', 'SKU', 'Name', 'Description', 'Highlights', 'Category', 'Size', 'Price', 'Stock', 'Status', 'Actions'].map((head) => (
@@ -1027,7 +1045,7 @@ const AdminProducts = () => {
                         <div
                           style={{
                             display: 'inline-flex',
-                            flexWrap: 'nowrap',
+                            flexWrap: 'wrap',
                             gap: '6px',
                             alignItems: 'stretch',
                           }}

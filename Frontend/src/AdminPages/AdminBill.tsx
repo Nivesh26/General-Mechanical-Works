@@ -292,7 +292,7 @@ const AdminBill = () => {
           }
         }
       `}</style>
-      <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
+      <div className="admin-page-root">
         <AdminNavbar />
         <main className={ADMIN_MAIN_SCROLL_CLASS}>
           <div
@@ -331,8 +331,9 @@ const AdminBill = () => {
             <aside
               className="admin-bill-no-print"
               style={{
-                width: '280px',
-                flex: '0 0 auto',
+                width: '100%',
+                maxWidth: '280px',
+                flex: '1 1 100%',
                 maxHeight: 'calc(100vh - 180px)',
                 overflowY: 'auto',
                 border: borderNormal,

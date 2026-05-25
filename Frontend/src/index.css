@@ -56,3 +56,69 @@ body {
 .admin-users-name-link:hover {
   text-decoration: underline;
 }
+
+/* Admin layout: keep content within viewport; scroll wide tables inside cards only */
+.admin-page-root {
+  min-height: 100vh;
+  max-width: 100vw;
+  overflow-x: hidden;
+  background-color: #f8fafc;
+}
+
+.admin-main-scroll {
+  box-sizing: border-box;
+  padding-left: 0;
+}
+
+@media (min-width: 1024px) {
+  .admin-main-scroll {
+    padding-left: calc(280px + 24px);
+    padding-top: 16px;
+  }
+}
+
+.admin-main-scroll > * {
+  max-width: 100%;
+  min-width: 0;
+}
+
+.admin-main-messages {
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-table-wrap {
+  -webkit-overflow-scrolling: touch;
+}
+
+.admin-table-wrap table {
+  width: 100%;
+}
+
+/* Admin Products: horizontal scroll only inside Product List table */
+.admin-product-list-section {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.admin-product-list-table-wrap {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
+}
+
+.admin-product-list-table-wrap table {
+  width: max-content;
+  min-width: 100%;
+}
+
+/* Search / filter inputs with fixed pixel widths */
+.admin-main-scroll input,
+.admin-main-scroll select {
+  max-width: 100%;
+}

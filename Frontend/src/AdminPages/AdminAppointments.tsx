@@ -223,7 +223,7 @@ const AdminAppointments = () => {
   }
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
+    <div className="admin-page-root">
       <AdminNavbar />
       <main className={ADMIN_MAIN_SCROLL_CLASS}>
         <div
@@ -232,7 +232,7 @@ const AdminAppointments = () => {
             alignItems: 'center',
             justifyContent: 'space-between',
             gap: '16px',
-            flexWrap: 'nowrap',
+            flexWrap: 'wrap',
             marginBottom: '16px',
           }}
         >
@@ -244,9 +244,9 @@ const AdminAppointments = () => {
             onSubmit={onSearchSubmit}
             style={{
               display: 'flex',
+              flexWrap: 'nowrap',
               gap: '8px',
               alignItems: 'center',
-              flexWrap: 'nowrap',
               flexShrink: 0,
             }}
           >
@@ -257,15 +257,16 @@ const AdminAppointments = () => {
               placeholder="Search appointment"
               autoComplete="off"
               style={{
-                width: '280px',
-                maxWidth: 'min(280px, 36vw)',
-                minWidth: '140px',
+                width: '220px',
+                maxWidth: 'min(280px, 42vw)',
+                minWidth: '120px',
                 padding: '10px 12px',
                 border: '1px solid #cbd5e1',
                 borderRadius: '8px',
                 fontSize: '14px',
                 outline: 'none',
                 boxSizing: 'border-box',
+                flex: '0 1 auto',
               }}
             />
             <button
@@ -330,7 +331,7 @@ const AdminAppointments = () => {
             overflow: 'hidden',
           }}
         >
-          <div style={{ overflowX: 'auto' }}>
+          <div className="admin-table-wrap">
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1080px' }}>
               <thead>
                 <tr style={{ backgroundColor: '#f1f5f9' }}>

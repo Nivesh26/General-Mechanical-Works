@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
-import { NavLink } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
+import { toast } from 'react-toastify'
 import {
   HiOutlineMagnifyingGlass,
   HiOutlineCalendarDays,
   HiOutlineShoppingCart,
 } from 'react-icons/hi2'
-import { FiMenu, FiX } from 'react-icons/fi'
+import { FiLogOut, FiMenu, FiX } from 'react-icons/fi'
 import GMWlogo from '../assets/GMWlogo.png'
 import { useAuth } from '../context/AuthContext'
 import { useProfileAvatar } from '../hooks/useProfileAvatar'
@@ -14,8 +15,9 @@ import { profileInitialFromName } from '../lib/profileInitial'
 import { PAGE_GUTTER } from '../lib/layoutClasses'
 
 const Header = () => {
-  const { user, loading, token, refreshUser } = useAuth()
+  const { user, loading, token, refreshUser, logout } = useAuth()
   const { avatarUrl } = useProfileAvatar(user, token, refreshUser)
+  const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
 
   useBodyScrollLock(menuOpen)
@@ -56,6 +58,13 @@ const Header = () => {
 
   const closeMenu = () => setMenuOpen(false)
 
+  const handleLogout = () => {
+    closeMenu()
+    toast.error('You have been logged out.')
+    logout()
+    navigate('/login', { replace: true })
+  }
+
   const mobileDrawer = (
     <>
       {menuOpen && (
@@ -78,11 +87,11 @@ const Header = () => {
             <input
               type="search"
               placeholder="Search"
-              className="w-full pl-4 pr-10 py-2.5 text-sm rounded-full bg-gray-100 border-0 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-200"
+              className="w-full h-9 pl-3 pr-9 text-sm rounded-full bg-gray-100 border-0 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-200"
               aria-label="Search"
             />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">
-              <HiOutlineMagnifyingGlass className="w-5 h-5" />
+            <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">
+              <HiOutlineMagnifyingGlass className="w-4 h-4" />
             </span>
           </div>
           <nav className="flex flex-col" aria-label="Mobile">
@@ -98,11 +107,20 @@ const Header = () => {
               </NavLink>
             ))}
           </nav>
-          {!showLoggedInActions && (
+          {showLoggedInActions ? (
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="mt-4 flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-800 text-sm font-medium hover:bg-gray-50 transition-colors cursor-pointer"
+            >
+              <FiLogOut size={16} aria-hidden />
+              Log out
+            </button>
+          ) : (
             <NavLink
               to="/login"
               onClick={closeMenu}
-              className="mt-4 inline-block w-full text-center px-6 py-3 rounded-full bg-primary text-white text-sm font-medium hover:bg-primary/90"
+              className="mt-4 inline-block w-full text-center px-6 py-2.5 rounded-full bg-primary text-white text-sm font-medium hover:bg-primary/90"
             >
               Login
             </NavLink>
@@ -149,15 +167,15 @@ const Header = () => {
               ))}
             </nav>
 
-            <div className="hidden md:flex relative flex-1 max-w-xs lg:max-w-sm xl:max-w-md mx-2">
+            <div className="hidden md:block relative w-[11rem] lg:w-[13rem] shrink-0 mx-1 lg:mx-2">
               <input
                 type="search"
                 placeholder="Search"
-                className="w-full pl-4 pr-10 py-2 sm:py-2.5 text-sm rounded-full bg-gray-100 border-0 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-200"
+                className="w-full h-9 pl-3 pr-9 text-sm rounded-full bg-gray-100 border-0 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-200"
                 aria-label="Search"
               />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">
-                <HiOutlineMagnifyingGlass className="w-5 h-5" />
+              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">
+                <HiOutlineMagnifyingGlass className="w-4 h-4" aria-hidden />
               </span>
             </div>
 
