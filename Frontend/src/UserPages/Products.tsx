@@ -31,6 +31,12 @@ const sortOptions: { value: PriceSort; label: string }[] = [
   { value: 'highToLow', label: 'Price: High to Low' },
 ]
 
+const computeCatalogPriceMax = (items: StoreProduct[]) => {
+  if (items.length === 0) return DEFAULT_PRICE_MAX
+  const highest = items.reduce((max, p) => Math.max(max, p.priceValue), 0)
+  return Math.max(PRICE_STEP, Math.ceil(highest / PRICE_STEP) * PRICE_STEP)
+}
+
 const toStoreProduct = (item: ProductItem): StoreProduct => ({
   id: item.id,
   name: item.name,
@@ -60,8 +66,9 @@ const Products = () => {
         if (cancelled) return
         const mapped = list.map(toStoreProduct)
         setProducts(mapped)
-        const maxPrice = mapped.reduce((max, p) => Math.max(max, p.priceValue), DEFAULT_PRICE_MAX)
-        setPriceMax(Math.max(DEFAULT_PRICE_MAX, Math.ceil(maxPrice / PRICE_STEP) * PRICE_STEP))
+        const catalogMax = computeCatalogPriceMax(mapped)
+        setPriceMin(PRICE_MIN)
+        setPriceMax(catalogMax)
       } catch (e) {
         if (!cancelled) {
           setLoadError(e instanceof Error ? e.message : 'Failed to load products')
@@ -76,6 +83,8 @@ const Products = () => {
       cancelled = true
     }
   }, [])
+
+  const catalogPriceMax = useMemo(() => computeCatalogPriceMax(products), [products])
 
   const categories = useMemo(() => {
     const set = new Set(products.map((p) => p.category))
@@ -142,11 +151,15 @@ const Products = () => {
                   <input
                     type="range"
                     min={PRICE_MIN}
-                    max={priceMax}
+                    max={catalogPriceMax}
                     step={PRICE_STEP}
-                    value={priceMin}
-                    onChange={(e) => setPriceMin(Math.min(Number(e.target.value), priceMax))}
-                    className="w-full h-2 rounded-lg appearance-none bg-gray-200 accent-primary"
+                    value={Math.min(priceMin, catalogPriceMax)}
+                    onChange={(e) => {
+                      const next = Number(e.target.value)
+                      setPriceMin(Math.min(next, priceMax))
+                    }}
+                    disabled={loading || catalogPriceMax <= PRICE_MIN}
+                    className="w-full h-2 rounded-lg appearance-none bg-gray-200 accent-primary disabled:opacity-50"
                   />
                 </div>
                 <div>
@@ -154,11 +167,15 @@ const Products = () => {
                   <input
                     type="range"
                     min={PRICE_MIN}
-                    max={priceMax}
+                    max={catalogPriceMax}
                     step={PRICE_STEP}
-                    value={priceMax}
-                    onChange={(e) => setPriceMax(Math.max(Number(e.target.value), priceMin))}
-                    className="w-full h-2 rounded-lg appearance-none bg-gray-200 accent-primary"
+                    value={Math.min(priceMax, catalogPriceMax)}
+                    onChange={(e) => {
+                      const next = Number(e.target.value)
+                      setPriceMax(Math.max(next, priceMin))
+                    }}
+                    disabled={loading || catalogPriceMax <= PRICE_MIN}
+                    className="w-full h-2 rounded-lg appearance-none bg-gray-200 accent-primary disabled:opacity-50"
                   />
                 </div>
               </div>
