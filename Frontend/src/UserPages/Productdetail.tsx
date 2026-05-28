@@ -377,7 +377,9 @@ const Productdetail = () => {
           </div>
         </div>
 
-        <Productsuggestion />
+        <Productsuggestion
+          excludeProductId={Number.isFinite(productId) && productId > 0 ? productId : undefined}
+        />
       </main>
 
       <Footer />

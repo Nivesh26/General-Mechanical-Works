@@ -6,6 +6,7 @@ import Copyright from '../UserComponent/Copyright'
 import { PAGE_GUTTER } from '../lib/layoutClasses'
 import { fetchProducts, type ProductItem } from '../lib/api'
 import { productImageUrl } from '../lib/products'
+import { PRODUCT_SHUFFLE_INTERVAL_MS, shuffleArray } from '../lib/shuffle'
 
 const PRICE_MIN = 0
 const PRICE_STEP = 500
@@ -55,6 +56,7 @@ const Products = () => {
   const [priceMin, setPriceMin] = useState(PRICE_MIN)
   const [priceMax, setPriceMax] = useState(DEFAULT_PRICE_MAX)
   const [sortBy, setSortBy] = useState<PriceSort>('default')
+  const [shuffleTick, setShuffleTick] = useState(0)
 
   useEffect(() => {
     let cancelled = false
@@ -84,6 +86,14 @@ const Products = () => {
     }
   }, [])
 
+  useEffect(() => {
+    if (loading || products.length === 0) return
+    const id = window.setInterval(() => {
+      setShuffleTick((t) => t + 1)
+    }, PRODUCT_SHUFFLE_INTERVAL_MS)
+    return () => window.clearInterval(id)
+  }, [loading, products.length])
+
   const catalogPriceMax = useMemo(() => computeCatalogPriceMax(products), [products])
 
   const categories = useMemo(() => {
@@ -91,17 +101,24 @@ const Products = () => {
     return ['All', ...[...set].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }))]
   }, [products])
 
-  const filteredProducts = products.filter((product) => {
-    const matchesCategory = activeCategory === 'All' || product.category === activeCategory
-    const matchesPrice = product.priceValue >= priceMin && product.priceValue <= priceMax
-    return matchesCategory && matchesPrice
-  })
+  const filteredProducts = useMemo(
+    () =>
+      products.filter((product) => {
+        const matchesCategory = activeCategory === 'All' || product.category === activeCategory
+        const matchesPrice = product.priceValue >= priceMin && product.priceValue <= priceMax
+        return matchesCategory && matchesPrice
+      }),
+    [products, activeCategory, priceMin, priceMax],
+  )
 
-  const sortedProducts = [...filteredProducts].sort((a, b) => {
-    if (sortBy === 'lowToHigh') return a.priceValue - b.priceValue
-    if (sortBy === 'highToLow') return b.priceValue - a.priceValue
-    return 0
-  })
+  const sortedProducts = useMemo(() => {
+    const sorted = [...filteredProducts].sort((a, b) => {
+      if (sortBy === 'lowToHigh') return a.priceValue - b.priceValue
+      if (sortBy === 'highToLow') return b.priceValue - a.priceValue
+      return 0
+    })
+    return shuffleArray(sorted)
+  }, [filteredProducts, sortBy, shuffleTick])
 
   return (
     <div className="min-h-screen flex flex-col bg-white">

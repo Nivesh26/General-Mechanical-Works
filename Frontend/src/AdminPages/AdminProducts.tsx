@@ -44,6 +44,8 @@ type ProductForm = {
 }
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024
+/** Stock below this shows "Low in stock" in the admin table (when stock is 1–4). */
+const LOW_STOCK_THRESHOLD = 5
 
 const defaultCategories = ['Lubricants', 'Brakes', 'Tyres', 'Electrical', 'Accessories']
 const sizeOptions = ['XS', 'S', 'L', 'XL', 'XXL', 'XXXL'] as const
@@ -902,6 +904,14 @@ const AdminProducts = () => {
                 )}
                 {!loading && filteredProducts.map((product) => {
                   const outOfStock = product.stock === 0
+                  const lowStock = product.stock > 0 && product.stock < LOW_STOCK_THRESHOLD
+                  const stockStatusLabel = outOfStock
+                    ? 'Out of stock'
+                    : lowStock
+                      ? 'Low in stock'
+                      : 'In stock'
+                  const stockStatusColor = outOfStock ? '#b91c1c' : lowStock ? '#b45309' : '#166534'
+                  const stockStatusBg = outOfStock ? '#fee2e2' : lowStock ? '#fef3c7' : '#dcfce7'
                   const listingActive = product.active
                   const inactiveRow = !listingActive
                   return (
@@ -1052,7 +1062,9 @@ const AdminProducts = () => {
                           verticalAlign: 'top',
                         }}
                       >
-                        {product.stock}
+                        <span style={{ color: lowStock ? '#b45309' : undefined, fontWeight: lowStock ? 700 : undefined }}>
+                          {product.stock}
+                        </span>
                       </td>
                       <td
                         style={{
@@ -1069,11 +1081,11 @@ const AdminProducts = () => {
                               padding: '4px 10px',
                               fontSize: '12px',
                               fontWeight: 700,
-                              color: outOfStock ? '#b91c1c' : '#166534',
-                              background: outOfStock ? '#fee2e2' : '#dcfce7',
+                              color: stockStatusColor,
+                              background: stockStatusBg,
                             }}
                           >
-                            {outOfStock ? 'Out of stock' : 'In stock'}
+                            {stockStatusLabel}
                           </span>
                           <span
                             style={{
