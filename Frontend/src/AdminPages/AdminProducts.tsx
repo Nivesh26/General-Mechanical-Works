@@ -12,7 +12,9 @@ import {
   updateAdminProduct,
   type ProductItem,
 } from '../lib/api'
-import { mapProductImages } from '../lib/products'
+import { mapProductImages, productImageUrl } from '../lib/products'
+
+type EditingImage = { url: string; path: string }
 
 type Product = {
   id: number
@@ -25,6 +27,7 @@ type Product = {
   price: number
   stock: number
   images: string[]
+  imagePaths: string[]
   /** When false, product is hidden from storefront / treated as inactive listing. */
   active: boolean
 }
@@ -61,6 +64,7 @@ const toUiProduct = (item: ProductItem): Product => ({
   price: Number(item.price),
   stock: item.stock,
   images: mapProductImages(item),
+  imagePaths: item.imagePaths ?? [],
   active: item.active,
 })
 
@@ -88,6 +92,32 @@ type ProductFieldKey = 'name' | 'sku' | 'description' | 'category' | 'price' | '
 
 const borderNormal = '1px solid #d1d5db'
 const borderError = '1px solid #dc2626'
+
+const imageRemoveButtonStyle: CSSProperties = {
+  position: 'absolute',
+  top: '-7px',
+  right: '-7px',
+  width: '18px',
+  height: '18px',
+  borderRadius: '999px',
+  border: 0,
+  background: '#ef4444',
+  color: '#fff',
+  fontSize: '12px',
+  lineHeight: '18px',
+  cursor: 'pointer',
+  fontWeight: 700,
+  padding: 0,
+}
+
+const productImageThumbStyle: CSSProperties = {
+  width: '68px',
+  height: '68px',
+  objectFit: 'cover',
+  borderRadius: '8px',
+  border: '1px solid #d1d5db',
+  background: '#fff',
+}
 
 const validateProductForm = (
   form: ProductForm,
@@ -121,7 +151,8 @@ const validateProductForm = (
     e.stock = 'Enter a whole number (0 or more).'
   }
 
-  const imageCount = uploadFiles.length > 0 ? uploadFiles.length : existingImageCount
+  const imageCount =
+    editingId !== null ? existingImageCount + uploadFiles.length : uploadFiles.length
   if (imageCount > 4) e.images = 'You can upload at most 4 images.'
 
   return e
@@ -137,6 +168,7 @@ const AdminProducts = () => {
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<ProductFieldKey, string>>>({})
   const [searchInput, setSearchInput] = useState('')
   const [uploadFiles, setUploadFiles] = useState<File[]>([])
+  const [editingImages, setEditingImages] = useState<EditingImage[]>([])
   const [fileInputKey, setFileInputKey] = useState(0)
   const [categorySuggestionsOpen, setCategorySuggestionsOpen] = useState(false)
 
@@ -203,6 +235,7 @@ const AdminProducts = () => {
     setForm(emptyForm)
     setEditingId(null)
     setUploadFiles([])
+    setEditingImages([])
     setFileInputKey((k) => k + 1)
     setCategorySuggestionsOpen(false)
     setFieldErrors({})
@@ -225,7 +258,8 @@ const AdminProducts = () => {
       return
     }
 
-    if (uploadFiles.length >= 4) {
+    const maxTotal = editingId !== null ? 4 - editingImages.length : 4
+    if (uploadFiles.length >= maxTotal) {
       setFieldErrors((prev) => ({ ...prev, images: 'You can upload maximum 4 images.' }))
       return
     }
@@ -251,12 +285,16 @@ const AdminProducts = () => {
     clearFieldError('images')
   }
 
+  const removeEditingImage = (indexToRemove: number) => {
+    setEditingImages((prev) => prev.filter((_, index) => index !== indexToRemove))
+    clearFieldError('images')
+  }
+
   const onSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
     if (!token) return
 
-    const editingProduct = editingId !== null ? products.find((p) => p.id === editingId) : null
-    const existingImageCount = editingProduct?.images.length ?? 0
+    const existingImageCount = editingId !== null ? editingImages.length : 0
 
     const errors = validateProductForm(form, products, editingId, uploadFiles, existingImageCount)
     setFieldErrors(errors)
@@ -265,7 +303,13 @@ const AdminProducts = () => {
     setSaving(true)
     try {
       if (editingId !== null) {
-        await updateAdminProduct(token, editingId, form, uploadFiles)
+        await updateAdminProduct(
+          token,
+          editingId,
+          form,
+          uploadFiles,
+          editingImages.map((img) => img.path),
+        )
         toast.success('Product updated.')
       } else {
         await createAdminProduct(token, form, uploadFiles)
@@ -294,6 +338,14 @@ const AdminProducts = () => {
     })
     setCategorySuggestionsOpen(false)
     setUploadFiles([])
+    setEditingImages(
+      product.imagePaths
+        .map((path) => {
+          const url = productImageUrl(path)
+          return url ? { path, url } : null
+        })
+        .filter((img): img is EditingImage => img !== null),
+    )
     setFileInputKey((k) => k + 1)
     setFieldErrors({})
   }
@@ -659,9 +711,39 @@ const AdminProducts = () => {
                 {fieldErrors.images && (
                   <p style={{ margin: '6px 0 0', fontSize: '12px', color: '#dc2626' }}>{fieldErrors.images}</p>
                 )}
-                {editingId !== null && uploadFiles.length === 0 && (
+                {editingId !== null && editingImages.length > 0 && (
+                  <div style={{ marginTop: '10px' }}>
+                    <p style={{ margin: '0 0 8px', fontSize: '12px', color: '#374151', fontWeight: 600 }}>
+                      Current images
+                      <span style={{ fontWeight: 400, color: '#6b7280' }}>
+                        {' '}
+                        — click × to remove; save to apply
+                      </span>
+                    </p>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      {editingImages.map((img, index) => (
+                        <div key={`${img.path}-${index}`} style={{ position: 'relative' }}>
+                          <img
+                            src={img.url}
+                            alt={`Product image ${index + 1}`}
+                            style={{ ...productImageThumbStyle, background: '#f3f4f6' }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeEditingImage(index)}
+                            aria-label={`Remove product image ${index + 1}`}
+                            style={imageRemoveButtonStyle}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {editingId !== null && uploadFiles.length === 0 && editingImages.length === 0 && (
                   <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#6b7280' }}>
-                    No new files selected. Existing images will be kept.
+                    No images on this product. Upload at least one image to save.
                   </p>
                 )}
                 {uploadFiles.length > 0 && (
@@ -678,35 +760,13 @@ const AdminProducts = () => {
                           <img
                             src={URL.createObjectURL(file)}
                             alt={file.name}
-                            style={{
-                              width: '68px',
-                              height: '68px',
-                              objectFit: 'cover',
-                              borderRadius: '8px',
-                              border: '1px solid #d1d5db',
-                              background: '#fff',
-                            }}
+                            style={productImageThumbStyle}
                           />
                           <button
                             type="button"
                             onClick={() => removeUploadFile(index)}
                             aria-label={`Remove ${file.name}`}
-                            style={{
-                              position: 'absolute',
-                              top: '-7px',
-                              right: '-7px',
-                              width: '18px',
-                              height: '18px',
-                              borderRadius: '999px',
-                              border: 0,
-                              background: '#ef4444',
-                              color: '#fff',
-                              fontSize: '12px',
-                              lineHeight: '18px',
-                              cursor: 'pointer',
-                              fontWeight: 700,
-                              padding: 0,
-                            }}
+                            style={imageRemoveButtonStyle}
                           >
                             ×
                           </button>

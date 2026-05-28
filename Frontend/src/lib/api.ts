@@ -523,9 +523,17 @@ export async function updateAdminProduct(
   id: number,
   fields: ProductFormFields,
   files: File[],
+  keepImagePaths: string[] = [],
 ): Promise<ProductItem> {
   const body = new FormData()
   appendProductFormFields(body, fields)
+  if (keepImagePaths.length === 0) {
+    body.append('keepImagePaths', '')
+  } else {
+    for (const path of keepImagePaths) {
+      body.append('keepImagePaths', path)
+    }
+  }
   for (const file of files) {
     body.append('files', file)
   }

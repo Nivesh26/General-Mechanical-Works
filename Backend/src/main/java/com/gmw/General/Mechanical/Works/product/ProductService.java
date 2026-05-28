@@ -101,6 +101,7 @@ public class ProductService {
 			String sizesRaw,
 			BigDecimal price,
 			int stock,
+			List<String> keepImagePaths,
 			List<MultipartFile> files) {
 		Product product = productRepository.findById(id)
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Product not found"));
@@ -108,19 +109,51 @@ public class ProductService {
 		ensureUniqueSku(sku, id);
 
 		List<String> currentPaths = ProductJson.readStringList(product.getImagePathsJson());
-		List<String> imagePaths = currentPaths;
-		if (files != null && !files.isEmpty()) {
-			deleteStoredPaths(currentPaths);
-			imagePaths = storeImages(files, List.of());
-			if (imagePaths.size() > MAX_IMAGES) {
-				deleteStoredPaths(imagePaths);
-				throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "You can upload at most 4 images");
-			}
-		}
+		List<String> imagePaths = resolveUpdatedImagePaths(currentPaths, keepImagePaths, files);
 
 		applyFields(product, sku, name, description, bulletPointsRaw, category, sizesRaw, price, stock);
 		product.setImagePathsJson(ProductJson.writeStringList(imagePaths));
 		return saveProduct(product);
+	}
+
+	private List<String> resolveUpdatedImagePaths(
+			List<String> currentPaths,
+			List<String> keepImagePaths,
+			List<MultipartFile> files) {
+		List<String> base;
+		if (keepImagePaths != null) {
+			List<String> kept = keepImagePaths.stream().filter(StringUtils::hasText).toList();
+			for (String path : kept) {
+				if (!currentPaths.contains(path)) {
+					throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid image reference");
+				}
+			}
+			base = new ArrayList<>(kept);
+			List<String> removed = currentPaths.stream().filter(path -> !base.contains(path)).toList();
+			deleteStoredPaths(removed);
+		} else if (files != null && !files.isEmpty()) {
+			deleteStoredPaths(currentPaths);
+			base = new ArrayList<>();
+		} else {
+			base = new ArrayList<>(currentPaths);
+		}
+
+		List<String> added = new ArrayList<>();
+		if (files != null && !files.isEmpty()) {
+			for (MultipartFile file : files) {
+				if (file == null || file.isEmpty()) {
+					continue;
+				}
+				added.add(storeImage(file));
+			}
+			base.addAll(added);
+		}
+
+		if (base.size() > MAX_IMAGES) {
+			deleteStoredPaths(added);
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "You can upload at most 4 images");
+		}
+		return base;
 	}
 
 	@Transactional

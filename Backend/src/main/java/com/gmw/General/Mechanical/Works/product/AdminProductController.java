@@ -56,8 +56,10 @@ public class AdminProductController {
 			@RequestParam(required = false, defaultValue = "") String sizes,
 			@RequestParam BigDecimal price,
 			@RequestParam int stock,
+			@RequestParam(required = false) List<String> keepImagePaths,
 			@RequestPart(value = "files", required = false) List<MultipartFile> files) {
-		return productService.update(id, sku, name, description, bulletPoints, category, sizes, price, stock, files);
+		return productService.update(
+				id, sku, name, description, bulletPoints, category, sizes, price, stock, keepImagePaths, files);
 	}
 
 	@PatchMapping("/{id}/active")
