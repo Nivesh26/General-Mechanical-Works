@@ -1,26 +1,28 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { Link, useParams } from 'react-router-dom'
 import Header from '../UserComponent/Header'
 import Footer from '../UserComponent/Footer'
 import Copyright from '../UserComponent/Copyright'
 import Productsuggestion from '../UserComponent/Productsuggestion'
-import EngineOil from '../assets/EngineOil.png'
-import Brakes from '../assets/Brakekit.png'
-import Battery from '../assets/Battery.png'
-import Tyre from '../assets/Tyre.png'
 import { PAGE_GUTTER } from '../lib/layoutClasses'
 import GMWlogo from '../assets/GMWlogo.png'
 import { HiOutlineCheck, HiStar, HiOutlineHandThumbUp, HiHandThumbUp } from 'react-icons/hi2'
 import { DEMO_PRODUCT_ID, useProductReviewsState } from '../lib/useProductReviewsState'
+import { fetchProduct, type ProductItem } from '../lib/api'
+import { mapProductImages } from '../lib/products'
 
-const productImages = [EngineOil, Brakes, Battery, Tyre]
-const productSizes = ['S', 'L', 'XL', 'XXL']
-/** Units available for this product (replace with API data when wired). */
-const PRODUCT_STOCK = 24
+const formatPrice = (n: number) => `Rs. ${n.toLocaleString('en-IN')}`
 
 const Productdetail = () => {
+  const { id: idParam } = useParams()
+  const productId = Number(idParam)
+
+  const [product, setProduct] = useState<ProductItem | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
+
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
-  const [selectedSize, setSelectedSize] = useState<'S' | 'L' | 'XL' | 'XXL'>('L')
+  const [selectedSize, setSelectedSize] = useState<string | null>(null)
   const [reviewText, setReviewText] = useState('')
   const [rating, setRating] = useState(0)
   const {
@@ -36,6 +38,51 @@ const Productdetail = () => {
 
   const productReviews = reviews.filter((r) => r.productId === DEMO_PRODUCT_ID)
 
+  const images = useMemo(
+    () => (product ? mapProductImages(product) : []),
+    [product],
+  )
+
+  const sizes = product?.sizes ?? []
+  const bulletPoints = product?.bulletPoints ?? []
+
+  useEffect(() => {
+    if (!Number.isFinite(productId) || productId <= 0) {
+      setLoading(false)
+      setLoadError('Invalid product.')
+      setProduct(null)
+      return
+    }
+
+    let cancelled = false
+    const load = async () => {
+      setLoading(true)
+      setLoadError(null)
+      try {
+        const item = await fetchProduct(productId)
+        if (cancelled) return
+        setProduct(item)
+        setSelectedImageIndex(0)
+        setSelectedSize(item.sizes.length > 0 ? item.sizes[0] : null)
+      } catch (e) {
+        if (!cancelled) {
+          setProduct(null)
+          setLoadError(e instanceof Error ? e.message : 'Failed to load product')
+        }
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    void load()
+    return () => {
+      cancelled = true
+    }
+  }, [productId])
+
+  const safeImageIndex = images.length > 0 ? Math.min(selectedImageIndex, images.length - 1) : 0
+  const mainImage = images[safeImageIndex] ?? null
+  const thumbIndices = images.map((_, i) => i).filter((i) => i !== safeImageIndex)
+
   return (
     <div className="min-h-screen flex flex-col bg-white">
       <Header />
@@ -48,117 +95,140 @@ const Productdetail = () => {
               <span aria-hidden>/</span>
               <Link to="/products" className="hover:text-primary transition-colors">Products</Link>
               <span aria-hidden>/</span>
-              <span className="text-gray-900 font-medium">Product detail</span>
+              <span className="text-gray-900 font-medium line-clamp-1">
+                {product?.name ?? 'Product detail'}
+              </span>
             </nav>
           </div>
         </div>
 
         <div className={`${PAGE_GUTTER} py-8 sm:py-10 lg:py-14`}>
           <div className="max-w-6xl mx-auto">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-start">
-              <div>
-                <div className="aspect-square bg-gray-50 rounded-2xl flex items-center justify-center p-8 md:p-12 border border-gray-100 mb-3">
-                  <img
-                    src={productImages[selectedImageIndex]}
-                    alt="Product view"
-                    className="max-h-full max-w-full object-contain"
-                  />
-                </div>
-                <div className="flex gap-2">
-                  {[0, 1, 2, 3]
-                    .filter((i) => i !== selectedImageIndex)
-                    .map((index) => (
-                      <button
-                        key={index}
-                        type="button"
-                        onClick={() => setSelectedImageIndex(index)}
-                        className="flex-1 aspect-square max-w-[120px] rounded-lg border-2 border-gray-200 overflow-hidden bg-gray-50 flex items-center justify-center p-2 hover:border-primary transition-colors cursor-pointer"
-                      >
-                        <img
-                          src={productImages[index]}
-                          alt={`View ${index + 1}`}
-                          className="w-full h-full object-contain"
-                        />
-                      </button>
-                    ))}
-                </div>
+            {loading && (
+              <p className="text-center text-gray-500 py-16">Loading product…</p>
+            )}
+            {loadError && !loading && (
+              <div className="text-center py-16">
+                <p className="text-red-600 mb-4">{loadError}</p>
+                <Link to="/products" className="text-primary font-medium hover:underline">
+                  Back to products
+                </Link>
               </div>
+            )}
 
-              <div className="lg:pt-2">
-                <p className="text-xs font-semibold text-primary uppercase tracking-[0.2em] mb-2">
-                  Engine Oil
-                </p>
-                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-2 tracking-tight">
-                  Premium Synthetic Engine Oil
-                </h1>
-                <p className="text-primary text-2xl font-semibold mb-2">Rs. 3,500</p>
-                <p className="text-sm font-normal text-gray-600 mb-4">
-                  <span className="text-gray-800">Stock:</span>{' '}
-                  <span className="text-gray-900 tabular-nums">{PRODUCT_STOCK}</span>
-                  <span className="text-gray-500"> units available</span>
-                </p>
+            {!loading && !loadError && product && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-start">
+                <div>
+                  <div className="aspect-square bg-gray-50 rounded-2xl flex items-center justify-center p-8 md:p-12 border border-gray-100 mb-3">
+                    {mainImage ? (
+                      <img
+                        src={mainImage}
+                        alt={product.name}
+                        className="max-h-full max-w-full object-contain"
+                      />
+                    ) : (
+                      <span className="text-sm text-gray-400">No image</span>
+                    )}
+                  </div>
+                  {thumbIndices.length > 0 && (
+                    <div className="flex gap-2">
+                      {thumbIndices.map((index) => (
+                        <button
+                          key={index}
+                          type="button"
+                          onClick={() => setSelectedImageIndex(index)}
+                          className="flex-1 aspect-square max-w-[120px] rounded-lg border-2 border-gray-200 overflow-hidden bg-gray-50 flex items-center justify-center p-2 hover:border-primary transition-colors cursor-pointer"
+                        >
+                          <img
+                            src={images[index]}
+                            alt={`${product.name} view ${index + 1}`}
+                            className="w-full h-full object-contain"
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
 
-                <div className="mb-6">
-                  <p className="text-sm font-medium text-gray-700 mb-2">Size</p>
-                  <div className="flex flex-wrap gap-2">
-                    {productSizes.map((size) => (
-                      <button
-                        key={size}
-                        type="button"
-                        onClick={() => setSelectedSize(size as 'S' | 'L' | 'XL' | 'XXL')}
-                        className={`px-3 py-1.5 rounded-full border text-sm font-medium transition-colors ${
-                          selectedSize === size
-                            ? 'bg-primary text-white border-primary'
-                            : 'bg-white text-gray-700 border-gray-300 hover:border-primary'
-                        }`}
-                      >
-                        {size}
-                      </button>
-                    ))}
+                <div className="lg:pt-2">
+                  <p className="text-xs font-semibold text-primary uppercase tracking-[0.2em] mb-2">
+                    {product.category}
+                  </p>
+                  <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-2 tracking-tight">
+                    {product.name}
+                  </h1>
+                  <p className="text-primary text-2xl font-semibold mb-2">
+                    {formatPrice(Number(product.price))}
+                  </p>
+                  <p className="text-sm font-normal text-gray-600 mb-4">
+                    <span className="text-gray-800">Stock:</span>{' '}
+                    <span className="text-gray-900 tabular-nums">{product.stock}</span>
+                    <span className="text-gray-500">
+                      {product.stock === 1 ? ' unit available' : ' units available'}
+                    </span>
+                  </p>
+
+                  {sizes.length > 0 && (
+                    <div className="mb-6">
+                      <p className="text-sm font-medium text-gray-700 mb-2">Size</p>
+                      <div className="flex flex-wrap gap-2">
+                        {sizes.map((size) => (
+                          <button
+                            key={size}
+                            type="button"
+                            onClick={() => setSelectedSize(size)}
+                            className={`px-3 py-1.5 rounded-full border text-sm font-medium transition-colors ${
+                              selectedSize === size
+                                ? 'bg-primary text-white border-primary'
+                                : 'bg-white text-gray-700 border-gray-300 hover:border-primary'
+                            }`}
+                          >
+                            {size}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {product.description ? (
+                    <p className="text-gray-600 leading-relaxed mb-8">{product.description}</p>
+                  ) : null}
+
+                  {bulletPoints.length > 0 && (
+                    <ul className="space-y-3 mb-8">
+                      {bulletPoints.map((item) => (
+                        <li key={item} className="flex items-center gap-3 text-gray-700">
+                          <HiOutlineCheck className="w-5 h-5 text-primary shrink-0" />
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <button
+                      type="button"
+                      disabled={product.stock === 0}
+                      className="flex-1 sm:flex-none px-8 py-3.5 rounded-lg text-sm font-semibold transition-colors cursor-pointer bg-primary text-white hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {product.stock === 0 ? 'Out of stock' : 'Add to cart'}
+                    </button>
+                    <Link
+                      to="/"
+                      className="flex-1 sm:flex-none px-8 py-3.5 rounded-lg border border-gray-300 text-gray-700 text-sm font-semibold text-center hover:bg-gray-50 transition-colors"
+                    >
+                      Enquire now
+                    </Link>
                   </div>
                 </div>
-
-                <p className="text-gray-600 leading-relaxed mb-8">
-                  High-quality synthetic engine oil designed for peak performance and engine longevity.
-                  Ideal for modern motorcycles and ensures smooth operation in all conditions.
-                </p>
-
-                <ul className="space-y-3 mb-8">
-                  {[
-                    'Full synthetic formulation',
-                    'Enhanced thermal stability',
-                    'Reduced wear and friction',
-                    'Extended drain intervals',
-                  ].map((item) => (
-                    <li key={item} className="flex items-center gap-3 text-gray-700">
-                      <HiOutlineCheck className="w-5 h-5 text-primary shrink-0" />
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
-
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <button
-                    type="button"
-                    className="flex-1 sm:flex-none px-8 py-3.5 rounded-lg text-sm font-semibold transition-colors cursor-pointer bg-primary text-white hover:opacity-90"
-                  >
-                    Add to cart
-                  </button>
-                  <Link
-                    to="/"
-                    className="flex-1 sm:flex-none px-8 py-3.5 rounded-lg border border-gray-300 text-gray-700 text-sm font-semibold text-center hover:bg-gray-50 transition-colors"
-                  >
-                    Enquire now
-                  </Link>
-                </div>
               </div>
-            </div>
+            )}
 
-            {/* Reviews */}
+            {/* Reviews — unchanged demo data */}
+            {!loading && !loadError && product && (
             <section className="mt-16 pt-10 border-t border-gray-100">
               <h2 className="text-xl font-bold text-gray-900 mb-6">Reviews</h2>
 
-              {/* Rate and review — login required */}
               <div className="mb-10 p-6 rounded-xl bg-gray-50 border border-gray-100">
                 <div className="space-y-4">
                   <div>
@@ -200,7 +270,6 @@ const Productdetail = () => {
                 </div>
               </div>
 
-              {/* Review list */}
               <div className="space-y-6">
                 {productReviews.map((review) => {
                   const adminReply = (adminReplyByReviewId[review.id] ?? '').trim()
@@ -304,6 +373,7 @@ const Productdetail = () => {
                 })}
               </div>
             </section>
+            )}
           </div>
         </div>
 

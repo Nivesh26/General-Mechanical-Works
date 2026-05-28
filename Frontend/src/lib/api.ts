@@ -483,6 +483,14 @@ export async function fetchProducts(): Promise<ProductItem[]> {
   return res.json() as Promise<ProductItem[]>
 }
 
+export async function fetchProduct(id: number): Promise<ProductItem> {
+  const res = await fetch(`${getApiBase()}/api/products/${id}`, {
+    headers: { Accept: 'application/json' },
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<ProductItem>
+}
+
 export async function fetchAdminProducts(token: string): Promise<ProductItem[]> {
   const res = await fetch(`${getApiBase()}/api/admin/products`, {
     headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },

@@ -56,6 +56,13 @@ public class ProductService {
 				.toList();
 	}
 
+	@Transactional(readOnly = true)
+	public ProductDto getActiveById(Long id) {
+		return productRepository.findByIdAndActiveTrue(id)
+				.map(ProductMapper::toDto)
+				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Product not found"));
+	}
+
 	@Transactional
 	public ProductDto create(
 			String sku,

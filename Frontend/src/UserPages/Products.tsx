@@ -215,7 +215,7 @@ const Products = () => {
                     key={product.id}
                     className="group border border-gray-200 rounded-xl shadow-sm bg-white flex flex-col overflow-hidden transition-all duration-300 ease-out hover:shadow-lg hover:scale-[1.02]"
                   >
-                    <Link to="/productdetail" className="flex flex-col flex-1">
+                    <Link to={`/productdetail/${product.id}`} className="flex flex-col flex-1">
                       <div className="h-48 bg-gray-50 flex items-center justify-center overflow-hidden p-2">
                         {product.image ? (
                           <img

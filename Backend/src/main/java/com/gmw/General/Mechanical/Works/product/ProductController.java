@@ -3,6 +3,7 @@ package com.gmw.General.Mechanical.Works.product;
 import java.util.List;
 
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -19,5 +20,10 @@ public class ProductController {
 	@GetMapping
 	public List<ProductDto> listActive() {
 		return productService.listActive();
+	}
+
+	@GetMapping("/{id}")
+	public ProductDto getActive(@PathVariable Long id) {
+		return productService.getActiveById(id);
 	}
 }
