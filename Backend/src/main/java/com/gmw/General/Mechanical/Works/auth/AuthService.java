@@ -10,6 +10,7 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -78,8 +79,14 @@ public class AuthService {
 			user.setPhone(null);
 		}
 		user.setRole(Role.USER);
-		User saved = userRepository.save(user);
-		return buildAuthResponse(saved);
+		try {
+			return buildAuthResponse(userRepository.save(user));
+		} catch (DataIntegrityViolationException ex) {
+			if (userRepository.existsByEmailIgnoreCase(normalizedEmail)) {
+				throw new EmailAlreadyRegisteredException(normalizedEmail);
+			}
+			throw ex;
+		}
 	}
 
 	@Transactional(readOnly = true)
@@ -249,10 +256,17 @@ public class AuthService {
 		if (request.getLocation() != null) {
 			user.setLocation(StringUtils.hasText(request.getLocation()) ? request.getLocation().trim() : null);
 		}
-		User saved = userRepository.save(user);
-		UserProfileDto dto = toProfileDto(saved);
-		String newToken = emailChanged ? jwtService.generateToken(saved) : null;
-		return new ProfilePatchResponse(dto, newToken);
+		try {
+			User saved = userRepository.save(user);
+			UserProfileDto dto = toProfileDto(saved);
+			String newToken = emailChanged ? jwtService.generateToken(saved) : null;
+			return new ProfilePatchResponse(dto, newToken);
+		} catch (DataIntegrityViolationException ex) {
+			if (emailChanged && userRepository.existsByEmailIgnoreCase(user.getEmail())) {
+				throw new EmailAlreadyRegisteredException(user.getEmail());
+			}
+			throw ex;
+		}
 	}
 
 	@Transactional

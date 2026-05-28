@@ -14,15 +14,62 @@ import org.springframework.web.server.ResponseStatusException;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+	private static final String DUPLICATE_EMAIL_MESSAGE =
+			"This email is already registered. Please sign in, use Google sign-in if you created the account that way, or choose a different email.";
+
 	@ExceptionHandler(EmailAlreadyRegisteredException.class)
 	public ResponseEntity<ErrorBody> handleDuplicateEmail(EmailAlreadyRegisteredException ex) {
-		return ResponseEntity.status(HttpStatus.CONFLICT).body(new ErrorBody(ex.getMessage()));
+		return ResponseEntity.status(HttpStatus.CONFLICT).body(new ErrorBody(DUPLICATE_EMAIL_MESSAGE));
 	}
 
 	@ExceptionHandler(DataIntegrityViolationException.class)
 	public ResponseEntity<ErrorBody> handleDataIntegrity(DataIntegrityViolationException ex) {
-		return ResponseEntity.status(HttpStatus.CONFLICT)
-				.body(new ErrorBody("Could not create or update account. The email may already be registered."));
+		return ResponseEntity.status(HttpStatus.CONFLICT).body(new ErrorBody(resolveIntegrityMessage(ex)));
+	}
+
+	private static String resolveIntegrityMessage(DataIntegrityViolationException ex) {
+		if (isDuplicateEmailViolation(ex)) {
+			return DUPLICATE_EMAIL_MESSAGE;
+		}
+		String lower = rootMessage(ex).toLowerCase();
+		if (lower.contains("data too long") || lower.contains("data truncation")) {
+			if (lower.contains("description")) {
+				return "Product description is too long. Please shorten it and try again.";
+			}
+			if (lower.contains("sku")) {
+				return "This SKU is already in use. Choose a different SKU.";
+			}
+			return "One or more product fields are too long. Please shorten the text and try again.";
+		}
+		if (lower.contains("duplicate") && lower.contains("sku")) {
+			return "This SKU is already in use. Choose a different SKU.";
+		}
+		if (lower.contains("duplicate entry") && lower.contains("product")) {
+			return "This SKU is already in use. Choose a different SKU.";
+		}
+		if (lower.contains("duplicate entry")) {
+			return "This value is already in use. Please change it and try again.";
+		}
+		return "Could not save. Please check your data and try again.";
+	}
+
+	private static String rootMessage(Throwable ex) {
+		Throwable root = ex;
+		while (root.getCause() != null) {
+			root = root.getCause();
+		}
+		return root.getMessage() != null ? root.getMessage() : "";
+	}
+
+	private static boolean isDuplicateEmailViolation(Throwable ex) {
+		String lower = rootMessage(ex).toLowerCase();
+		if (!lower.contains("duplicate") && !lower.contains("unique")) {
+			return false;
+		}
+		if (lower.contains("email") || lower.contains("duplicate entry") && lower.contains("@")) {
+			return true;
+		}
+		return lower.contains("`user`") || lower.contains(" for key") && lower.contains("user.");
 	}
 
 	@ExceptionHandler(AccessDeniedException.class)

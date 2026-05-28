@@ -1,10 +1,18 @@
 import type { CSSProperties } from 'react'
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { toast } from 'react-toastify'
 import AdminNavbar from '../AdminComponent/AdminNavbar'
 import { ADMIN_MAIN_SCROLL_CLASS, ADMIN_PAGE_HEADER_SPACING, ADMIN_PAGE_SUBTITLE, ADMIN_PAGE_TITLE } from '../AdminComponent/adminMainStyles'
-import EngineOil from '../assets/EngineOil.png'
-import Brakes from '../assets/Brakekit.png'
-import Tyre from '../assets/Tyre.png'
+import { useAuth } from '../context/AuthContext'
+import {
+  createAdminProduct,
+  deleteAdminProduct,
+  fetchAdminProducts,
+  setAdminProductActive,
+  updateAdminProduct,
+  type ProductItem,
+} from '../lib/api'
+import { mapProductImages } from '../lib/products'
 
 type Product = {
   id: number
@@ -32,6 +40,8 @@ type ProductForm = {
   stock: string
 }
 
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024
+
 const defaultCategories = ['Lubricants', 'Brakes', 'Tyres', 'Electrical', 'Accessories']
 const sizeOptions = ['XS', 'S', 'L', 'XL', 'XXL', 'XXXL'] as const
 
@@ -40,47 +50,19 @@ const sortSizes = (sizes: string[]) => {
   return [...sizes].sort((a, b) => (order.get(a) ?? 99) - (order.get(b) ?? 99))
 }
 
-const initialProducts: Product[] = [
-  {
-    id: 1,
-    sku: 'SKU-1001',
-    name: 'Premium Synthetic Engine Oil',
-    description: 'High-performance synthetic engine oil for cleaner operation and long engine life.',
-    bulletPoints: ['Synthetic blend formula', 'Improves engine cleanliness', 'Suitable for daily commuting'],
-    category: 'Lubricants',
-    size: ['S', 'L'],
-    price: 3500,
-    stock: 18,
-    images: [EngineOil],
-    active: true,
-  },
-  {
-    id: 2,
-    sku: 'SKU-1002',
-    name: 'Brake Service Kit',
-    description: 'Complete brake maintenance kit including pads and cleaning accessories.',
-    bulletPoints: ['Reliable stopping performance', 'Includes core service parts', 'Easy workshop fitment'],
-    category: 'Brakes',
-    size: ['XL'],
-    price: 5200,
-    stock: 10,
-    images: [Brakes],
-    active: true,
-  },
-  {
-    id: 3,
-    sku: 'SKU-1003',
-    name: 'All-weather Tyre 100/90-17',
-    description: 'Durable all-weather tyre with strong grip for city and highway riding.',
-    bulletPoints: ['All-season tread pattern', 'Stable on wet roads', 'Long-lasting compound'],
-    category: 'Tyres',
-    size: ['XXL', 'XXXL'],
-    price: 12500,
-    stock: 0,
-    images: [Tyre],
-    active: true,
-  },
-]
+const toUiProduct = (item: ProductItem): Product => ({
+  id: item.id,
+  sku: item.sku,
+  name: item.name,
+  description: item.description,
+  bulletPoints: item.bulletPoints ?? [],
+  category: item.category,
+  size: item.sizes ?? [],
+  price: Number(item.price),
+  stock: item.stock,
+  images: mapProductImages(item),
+  active: item.active,
+})
 
 const emptyForm: ProductForm = {
   sku: '',
@@ -146,7 +128,10 @@ const validateProductForm = (
 }
 
 const AdminProducts = () => {
-  const [products, setProducts] = useState<Product[]>(initialProducts)
+  const { token } = useAuth()
+  const [products, setProducts] = useState<Product[]>([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
   const [form, setForm] = useState<ProductForm>(emptyForm)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<ProductFieldKey, string>>>({})
@@ -154,6 +139,28 @@ const AdminProducts = () => {
   const [uploadFiles, setUploadFiles] = useState<File[]>([])
   const [fileInputKey, setFileInputKey] = useState(0)
   const [categorySuggestionsOpen, setCategorySuggestionsOpen] = useState(false)
+
+  const loadProducts = useCallback(async () => {
+    if (!token) {
+      setProducts([])
+      setLoading(false)
+      return
+    }
+    setLoading(true)
+    try {
+      const list = await fetchAdminProducts(token)
+      setProducts(list.map(toUiProduct))
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to load products')
+      setProducts([])
+    } finally {
+      setLoading(false)
+    }
+  }, [token])
+
+  useEffect(() => {
+    void loadProducts()
+  }, [loadProducts])
 
   const categoryChoices = useMemo(() => {
     const set = new Set<string>([...defaultCategories, ...products.map((p) => p.category)])
@@ -205,6 +212,19 @@ const AdminProducts = () => {
     const nextFile = event.target.files?.[0]
     if (!nextFile) return
 
+    if (!nextFile.type.startsWith('image/')) {
+      setFieldErrors((prev) => ({ ...prev, images: 'Please choose an image file (JPEG, PNG, WebP, or GIF).' }))
+      return
+    }
+
+    if (nextFile.size > MAX_IMAGE_BYTES) {
+      setFieldErrors((prev) => ({
+        ...prev,
+        images: 'Each image must be 5 MB or smaller. Try a smaller file or compress the photo.',
+      }))
+      return
+    }
+
     if (uploadFiles.length >= 4) {
       setFieldErrors((prev) => ({ ...prev, images: 'You can upload maximum 4 images.' }))
       return
@@ -231,8 +251,9 @@ const AdminProducts = () => {
     clearFieldError('images')
   }
 
-  const onSubmit = (event: React.FormEvent) => {
+  const onSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
+    if (!token) return
 
     const editingProduct = editingId !== null ? products.find((p) => p.id === editingId) : null
     const existingImageCount = editingProduct?.images.length ?? 0
@@ -241,64 +262,22 @@ const AdminProducts = () => {
     setFieldErrors(errors)
     if (Object.keys(errors).length > 0) return
 
-    const trimmedSku = form.sku.trim().toUpperCase()
-    const trimmedName = form.name.trim()
-    const trimmedDescription = form.description.trim()
-    const finalBulletPoints = form.bulletPoints
-      .split('\n')
-      .map((line) => line.trim())
-      .filter(Boolean)
-    const trimmedCategory = form.category.trim()
-    const finalSizes = sortSizes([...new Set(form.size)])
-    const parsedPrice = Number(form.price)
-    const parsedStock = Number(form.stock)
-
-    const existingImages = editingProduct?.images ?? []
-    const finalImageUrls =
-      uploadFiles.length > 0
-        ? uploadFiles.map((file) => URL.createObjectURL(file))
-        : existingImages
-
-    if (editingId !== null) {
-      setProducts((prev) =>
-        prev.map((p) =>
-          p.id === editingId
-            ? {
-                ...p,
-                sku: trimmedSku,
-                name: trimmedName,
-                description: trimmedDescription,
-                bulletPoints: finalBulletPoints,
-                category: trimmedCategory,
-                size: finalSizes,
-                price: parsedPrice,
-                stock: parsedStock,
-                images: finalImageUrls,
-              }
-            : p
-        )
-      )
+    setSaving(true)
+    try {
+      if (editingId !== null) {
+        await updateAdminProduct(token, editingId, form, uploadFiles)
+        toast.success('Product updated.')
+      } else {
+        await createAdminProduct(token, form, uploadFiles)
+        toast.success('Product added.')
+      }
       resetForm()
-      return
+      await loadProducts()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not save product')
+    } finally {
+      setSaving(false)
     }
-
-    setProducts((prev) => [
-      ...prev,
-      {
-        id: prev.length > 0 ? Math.max(...prev.map((p) => p.id)) + 1 : 1,
-        sku: trimmedSku,
-        name: trimmedName,
-        description: trimmedDescription,
-        bulletPoints: finalBulletPoints,
-        category: trimmedCategory,
-        size: finalSizes,
-        price: parsedPrice,
-        stock: parsedStock,
-        images: finalImageUrls,
-        active: true,
-      },
-    ])
-    resetForm()
   }
 
   const onEdit = (product: Product) => {
@@ -307,7 +286,7 @@ const AdminProducts = () => {
       sku: product.sku,
       name: product.name,
       description: product.description,
-      bulletPoints: product.bulletPoints.join('\n'),
+      bulletPoints: (product.bulletPoints ?? []).join('\n'),
       category: product.category,
       size: product.size,
       price: String(product.price),
@@ -319,18 +298,32 @@ const AdminProducts = () => {
     setFieldErrors({})
   }
 
-  const onDelete = (productId: number) => {
+  const onDelete = async (productId: number) => {
+    if (!token) return
     const confirmed = window.confirm('Delete this product?')
     if (!confirmed) return
 
-    setProducts((prev) => prev.filter((p) => p.id !== productId))
-    if (editingId === productId) resetForm()
+    try {
+      await deleteAdminProduct(token, productId)
+      toast.success('Product deleted.')
+      if (editingId === productId) resetForm()
+      await loadProducts()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not delete product')
+    }
   }
 
-  const toggleProductActive = (productId: number) => {
-    setProducts((prev) =>
-      prev.map((p) => (p.id === productId ? { ...p, active: !p.active } : p))
-    )
+  const toggleProductActive = async (productId: number) => {
+    if (!token) return
+    const product = products.find((p) => p.id === productId)
+    if (!product) return
+
+    try {
+      await setAdminProductActive(token, productId, !product.active)
+      await loadProducts()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not update product status')
+    }
   }
 
   const onSearch = (event: React.FormEvent) => {
@@ -343,10 +336,10 @@ const AdminProducts = () => {
     return (
       product.name.toLowerCase().includes(q) ||
       product.description.toLowerCase().includes(q) ||
-      product.bulletPoints.some((point) => point.toLowerCase().includes(q)) ||
+      (product.bulletPoints ?? []).some((point) => point.toLowerCase().includes(q)) ||
       product.sku.toLowerCase().includes(q) ||
       product.category.toLowerCase().includes(q) ||
-      product.size.some((s) => s.toLowerCase().includes(q)) ||
+      (product.size ?? []).some((s) => s.toLowerCase().includes(q)) ||
       String(product.id).includes(q)
     )
   })
@@ -647,7 +640,7 @@ const AdminProducts = () => {
                   htmlFor="product-images"
                   style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#475569', marginBottom: '6px' }}
                 >
-                  Product Images (max 4)
+                  Product Images (max 4, up to 5 MB each)
                 </label>
                 <input
                   key={fileInputKey}
@@ -750,8 +743,8 @@ const AdminProducts = () => {
             </div>
 
             <div style={{ display: 'flex', gap: '10px', marginTop: '14px' }}>
-              <button type="submit" style={btnPrimary}>
-                {editingId !== null ? 'Update product' : 'Add product'}
+              <button type="submit" style={btnPrimary} disabled={saving || !token}>
+                {saving ? 'Saving…' : editingId !== null ? 'Update product' : 'Add product'}
               </button>
               {editingId !== null && (
                 <button type="button" onClick={resetForm} style={btnGhost}>
@@ -840,7 +833,14 @@ const AdminProducts = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredProducts.map((product) => {
+                {loading && (
+                  <tr>
+                    <td colSpan={12} style={{ padding: '18px 14px', textAlign: 'center', color: '#6b7280' }}>
+                      Loading products…
+                    </td>
+                  </tr>
+                )}
+                {!loading && filteredProducts.map((product) => {
                   const outOfStock = product.stock === 0
                   const listingActive = product.active
                   const inactiveRow = !listingActive
@@ -942,9 +942,9 @@ const AdminProducts = () => {
                           verticalAlign: 'top',
                         }}
                       >
-                        {product.bulletPoints.length > 0 ? (
+                        {(product.bulletPoints ?? []).length > 0 ? (
                           <ul style={{ margin: 0, paddingLeft: '16px', display: 'grid', gap: '4px' }}>
-                            {product.bulletPoints.slice(0, 2).map((point) => (
+                            {(product.bulletPoints ?? []).slice(0, 2).map((point) => (
                               <li key={point} style={{ fontSize: '13px', lineHeight: 1.35 }}>
                                 {point}
                               </li>
@@ -972,7 +972,7 @@ const AdminProducts = () => {
                           verticalAlign: 'top',
                         }}
                       >
-                        {product.size.length > 0 ? product.size.join(', ') : '-'}
+                        {(product.size ?? []).length > 0 ? (product.size ?? []).join(', ') : '-'}
                       </td>
                       <td
                         style={{
@@ -1127,7 +1127,7 @@ const AdminProducts = () => {
                     </tr>
                   )
                 })}
-                {filteredProducts.length === 0 && (
+                {!loading && filteredProducts.length === 0 && (
                   <tr>
                     <td
                       colSpan={12}

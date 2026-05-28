@@ -1,83 +1,25 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import Header from '../UserComponent/Header'
 import Footer from '../UserComponent/Footer'
 import Copyright from '../UserComponent/Copyright'
-import EngineOil from '../assets/EngineOil.png'
-import Brakes from '../assets/Brakekit.png'
-import Battery from '../assets/Battery.png'
-import Tyre from '../assets/Tyre.png'
-import Clutch from '../assets/Clutch.png'
-import Detailing from '../assets/cleaner.png'
 import { PAGE_GUTTER } from '../lib/layoutClasses'
-
-type ProductCategory = 'All' | 'EngineOil' | 'Brakes' | 'Tyres' | 'Electrical' | 'Detailing'
+import { fetchProducts, type ProductItem } from '../lib/api'
+import { productImageUrl } from '../lib/products'
 
 const PRICE_MIN = 0
-const PRICE_MAX = 15000
 const PRICE_STEP = 500
+const DEFAULT_PRICE_MAX = 15000
 
-const products = [
-  {
-    id: 1,
-    name: 'Engine Oil',
-    description: '',
-    price: 'Rs. 3,500',
-    priceValue: 3500,
-    category: 'EngineOil' as ProductCategory,
-    image: EngineOil,
-  },
-  {
-    id: 2,
-    name: 'Brake Service Kit',
-    description: '',
-    price: 'Rs. 5,200',
-    priceValue: 5200,
-    category: 'Brakes' as ProductCategory,
-    image: Brakes,
-  },
-  {
-    id: 3,
-    name: 'Battery',
-    description: '',
-    price: 'Rs. 6,800',
-    priceValue: 6800,
-    category: 'Electrical' as ProductCategory,
-    image: Battery,
-  },
-
-  {
-    id: 4,
-    name: 'Tyre',
-    description: '',
-    price: 'Rs. 3,200',
-    priceValue: 3200,
-    category: 'Tyres' as ProductCategory,
-    image: Tyre,
-  },
-
-  {
-    id: 5,
-    name: 'Clutch Overhaul Kit',
-    description: '',
-    price: 'Rs. 12,000',
-    priceValue: 12000,
-    category: 'Brakes' as ProductCategory,
-    image: Clutch,
-  },
-  {
-    id: 6,
-    name: 'Detailing & Polishing',
-    description: '',
-    price: 'Rs. 5,800',
-    priceValue: 5800,
-    category: 'Detailing' as ProductCategory,
-    image: Detailing,
-  },
-
-]
-
-const categories: ProductCategory[] = ['All', 'EngineOil', 'Brakes', 'Tyres', 'Electrical', 'Detailing']
+type StoreProduct = {
+  id: number
+  name: string
+  description: string
+  price: string
+  priceValue: number
+  category: string
+  image: string | null
+}
 
 const formatPrice = (n: number) => `Rs. ${n.toLocaleString('en-IN')}`
 
@@ -89,11 +31,56 @@ const sortOptions: { value: PriceSort; label: string }[] = [
   { value: 'highToLow', label: 'Price: High to Low' },
 ]
 
+const toStoreProduct = (item: ProductItem): StoreProduct => ({
+  id: item.id,
+  name: item.name,
+  description: item.description,
+  price: formatPrice(Number(item.price)),
+  priceValue: Number(item.price),
+  category: item.category,
+  image: productImageUrl(item.imagePaths[0] ?? null),
+})
+
 const Products = () => {
-  const [activeCategory, setActiveCategory] = useState<ProductCategory>('All')
+  const [products, setProducts] = useState<StoreProduct[]>([])
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [activeCategory, setActiveCategory] = useState('All')
   const [priceMin, setPriceMin] = useState(PRICE_MIN)
-  const [priceMax, setPriceMax] = useState(PRICE_MAX)
+  const [priceMax, setPriceMax] = useState(DEFAULT_PRICE_MAX)
   const [sortBy, setSortBy] = useState<PriceSort>('default')
+
+  useEffect(() => {
+    let cancelled = false
+    const load = async () => {
+      setLoading(true)
+      setLoadError(null)
+      try {
+        const list = await fetchProducts()
+        if (cancelled) return
+        const mapped = list.map(toStoreProduct)
+        setProducts(mapped)
+        const maxPrice = mapped.reduce((max, p) => Math.max(max, p.priceValue), DEFAULT_PRICE_MAX)
+        setPriceMax(Math.max(DEFAULT_PRICE_MAX, Math.ceil(maxPrice / PRICE_STEP) * PRICE_STEP))
+      } catch (e) {
+        if (!cancelled) {
+          setLoadError(e instanceof Error ? e.message : 'Failed to load products')
+          setProducts([])
+        }
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    void load()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const categories = useMemo(() => {
+    const set = new Set(products.map((p) => p.category))
+    return ['All', ...[...set].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }))]
+  }, [products])
 
   const filteredProducts = products.filter((product) => {
     const matchesCategory = activeCategory === 'All' || product.category === activeCategory
@@ -118,7 +105,7 @@ const Products = () => {
               <span className="text-primary font-sec">Products</span>
             </h1>
             <p className="text-gray-600 text-sm max-w-2xl mx-auto">
-              Browse our most popular workshop products. 
+              Browse our most popular workshop products.
             </p>
           </div>
         </div>
@@ -132,8 +119,9 @@ const Products = () => {
               <h3 className="text-xs font-semibold text-gray-700 mb-2">Category</h3>
               <select
                 value={activeCategory}
-                onChange={(e) => setActiveCategory(e.target.value as ProductCategory)}
+                onChange={(e) => setActiveCategory(e.target.value)}
                 className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-700 bg-white focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                disabled={loading || categories.length <= 1}
               >
                 {categories.map((category) => (
                   <option key={category} value={category}>
@@ -154,7 +142,7 @@ const Products = () => {
                   <input
                     type="range"
                     min={PRICE_MIN}
-                    max={PRICE_MAX}
+                    max={priceMax}
                     step={PRICE_STEP}
                     value={priceMin}
                     onChange={(e) => setPriceMin(Math.min(Number(e.target.value), priceMax))}
@@ -166,7 +154,7 @@ const Products = () => {
                   <input
                     type="range"
                     min={PRICE_MIN}
-                    max={PRICE_MAX}
+                    max={priceMax}
                     step={PRICE_STEP}
                     value={priceMax}
                     onChange={(e) => setPriceMax(Math.max(Number(e.target.value), priceMin))}
@@ -194,40 +182,58 @@ const Products = () => {
 
           {/* Products grid */}
           <section className="flex-1">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {sortedProducts.map((product) => (
-                <div
-                  key={product.id}
-                  className="group border border-gray-200 rounded-xl shadow-sm bg-white flex flex-col overflow-hidden transition-all duration-300 ease-out hover:shadow-lg hover:scale-[1.02]"
-                >
-                  <Link to="/productdetail" className="flex flex-col flex-1">
-                    <div className="h-48 bg-gray-50 flex items-center justify-center overflow-hidden p-2">
-                      <img
-                        src={product.image}
-                        alt={product.name}
-                        className="max-h-full max-w-full object-contain transition-transform duration-300 group-hover:scale-105"
-                      />
-                    </div>
-                    <div className="p-5 flex flex-col flex-1">
-                      <h2 className="text-lg font-semibold mb-1">{product.name}</h2>
-                      <p className="text-xs uppercase tracking-wide text-gray-400 mb-2">
-                        {product.category}
-                      </p>
-                      <div className="flex-1" />
-                      <div className="flex items-center justify-between mt-2">
-                        <span className="text-primary font-semibold">{product.price}</span>
-                        <button
-                          type="button"
-                          className="px-4 py-2 rounded-full border border-primary text-primary text-sm font-medium hover:bg-primary hover:text-white transition-colors cursor-pointer"
-                        >
-                          Add to cart
-                        </button>
+            {loading && (
+              <p className="text-center text-gray-500 py-12">Loading products…</p>
+            )}
+            {loadError && !loading && (
+              <p className="text-center text-red-600 py-12">{loadError}</p>
+            )}
+            {!loading && !loadError && sortedProducts.length === 0 && (
+              <p className="text-center text-gray-500 py-12">No products available yet.</p>
+            )}
+            {!loading && !loadError && sortedProducts.length > 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {sortedProducts.map((product) => (
+                  <div
+                    key={product.id}
+                    className="group border border-gray-200 rounded-xl shadow-sm bg-white flex flex-col overflow-hidden transition-all duration-300 ease-out hover:shadow-lg hover:scale-[1.02]"
+                  >
+                    <Link to="/productdetail" className="flex flex-col flex-1">
+                      <div className="h-48 bg-gray-50 flex items-center justify-center overflow-hidden p-2">
+                        {product.image ? (
+                          <img
+                            src={product.image}
+                            alt={product.name}
+                            className="max-h-full max-w-full object-contain transition-transform duration-300 group-hover:scale-105"
+                          />
+                        ) : (
+                          <span className="text-sm text-gray-400">No image</span>
+                        )}
                       </div>
-                    </div>
-                  </Link>
-                </div>
-              ))}
-            </div>
+                      <div className="p-5 flex flex-col flex-1">
+                        <h2 className="text-lg font-semibold mb-1">{product.name}</h2>
+                        {product.description ? (
+                          <p className="text-sm text-gray-500 mb-2 line-clamp-2">{product.description}</p>
+                        ) : null}
+                        <p className="text-xs uppercase tracking-wide text-gray-400 mb-2">
+                          {product.category}
+                        </p>
+                        <div className="flex-1" />
+                        <div className="flex items-center justify-between mt-2">
+                          <span className="text-primary font-semibold">{product.price}</span>
+                          <button
+                            type="button"
+                            className="px-4 py-2 rounded-full border border-primary text-primary text-sm font-medium hover:bg-primary hover:text-white transition-colors cursor-pointer"
+                          >
+                            Add to cart
+                          </button>
+                        </div>
+                      </div>
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            )}
           </section>
         </div>
       </main>

@@ -437,3 +437,119 @@ export async function deleteAdminOffer(token: string, id: number): Promise<void>
   })
   if (!res.ok) throw new Error(await parseErrorMessage(res))
 }
+
+export type ProductItem = {
+  id: number
+  sku: string
+  name: string
+  description: string
+  bulletPoints: string[]
+  category: string
+  sizes: string[]
+  price: number
+  stock: number
+  imagePaths: string[]
+  active: boolean
+}
+
+export type ProductFormFields = {
+  sku: string
+  name: string
+  description: string
+  bulletPoints: string
+  category: string
+  /** Selected size labels (maps to admin form field `size`). */
+  size: string[]
+  price: string
+  stock: string
+}
+
+function appendProductFormFields(body: FormData, fields: ProductFormFields) {
+  body.append('sku', fields.sku.trim())
+  body.append('name', fields.name.trim())
+  body.append('description', fields.description.trim())
+  body.append('bulletPoints', fields.bulletPoints)
+  body.append('category', fields.category.trim())
+  body.append('sizes', (fields.size ?? []).join(','))
+  body.append('price', fields.price.trim())
+  body.append('stock', fields.stock.trim())
+}
+
+export async function fetchProducts(): Promise<ProductItem[]> {
+  const res = await fetch(`${getApiBase()}/api/products`, {
+    headers: { Accept: 'application/json' },
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<ProductItem[]>
+}
+
+export async function fetchAdminProducts(token: string): Promise<ProductItem[]> {
+  const res = await fetch(`${getApiBase()}/api/admin/products`, {
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<ProductItem[]>
+}
+
+export async function createAdminProduct(
+  token: string,
+  fields: ProductFormFields,
+  files: File[],
+): Promise<ProductItem> {
+  const body = new FormData()
+  appendProductFormFields(body, fields)
+  for (const file of files) {
+    body.append('files', file)
+  }
+  const res = await fetch(`${getApiBase()}/api/admin/products`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body,
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<ProductItem>
+}
+
+export async function updateAdminProduct(
+  token: string,
+  id: number,
+  fields: ProductFormFields,
+  files: File[],
+): Promise<ProductItem> {
+  const body = new FormData()
+  appendProductFormFields(body, fields)
+  for (const file of files) {
+    body.append('files', file)
+  }
+  const res = await fetch(`${getApiBase()}/api/admin/products/${id}`, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${token}` },
+    body,
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<ProductItem>
+}
+
+export async function setAdminProductActive(
+  token: string,
+  id: number,
+  active: boolean,
+): Promise<ProductItem> {
+  const res = await fetch(
+    `${getApiBase()}/api/admin/products/${id}/active?active=${active}`,
+    {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+    },
+  )
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<ProductItem>
+}
+
+export async function deleteAdminProduct(token: string, id: number): Promise<void> {
+  const res = await fetch(`${getApiBase()}/api/admin/products/${id}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+}
