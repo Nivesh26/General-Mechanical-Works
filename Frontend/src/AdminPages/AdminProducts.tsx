@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { HiChevronDown } from 'react-icons/hi2'
 import { toast } from 'react-toastify'
 import AdminNavbar from '../AdminComponent/AdminNavbar'
 import { ADMIN_MAIN_SCROLL_CLASS, ADMIN_PAGE_HEADER_SPACING, ADMIN_PAGE_SUBTITLE, ADMIN_PAGE_TITLE } from '../AdminComponent/adminMainStyles'
@@ -173,6 +174,7 @@ const AdminProducts = () => {
   const [editingImages, setEditingImages] = useState<EditingImage[]>([])
   const [fileInputKey, setFileInputKey] = useState(0)
   const [categorySuggestionsOpen, setCategorySuggestionsOpen] = useState(false)
+  const [formOpen, setFormOpen] = useState(false)
 
   const loadProducts = useCallback(async () => {
     if (!token) {
@@ -241,6 +243,7 @@ const AdminProducts = () => {
     setFileInputKey((k) => k + 1)
     setCategorySuggestionsOpen(false)
     setFieldErrors({})
+    setFormOpen(false)
   }
 
   const onFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -327,6 +330,7 @@ const AdminProducts = () => {
   }
 
   const onEdit = (product: Product) => {
+    setFormOpen(true)
     setEditingId(product.id)
     setForm({
       sku: product.sku,
@@ -384,19 +388,26 @@ const AdminProducts = () => {
     event.preventDefault()
   }
 
-  const filteredProducts = products.filter((product) => {
+  const filteredProducts = useMemo(() => {
     const q = searchInput.trim().toLowerCase()
-    if (!q) return true
-    return (
-      product.name.toLowerCase().includes(q) ||
-      product.description.toLowerCase().includes(q) ||
-      (product.bulletPoints ?? []).some((point) => point.toLowerCase().includes(q)) ||
-      product.sku.toLowerCase().includes(q) ||
-      product.category.toLowerCase().includes(q) ||
-      (product.size ?? []).some((s) => s.toLowerCase().includes(q)) ||
-      String(product.id).includes(q)
+    if (!q) return products
+    return products.filter(
+      (product) =>
+        product.name.toLowerCase().includes(q) ||
+        product.description.toLowerCase().includes(q) ||
+        (product.bulletPoints ?? []).some((point) => point.toLowerCase().includes(q)) ||
+        product.sku.toLowerCase().includes(q) ||
+        product.category.toLowerCase().includes(q) ||
+        (product.size ?? []).some((s) => s.toLowerCase().includes(q)) ||
+        String(product.id).includes(q),
     )
-  })
+  }, [products, searchInput])
+
+  /** Oldest / first-added at top (S.N. 1); newest at bottom. */
+  const listedProducts = useMemo(
+    () => [...filteredProducts].sort((a, b) => a.id - b.id),
+    [filteredProducts],
+  )
 
   return (
     <div className="admin-page-root">
@@ -413,18 +424,51 @@ const AdminProducts = () => {
             background: '#fff',
             border: '1px solid #dbe3ee',
             borderRadius: '16px',
-            padding: '20px',
+            padding: formOpen ? '20px' : '12px 18px',
             marginBottom: '18px',
+            width: '100%',
             maxWidth: '100%',
             minWidth: 0,
             boxSizing: 'border-box',
           }}
         >
-          <h2 style={{ margin: '0 0 14px', fontSize: '18px', fontWeight: 700, color: '#111827' }}>
-            {editingId !== null ? 'Edit Product' : 'Add Product'}
-          </h2>
+          <button
+            type="button"
+            onClick={() => setFormOpen((open) => !open)}
+            aria-expanded={formOpen}
+            aria-controls="admin-product-form"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '24px',
+              width: '100%',
+              margin: 0,
+              padding: 0,
+              border: 'none',
+              background: 'transparent',
+              cursor: 'pointer',
+              marginBottom: formOpen ? '14px' : 0,
+            }}
+          >
+            <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#111827' }}>
+              {editingId !== null ? 'Edit Product' : 'Add Product'}
+            </h2>
+            <HiChevronDown
+              aria-hidden
+              style={{
+                width: '22px',
+                height: '22px',
+                color: '#64748b',
+                flexShrink: 0,
+                transform: formOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                transition: 'transform 0.2s ease',
+              }}
+            />
+          </button>
 
-          <form onSubmit={onSubmit}>
+          {formOpen && (
+          <form id="admin-product-form" onSubmit={onSubmit}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, minmax(0, 1fr))', gap: '12px' }}>
               <div style={{ gridColumn: 'span 8' }}>
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>
@@ -815,6 +859,7 @@ const AdminProducts = () => {
               )}
             </div>
           </form>
+          )}
         </section>
 
         <section
@@ -838,7 +883,7 @@ const AdminProducts = () => {
             }}
           >
             <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#111827' }}>
-              Product List
+              Product List ({listedProducts.length})
             </h2>
             <form
               onSubmit={onSearch}
@@ -876,7 +921,7 @@ const AdminProducts = () => {
             <table style={{ borderCollapse: 'separate', borderSpacing: 0 }}>
               <thead>
                 <tr style={{ background: '#f9fafb' }}>
-                  {['ID', 'Images', 'SKU', 'Name', 'Description', 'Highlights', 'Category', 'Size', 'Price', 'Stock', 'Status', 'Actions'].map((head) => (
+                  {['S.N', 'Images', 'SKU', 'Name', 'Description', 'Highlights', 'Category', 'Size', 'Price', 'Stock', 'Status', 'Actions'].map((head) => (
                     <th
                       key={head}
                       style={{
@@ -902,7 +947,7 @@ const AdminProducts = () => {
                     </td>
                   </tr>
                 )}
-                {!loading && filteredProducts.map((product) => {
+                {!loading && listedProducts.map((product, index) => {
                   const outOfStock = product.stock === 0
                   const lowStock = product.stock > 0 && product.stock < LOW_STOCK_THRESHOLD
                   const stockStatusLabel = outOfStock
@@ -930,7 +975,7 @@ const AdminProducts = () => {
                           verticalAlign: 'top',
                         }}
                       >
-                        {product.id}
+                        {index + 1}
                       </td>
                       <td
                         style={{
@@ -1199,7 +1244,7 @@ const AdminProducts = () => {
                     </tr>
                   )
                 })}
-                {!loading && filteredProducts.length === 0 && (
+                {!loading && listedProducts.length === 0 && (
                   <tr>
                     <td
                       colSpan={12}
