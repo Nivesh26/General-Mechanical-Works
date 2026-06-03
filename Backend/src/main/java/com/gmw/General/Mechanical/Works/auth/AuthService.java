@@ -156,20 +156,17 @@ public class AuthService {
 		user.setName(resolveGoogleDisplayName(payload));
 	}
 
-	/** Sets profile image from Google `picture` claim unless the user uploaded a local avatar. */
-	private static void applyGooglePictureIfNoLocalUpload(User user, GoogleIdToken.Payload payload) {
-		if (hasLocalUploadedAvatar(user)) {
+	/** Stores Google `picture` URL; removes any previously saved local avatar from Google sync. */
+	private void applyGooglePictureIfNoLocalUpload(User user, GoogleIdToken.Payload payload) {
+		String picture = stringClaim(payload, "picture");
+		if (!StringUtils.hasText(picture)) {
 			return;
 		}
-		String picture = stringClaim(payload, "picture");
-		if (StringUtils.hasText(picture)) {
-			user.setProfilePicture(picture);
+		String current = user.getProfilePicture();
+		if (StringUtils.hasText(current) && current.startsWith(AVATAR_WEB_PREFIX)) {
+			deleteStoredFileIfAny(current, AVATAR_WEB_PREFIX, AVATAR_STORAGE_DIR);
 		}
-	}
-
-	private static boolean hasLocalUploadedAvatar(User user) {
-		String path = user.getProfilePicture();
-		return StringUtils.hasText(path) && path.startsWith(AVATAR_WEB_PREFIX);
+		user.setProfilePicture(picture);
 	}
 
 	private static String stringClaim(GoogleIdToken.Payload payload, String key) {
