@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { toast } from 'react-toastify'
 import Header from '../UserComponent/Header'
 import Footer from '../UserComponent/Footer'
 import Copyright from '../UserComponent/Copyright'
 import { PAGE_GUTTER } from '../lib/layoutClasses'
-import { fetchProducts, type ProductItem } from '../lib/api'
+import { addToCart, fetchProducts, type ProductItem } from '../lib/api'
 import { productImageUrl } from '../lib/products'
+import { useAuth } from '../context/AuthContext'
 import { PRODUCT_SHUFFLE_INTERVAL_MS, shuffleArray } from '../lib/shuffle'
 
 const PRICE_MIN = 0
@@ -20,6 +22,8 @@ type StoreProduct = {
   priceValue: number
   category: string
   image: string | null
+  sizes: string[]
+  stock: number
 }
 
 const formatPrice = (n: number) => `Rs. ${n.toLocaleString('en-IN')}`
@@ -46,10 +50,15 @@ const toStoreProduct = (item: ProductItem): StoreProduct => ({
   priceValue: Number(item.price),
   category: item.category,
   image: productImageUrl(item.imagePaths[0] ?? null),
+  sizes: item.sizes ?? [],
+  stock: item.stock,
 })
 
 const Products = () => {
+  const navigate = useNavigate()
+  const { token } = useAuth()
   const [products, setProducts] = useState<StoreProduct[]>([])
+  const [addingProductId, setAddingProductId] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [activeCategory, setActiveCategory] = useState('All')
@@ -57,6 +66,30 @@ const Products = () => {
   const [priceMax, setPriceMax] = useState(DEFAULT_PRICE_MAX)
   const [sortBy, setSortBy] = useState<PriceSort>('default')
   const [shuffleTick, setShuffleTick] = useState(0)
+
+  const handleAddToCart = async (product: StoreProduct, e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (product.stock <= 0) return
+    if (!token) {
+      toast.info('Please sign in to add items to your cart.')
+      navigate('/login', { state: { from: '/products' } })
+      return
+    }
+    if (product.sizes.length > 0) {
+      navigate(`/productdetail/${product.id}`)
+      return
+    }
+    setAddingProductId(product.id)
+    try {
+      await addToCart(token, { productId: product.id, quantity: 1 })
+      toast.success('Added to cart.')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not add to cart.')
+    } finally {
+      setAddingProductId(null)
+    }
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -257,9 +290,15 @@ const Products = () => {
                           <span className="text-primary font-semibold">{product.price}</span>
                           <button
                             type="button"
-                            className="px-4 py-2 rounded-full border border-primary text-primary text-sm font-medium hover:bg-primary hover:text-white transition-colors cursor-pointer"
+                            disabled={product.stock === 0 || addingProductId === product.id}
+                            onClick={(e) => void handleAddToCart(product, e)}
+                            className="px-4 py-2 rounded-full border border-primary text-primary text-sm font-medium hover:bg-primary hover:text-white transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                           >
-                            Add to cart
+                            {product.stock === 0
+                              ? 'Out of stock'
+                              : addingProductId === product.id
+                                ? 'Adding…'
+                                : 'Add to cart'}
                           </button>
                         </div>
                       </div>

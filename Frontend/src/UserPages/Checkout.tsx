@@ -16,6 +16,7 @@ type CheckoutItem = {
   name: string
   priceValue: number
   quantity: number
+  image?: string | null
 }
 
 type CheckoutState = {
@@ -51,7 +52,7 @@ const Checkout = () => {
     if (!state?.selectedItems?.length) return fallbackItems
     return state.selectedItems.map((item) => ({
       ...item,
-      image: productImageById[item.id] ?? EngineOil,
+      image: item.image ?? productImageById[item.id] ?? EngineOil,
     }))
   }, [state])
 

@@ -154,6 +154,31 @@ public class SchemaMigrationConfig {
 						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
 						""");
 			}
+
+			Integer cartTableExists = jdbcTemplate.queryForObject(
+					"""
+					SELECT COUNT(*) FROM information_schema.TABLES
+					WHERE TABLE_SCHEMA = DATABASE()
+					  AND TABLE_NAME = 'cart'
+					""",
+					Integer.class);
+			if (cartTableExists == null || cartTableExists == 0) {
+				jdbcTemplate.execute("""
+						CREATE TABLE `cart` (
+						  `id` BIGINT NOT NULL AUTO_INCREMENT,
+						  `user_id` BIGINT NOT NULL,
+						  `product_id` BIGINT NOT NULL,
+						  `quantity` INT NOT NULL DEFAULT 1,
+						  `size_label` VARCHAR(64) NOT NULL DEFAULT '',
+						  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+						  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+						  PRIMARY KEY (`id`),
+						  UNIQUE KEY `uk_cart_user_product_size` (`user_id`, `product_id`, `size_label`),
+						  CONSTRAINT `fk_cart_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON DELETE CASCADE,
+						  CONSTRAINT `fk_cart_product` FOREIGN KEY (`product_id`) REFERENCES `product` (`id`) ON DELETE CASCADE
+						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+						""");
+			}
 		};
 	}
 }

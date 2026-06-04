@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { toast } from 'react-toastify'
 import Header from '../UserComponent/Header'
 import Footer from '../UserComponent/Footer'
 import Copyright from '../UserComponent/Copyright'
@@ -8,18 +9,22 @@ import { PAGE_GUTTER } from '../lib/layoutClasses'
 import GMWlogo from '../assets/GMWlogo.png'
 import { HiOutlineCheck, HiStar, HiOutlineHandThumbUp, HiHandThumbUp } from 'react-icons/hi2'
 import { DEMO_PRODUCT_ID, useProductReviewsState } from '../lib/useProductReviewsState'
-import { fetchProduct, type ProductItem } from '../lib/api'
+import { addToCart, fetchProduct, type ProductItem } from '../lib/api'
 import { mapProductImages } from '../lib/products'
+import { useAuth } from '../context/AuthContext'
 
 const formatPrice = (n: number) => `Rs. ${n.toLocaleString('en-IN')}`
 
 const Productdetail = () => {
   const { id: idParam } = useParams()
   const productId = Number(idParam)
+  const navigate = useNavigate()
+  const { token } = useAuth()
 
   const [product, setProduct] = useState<ProductItem | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [addingToCart, setAddingToCart] = useState(false)
 
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
   const [selectedSize, setSelectedSize] = useState<string | null>(null)
@@ -82,6 +87,32 @@ const Productdetail = () => {
   const safeImageIndex = images.length > 0 ? Math.min(selectedImageIndex, images.length - 1) : 0
   const mainImage = images[safeImageIndex] ?? null
   const thumbIndices = images.map((_, i) => i).filter((i) => i !== safeImageIndex)
+
+  const handleAddToCart = async () => {
+    if (!product) return
+    if (!token) {
+      toast.info('Please sign in to add items to your cart.')
+      navigate('/login', { state: { from: `/productdetail/${product.id}` } })
+      return
+    }
+    if (sizes.length > 0 && !selectedSize) {
+      toast.error('Please select a size.')
+      return
+    }
+    setAddingToCart(true)
+    try {
+      await addToCart(token, {
+        productId: product.id,
+        quantity: 1,
+        size: selectedSize ?? undefined,
+      })
+      toast.success('Added to cart.')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not add to cart.')
+    } finally {
+      setAddingToCart(false)
+    }
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
@@ -208,10 +239,15 @@ const Productdetail = () => {
                   <div className="flex flex-col sm:flex-row gap-4">
                     <button
                       type="button"
-                      disabled={product.stock === 0}
+                      disabled={product.stock === 0 || addingToCart}
+                      onClick={() => void handleAddToCart()}
                       className="flex-1 sm:flex-none px-8 py-3.5 rounded-lg text-sm font-semibold transition-colors cursor-pointer bg-primary text-white hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {product.stock === 0 ? 'Out of stock' : 'Add to cart'}
+                      {product.stock === 0
+                        ? 'Out of stock'
+                        : addingToCart
+                          ? 'Adding…'
+                          : 'Add to cart'}
                     </button>
                     <Link
                       to="/"

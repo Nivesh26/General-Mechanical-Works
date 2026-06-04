@@ -2,6 +2,7 @@ package com.gmw.General.Mechanical.Works.product;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -142,5 +143,13 @@ public class Product {
 
 	public void setCreatedAt(LocalDateTime createdAt) {
 		this.createdAt = createdAt;
+	}
+
+	public List<String> getSizesList() {
+		return ProductJson.readStringList(sizesJson);
+	}
+
+	public List<String> getImagePathsList() {
+		return ProductJson.readStringList(imagePathsJson);
 	}
 }

@@ -283,6 +283,78 @@ export async function setMainVehicle(token: string, id: number): Promise<ApiVehi
   return res.json() as Promise<ApiVehicleDto[]>
 }
 
+export type CartItemDto = {
+  id: number
+  productId: number
+  productName: string
+  sku: string
+  price: number
+  quantity: number
+  stock: number
+  maxQuantity: number
+  size: string | null
+  imagePaths: string[]
+}
+
+export async function fetchMyCart(token: string): Promise<CartItemDto[]> {
+  const res = await fetch(`${getApiBase()}/api/cart/me`, {
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<CartItemDto[]>
+}
+
+export async function addToCart(
+  token: string,
+  body: { productId: number; quantity?: number; size?: string | null },
+): Promise<CartItemDto> {
+  const res = await fetch(`${getApiBase()}/api/cart/me`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<CartItemDto>
+}
+
+export async function updateCartItemQuantity(
+  token: string,
+  cartItemId: number,
+  quantity: number,
+): Promise<CartItemDto> {
+  const res = await fetch(`${getApiBase()}/api/cart/me/${cartItemId}`, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({ quantity }),
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<CartItemDto>
+}
+
+export async function removeCartItem(token: string, cartItemId: number): Promise<void> {
+  const res = await fetch(`${getApiBase()}/api/cart/me/${cartItemId}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+}
+
+export async function clearCart(token: string): Promise<void> {
+  const res = await fetch(`${getApiBase()}/api/cart/me`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+}
+
 export type BlogSummary = {
   id: number
   title: string

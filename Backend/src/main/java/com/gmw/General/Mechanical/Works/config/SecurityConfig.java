@@ -51,6 +51,7 @@ public class SecurityConfig {
 						.requestMatchers(HttpMethod.DELETE, "/api/auth/me/cover-photo").authenticated()
 						.requestMatchers(HttpMethod.PATCH, "/api/users/me").authenticated()
 						.requestMatchers("/api/vehicles/me", "/api/vehicles/me/**").authenticated()
+						.requestMatchers("/api/cart/me", "/api/cart/me/**").authenticated()
 						.requestMatchers(HttpMethod.GET, "/api/blogs", "/api/blogs/*").permitAll()
 						.requestMatchers(HttpMethod.POST, "/api/blogs/*/like").authenticated()
 						.requestMatchers(HttpMethod.DELETE, "/api/blogs/*/like").authenticated()
