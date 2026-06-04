@@ -137,7 +137,7 @@ public class CartService {
 	}
 
 	private static int maxQuantityFor(Product product) {
-		return Math.min(product.getStock(), CartMapper.MAX_QUANTITY_PER_LINE);
+		return product.getStock();
 	}
 
 	private User requireUser(String email) {
