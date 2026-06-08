@@ -1,8 +1,8 @@
 package com.gmw.General.Mechanical.Works.auth;
 
-import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -18,7 +18,6 @@ public class LoginOtpService {
 	private static final long OTP_TTL_SECONDS = 600;
 	private static final long RESEND_COOLDOWN_SECONDS = 60;
 
-	private final SecureRandom random = new SecureRandom();
 	private final OtpRepository otpRepository;
 
 	public LoginOtpService(OtpRepository otpRepository) {
@@ -27,7 +26,8 @@ public class LoginOtpService {
 
 	@Transactional
 	public PendingLogin create(User user) {
-		otpRepository.deleteByUserId(user.getId());
+		Long userId = user.getId();
+		otpRepository.deleteByUserId(userId);
 
 		LocalDateTime now = LocalDateTime.now();
 		String code = generateCode();
@@ -42,7 +42,7 @@ public class LoginOtpService {
 		otp.setLastSentAt(now);
 		otpRepository.save(otp);
 
-		return toPendingLogin(otp);
+		return new PendingLogin(token, user.getEmail(), userId, code, otp.getExpiresAt(), otp.getLastSentAt());
 	}
 
 	@Transactional
@@ -63,13 +63,14 @@ public class LoginOtpService {
 	}
 
 	@Transactional
-	public PendingLogin verify(String verificationToken, String code) {
+	public User verify(String verificationToken, String code) {
 		Otp otp = getValidOtp(verificationToken);
 		if (!otp.getCode().equals(code.trim())) {
 			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid verification code");
 		}
+		User user = otp.getUser();
 		otpRepository.delete(otp);
-		return toPendingLogin(otp);
+		return user;
 	}
 
 	private Otp getValidOtp(String verificationToken) {
@@ -94,8 +95,8 @@ public class LoginOtpService {
 				otp.getLastSentAt());
 	}
 
-	private String generateCode() {
-		int value = random.nextInt(1_000_000);
+	private static String generateCode() {
+		int value = ThreadLocalRandom.current().nextInt(1_000_000);
 		return String.format("%0" + OTP_LENGTH + "d", value);
 	}
 

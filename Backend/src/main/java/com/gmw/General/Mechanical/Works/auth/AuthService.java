@@ -16,6 +16,9 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
@@ -48,6 +51,7 @@ public class AuthService {
 	private final GoogleTokenVerifier googleTokenVerifier;
 	private final LoginOtpService loginOtpService;
 	private final EmailService emailService;
+	private final TransactionTemplate transactionTemplate;
 
 	public AuthService(
 			UserRepository userRepository,
@@ -55,25 +59,25 @@ public class AuthService {
 			JwtService jwtService,
 			GoogleTokenVerifier googleTokenVerifier,
 			LoginOtpService loginOtpService,
-			EmailService emailService) {
+			EmailService emailService,
+			TransactionTemplate transactionTemplate) {
 		this.userRepository = userRepository;
 		this.passwordEncoder = passwordEncoder;
 		this.jwtService = jwtService;
 		this.googleTokenVerifier = googleTokenVerifier;
 		this.loginOtpService = loginOtpService;
 		this.emailService = emailService;
+		this.transactionTemplate = transactionTemplate;
 	}
 
-	@Transactional
 	public AuthResponse signup(SignupRequest request) {
 		String normalizedEmail = request.getEmail().trim().toLowerCase();
-		if (userRepository.existsByEmailIgnoreCase(normalizedEmail)) {
-			throw new EmailAlreadyRegisteredException(normalizedEmail);
-		}
+		String passwordHash = passwordEncoder.encode(request.getPassword());
+
 		User user = new User();
 		user.setName(request.getName().trim());
 		user.setEmail(normalizedEmail);
-		user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
+		user.setPasswordHash(passwordHash);
 		String phone = request.getPhone();
 		if (StringUtils.hasText(phone)) {
 			String phoneDigits = phone.replaceAll("\\D", "");
@@ -86,18 +90,14 @@ public class AuthService {
 		}
 		user.setRole(Role.USER);
 		try {
-			User saved = userRepository.save(user);
-			emailService.sendWelcomeEmail(saved.getEmail(), saved.getName());
+			User saved = transactionTemplate.execute(status -> userRepository.save(user));
+			runAfterCommit(() -> emailService.sendWelcomeEmail(saved.getEmail(), saved.getName()));
 			return buildAuthResponse(saved);
 		} catch (DataIntegrityViolationException ex) {
-			if (userRepository.existsByEmailIgnoreCase(normalizedEmail)) {
-				throw new EmailAlreadyRegisteredException(normalizedEmail);
-			}
-			throw ex;
+			throw new EmailAlreadyRegisteredException(normalizedEmail);
 		}
 	}
 
-	@Transactional
 	public LoginPendingResponse login(LoginRequest request) {
 		User user = authenticateWithPassword(request.getEmail(), request.getPassword());
 		LoginOtpService.PendingLogin pending = loginOtpService.create(user);
@@ -105,17 +105,11 @@ public class AuthService {
 		return new LoginPendingResponse(true, pending.verificationToken(), maskEmail(user.getEmail()));
 	}
 
-	@Transactional
 	public AuthResponse verifyLoginOtp(VerifyLoginOtpRequest request) {
-		LoginOtpService.PendingLogin pending = loginOtpService.verify(
-				request.getVerificationToken(),
-				request.getCode());
-		User user = userRepository.findById(pending.userId())
-				.orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found"));
+		User user = loginOtpService.verify(request.getVerificationToken(), request.getCode());
 		return buildAuthResponse(user);
 	}
 
-	@Transactional
 	public void resendLoginOtp(ResendLoginOtpRequest request) {
 		LoginOtpService.PendingLogin pending = loginOtpService.resend(request.getVerificationToken());
 		emailService.sendLoginVerificationCode(pending.email(), pending.code());
@@ -186,8 +180,21 @@ public class AuthService {
 		created.setRole(Role.USER);
 		applyGooglePictureIfNoLocalUpload(created, payload);
 		User saved = userRepository.save(created);
-		emailService.sendWelcomeEmail(saved.getEmail(), saved.getName());
+		runAfterCommit(() -> emailService.sendWelcomeEmail(saved.getEmail(), saved.getName()));
 		return buildAuthResponse(saved);
+	}
+
+	private static void runAfterCommit(Runnable action) {
+		if (TransactionSynchronizationManager.isSynchronizationActive()) {
+			TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+				@Override
+				public void afterCommit() {
+					action.run();
+				}
+			});
+		} else {
+			action.run();
+		}
 	}
 
 	private static void applyGoogleNameIfBlank(User user, GoogleIdToken.Payload payload) {

@@ -2,6 +2,7 @@ package com.gmw.General.Mechanical.Works.auth;
 
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import com.gmw.General.Mechanical.Works.config.EmailProperties;
@@ -17,6 +18,7 @@ public class EmailService {
 		this.emailProperties = emailProperties;
 	}
 
+	@Async("mailTaskExecutor")
 	public void sendLoginVerificationCode(String toEmail, String code) {
 		SimpleMailMessage message = new SimpleMailMessage();
 		message.setFrom(emailProperties.getFrom());
@@ -32,6 +34,7 @@ public class EmailService {
 		mailSender.send(message);
 	}
 
+	@Async("mailTaskExecutor")
 	public void sendWelcomeEmail(String toEmail, String name) {
 		String greeting = (name != null && !name.isBlank()) ? "Hi " + name.trim() + "," : "Hi,";
 		SimpleMailMessage message = new SimpleMailMessage();
