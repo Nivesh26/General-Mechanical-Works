@@ -8,6 +8,7 @@ import { PAGE_GUTTER } from '../lib/layoutClasses'
 import { addToCart, fetchProducts, type ProductItem } from '../lib/api'
 import { productImageUrl } from '../lib/products'
 import { useAuth } from '../context/AuthContext'
+import { useCart } from '../context/CartContext'
 import { PRODUCT_SHUFFLE_INTERVAL_MS, shuffleArray } from '../lib/shuffle'
 
 const PRICE_MIN = 0
@@ -57,6 +58,7 @@ const toStoreProduct = (item: ProductItem): StoreProduct => ({
 const Products = () => {
   const navigate = useNavigate()
   const { token } = useAuth()
+  const { refreshCart } = useCart()
   const [products, setProducts] = useState<StoreProduct[]>([])
   const [addingProductId, setAddingProductId] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
@@ -83,6 +85,7 @@ const Products = () => {
     setAddingProductId(product.id)
     try {
       await addToCart(token, { productId: product.id, quantity: 1 })
+      await refreshCart()
       toast.success('Added to cart.')
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Could not add to cart.')

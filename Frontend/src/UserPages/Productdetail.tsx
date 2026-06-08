@@ -12,6 +12,7 @@ import { DEMO_PRODUCT_ID, useProductReviewsState } from '../lib/useProductReview
 import { addToCart, fetchProduct, type ProductItem } from '../lib/api'
 import { mapProductImages } from '../lib/products'
 import { useAuth } from '../context/AuthContext'
+import { useCart } from '../context/CartContext'
 
 const formatPrice = (n: number) => `Rs. ${n.toLocaleString('en-IN')}`
 
@@ -20,6 +21,7 @@ const Productdetail = () => {
   const productId = Number(idParam)
   const navigate = useNavigate()
   const { token } = useAuth()
+  const { refreshCart } = useCart()
 
   const [product, setProduct] = useState<ProductItem | null>(null)
   const [loading, setLoading] = useState(true)
@@ -106,6 +108,7 @@ const Productdetail = () => {
         quantity: 1,
         size: selectedSize ?? undefined,
       })
+      await refreshCart()
       toast.success('Added to cart.')
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Could not add to cart.')

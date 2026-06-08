@@ -7,6 +7,7 @@ import Copyright from '../UserComponent/Copyright'
 import { HiOutlineTrash, HiOutlineMinus, HiOutlinePlus } from 'react-icons/hi2'
 import { PAGE_GUTTER } from '../lib/layoutClasses'
 import { useAuth } from '../context/AuthContext'
+import { useCart } from '../context/CartContext'
 import {
   clearCart,
   fetchMyCart,
@@ -49,6 +50,7 @@ const toDisplayItem = (row: CartItemDto): DisplayCartItem => ({
 const Cart = () => {
   const navigate = useNavigate()
   const { token } = useAuth()
+  const { refreshCart } = useCart()
   const [items, setItems] = useState<DisplayCartItem[]>([])
   const [quantities, setQuantities] = useState<Record<number, number>>({})
   const [selectedIds, setSelectedIds] = useState<number[]>([])
@@ -65,6 +67,7 @@ const Cart = () => {
       setItems(display)
       setQuantities(Object.fromEntries(rows.map((r) => [r.id, r.quantity])))
       setSelectedIds(display.map((d) => d.id))
+      await refreshCart()
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Could not load cart.')
       setItems([])
@@ -73,7 +76,7 @@ const Cart = () => {
     } finally {
       setLoading(false)
     }
-  }, [token])
+  }, [token, refreshCart])
 
   useEffect(() => {
     void loadCart()
@@ -99,6 +102,7 @@ const Cart = () => {
         delete next[id]
         return next
       })
+      await refreshCart()
       toast.success('Item removed from cart.')
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Could not remove item.')
@@ -116,6 +120,7 @@ const Cart = () => {
     setBusyId(item.id)
     try {
       await updateCartItemQuantity(token, item.id, next)
+      await refreshCart()
     } catch (err) {
       setQuantities((q) => ({ ...q, [item.id]: prevQty }))
       toast.error(err instanceof Error ? err.message : 'Could not update quantity.')
@@ -138,6 +143,7 @@ const Cart = () => {
       setItems([])
       setSelectedIds([])
       setQuantities({})
+      await refreshCart()
       toast.success('Cart cleared.')
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Could not clear cart.')

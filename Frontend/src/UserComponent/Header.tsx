@@ -9,6 +9,7 @@ import {
 import { FiLogOut, FiMenu, FiX } from 'react-icons/fi'
 import GMWlogo from '../assets/GMWlogo.png'
 import { useAuth } from '../context/AuthContext'
+import { useCart } from '../context/CartContext'
 import { useProfileAvatar } from '../hooks/useProfileAvatar'
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
 import { profileInitialFromName } from '../lib/profileInitial'
@@ -16,6 +17,7 @@ import { PAGE_GUTTER } from '../lib/layoutClasses'
 
 const Header = () => {
   const { user, loading, token, refreshUser, logout } = useAuth()
+  const { cartCount } = useCart()
   const { avatarUrl } = useProfileAvatar(user, token, refreshUser)
   const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
@@ -200,12 +202,25 @@ const Header = () => {
                   <NavLink
                     to="/cart"
                     className={({ isActive }) =>
-                      `${iconNavClass}${isActive ? ' text-primary bg-gray-50 border-gray-200' : ''}`
+                      `relative ${iconNavClass}${isActive ? ' text-primary bg-gray-50 border-gray-200' : ''}`
                     }
-                    aria-label="Cart"
-                    title="Cart"
+                    aria-label={
+                      cartCount > 0
+                        ? `Cart, ${cartCount} ${cartCount === 1 ? 'product' : 'products'}`
+                        : 'Cart'
+                    }
+                    title={
+                      cartCount > 0
+                        ? `Cart (${cartCount} ${cartCount === 1 ? 'product' : 'products'})`
+                        : 'Cart'
+                    }
                   >
                     <HiOutlineShoppingCart className="w-5 h-5 sm:w-6 sm:h-6" aria-hidden />
+                    {cartCount > 0 ? (
+                      <span className="absolute -top-0.5 -right-0.5 min-w-[1.125rem] h-[1.125rem] px-0.5 flex items-center justify-center rounded-full bg-primary text-white text-[10px] font-bold leading-none tabular-nums pointer-events-none">
+                        {cartCount > 99 ? '99+' : cartCount}
+                      </span>
+                    ) : null}
                   </NavLink>
                   {loading && !user ? (
                     <span
