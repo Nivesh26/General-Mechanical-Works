@@ -1,6 +1,5 @@
 import type { CSSProperties } from 'react'
 import { Fragment, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
 import AdminNavbar from '../AdminComponent/AdminNavbar'
 import { ADMIN_MAIN_SCROLL_CLASS, ADMIN_PAGE_SUBTITLE, ADMIN_PAGE_TITLE } from '../AdminComponent/adminMainStyles'
 /** Product photos from `Frontend/src/assets` (same as admin catalog). */
@@ -440,9 +439,7 @@ const AdminOrders = () => {
                           </span>
                         </td>
                         <td style={tdStyle}>
-                          <Link to="/adminuserprofile" className="admin-users-name-link">
-                            {order.customerName}
-                          </Link>
+                          <span style={{ fontWeight: 600, color: '#0f172a' }}>{order.customerName}</span>
                           <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>{order.customerEmail}</div>
                         </td>
                         <td style={tdStyle}>

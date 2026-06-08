@@ -1,5 +1,4 @@
 import { useState, type CSSProperties } from 'react'
-import { Link } from 'react-router-dom'
 import AdminNavbar from '../AdminComponent/AdminNavbar'
 import { ADMIN_MAIN_SCROLL_CLASS, ADMIN_PAGE_HEADER_SPACING, ADMIN_PAGE_SUBTITLE, ADMIN_PAGE_TITLE } from '../AdminComponent/adminMainStyles'
 import {
@@ -188,18 +187,7 @@ const AdminReviews = () => {
                             lineHeight: 1.25,
                           }}
                         >
-                          <Link
-                            to="/adminuserprofile"
-                            className="admin-users-name-link"
-                            style={{
-                              color: 'inherit',
-                              fontWeight: 'inherit',
-                              fontSize: 'inherit',
-                              letterSpacing: 'inherit',
-                            }}
-                          >
-                            {review.name}
-                          </Link>
+                          {review.name}
                         </h2>
                         <p
                           style={{

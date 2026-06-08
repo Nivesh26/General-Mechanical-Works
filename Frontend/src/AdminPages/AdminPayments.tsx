@@ -1,6 +1,5 @@
 import type { CSSProperties } from 'react'
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
 import AdminNavbar from '../AdminComponent/AdminNavbar'
 import { ADMIN_MAIN_SCROLL_CLASS, ADMIN_PAGE_SUBTITLE, ADMIN_PAGE_TITLE } from '../AdminComponent/adminMainStyles'
 
@@ -260,9 +259,7 @@ const AdminPayments = () => {
                       <SourceBadge source={row.source} />
                     </td>
                     <td style={tdStyle}>
-                      <Link to="/adminuserprofile" className="admin-users-name-link">
-                        {row.customerName}
-                      </Link>
+                      <span style={{ fontWeight: 600, color: '#0f172a' }}>{row.customerName}</span>
                       <div style={{ fontSize: '12px', color: '#64748b' }}>{row.customerEmail}</div>
                     </td>
                     <td style={tdStyle}>{row.date}</td>

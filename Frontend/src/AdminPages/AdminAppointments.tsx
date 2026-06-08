@@ -1,6 +1,6 @@
 import type { CSSProperties, FormEvent } from 'react'
 import { Fragment, useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import AdminNavbar from '../AdminComponent/AdminNavbar'
 import { ADMIN_MAIN_SCROLL_CLASS, ADMIN_PAGE_SUBTITLE, ADMIN_PAGE_TITLE } from '../AdminComponent/adminMainStyles'
 
@@ -361,9 +361,7 @@ const AdminAppointments = () => {
                           <span style={{ fontSize: '13px', color: '#475569' }}>{formatSubmitted(a.submittedAt)}</span>
                         </td>
                         <td style={tdStyle}>
-                          <Link to="/adminuserprofile" className="admin-users-name-link">
-                            {a.customerName}
-                          </Link>
+                          <span style={{ fontWeight: 600, color: '#0f172a' }}>{a.customerName}</span>
                           {a.customerEmail ? (
                             <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>{a.customerEmail}</div>
                           ) : null}
