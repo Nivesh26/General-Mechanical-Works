@@ -11,8 +11,11 @@ import {
   authFetchProfile,
   authGoogle,
   authLogin,
+  authResendLoginCode,
+  authVerifyLogin,
   type UserProfile,
   type AuthResponse,
+  type LoginPendingResponse,
 } from '../lib/api'
 
 /** Tab/session scoped: cleared when the browser tab is closed (unlike localStorage). */
@@ -34,7 +37,9 @@ type AuthContextValue = {
   user: UserProfile | null
   token: string | null
   loading: boolean
-  login: (email: string, password: string) => Promise<AuthResponse>
+  login: (email: string, password: string) => Promise<LoginPendingResponse>
+  verifyLogin: (verificationToken: string, code: string) => Promise<AuthResponse>
+  resendLoginCode: (verificationToken: string) => Promise<void>
   loginWithGoogle: (idToken: string) => Promise<AuthResponse>
   logout: () => void
   refreshUser: () => Promise<void>
@@ -89,13 +94,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const login = useCallback(
-    async (email: string, password: string): Promise<AuthResponse> => {
-      const auth = await authLogin(email.trim(), password)
+    async (email: string, password: string): Promise<LoginPendingResponse> => {
+      return authLogin(email.trim(), password)
+    },
+    [],
+  )
+
+  const verifyLogin = useCallback(
+    async (verificationToken: string, code: string): Promise<AuthResponse> => {
+      const auth = await authVerifyLogin(verificationToken, code)
       applySession(auth)
       return auth
     },
     [applySession],
   )
+
+  const resendLoginCode = useCallback(async (verificationToken: string): Promise<void> => {
+    await authResendLoginCode(verificationToken)
+  }, [])
 
   const loginWithGoogle = useCallback(
     async (idToken: string): Promise<AuthResponse> => {
@@ -125,12 +141,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       token,
       loading,
       login,
+      verifyLogin,
+      resendLoginCode,
       loginWithGoogle,
       logout,
       refreshUser,
       replaceToken,
     }),
-    [user, token, loading, login, loginWithGoogle, logout, refreshUser, replaceToken],
+    [user, token, loading, login, verifyLogin, resendLoginCode, loginWithGoogle, logout, refreshUser, replaceToken],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

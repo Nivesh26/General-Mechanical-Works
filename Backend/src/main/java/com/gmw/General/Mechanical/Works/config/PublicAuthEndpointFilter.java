@@ -26,6 +26,8 @@ public class PublicAuthEndpointFilter extends OncePerRequestFilter {
 
 	private static final Set<String> PUBLIC_AUTH_POST_PATHS = Set.of(
 			"/api/auth/login",
+			"/api/auth/login/verify",
+			"/api/auth/login/resend",
 			"/api/auth/signup",
 			"/api/auth/google");
 

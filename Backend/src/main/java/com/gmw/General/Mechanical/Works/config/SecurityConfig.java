@@ -43,6 +43,8 @@ public class SecurityConfig {
 						.requestMatchers("/api/auth/login", "/api/auth/signup", "/api/auth/google").permitAll()
 						.requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/signup", "/api/auth/google")
 						.permitAll()
+						.requestMatchers(HttpMethod.POST, "/api/auth/login/verify", "/api/auth/login/resend")
+						.permitAll()
 						.requestMatchers(HttpMethod.GET, "/api/auth/me").authenticated()
 						.requestMatchers(HttpMethod.POST, "/api/auth/me/password").authenticated()
 						.requestMatchers(HttpMethod.POST, "/api/auth/me/avatar").authenticated()

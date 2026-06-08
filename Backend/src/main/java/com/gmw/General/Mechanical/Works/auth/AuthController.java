@@ -30,8 +30,18 @@ public class AuthController {
 	}
 
 	@PostMapping("/login")
-	public AuthResponse login(@Valid @RequestBody LoginRequest request) {
+	public LoginPendingResponse login(@Valid @RequestBody LoginRequest request) {
 		return authService.login(request);
+	}
+
+	@PostMapping("/login/verify")
+	public AuthResponse verifyLogin(@Valid @RequestBody VerifyLoginOtpRequest request) {
+		return authService.verifyLoginOtp(request);
+	}
+
+	@PostMapping("/login/resend")
+	public void resendLoginCode(@Valid @RequestBody ResendLoginOtpRequest request) {
+		authService.resendLoginOtp(request);
 	}
 
 	@PostMapping("/google")

@@ -179,6 +179,32 @@ public class SchemaMigrationConfig {
 						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
 						""");
 			}
+
+			Integer otpTableExists = jdbcTemplate.queryForObject(
+					"""
+					SELECT COUNT(*) FROM information_schema.TABLES
+					WHERE TABLE_SCHEMA = DATABASE()
+					  AND TABLE_NAME = 'otp'
+					""",
+					Integer.class);
+			if (otpTableExists == null || otpTableExists == 0) {
+				jdbcTemplate.execute("""
+						CREATE TABLE `otp` (
+						  `id` BIGINT NOT NULL AUTO_INCREMENT,
+						  `verification_token` VARCHAR(36) NOT NULL,
+						  `user_id` BIGINT NOT NULL,
+						  `email` VARCHAR(255) NOT NULL,
+						  `code` VARCHAR(6) NOT NULL,
+						  `expires_at` DATETIME NOT NULL,
+						  `last_sent_at` DATETIME NOT NULL,
+						  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+						  PRIMARY KEY (`id`),
+						  UNIQUE KEY `uk_otp_verification_token` (`verification_token`),
+						  KEY `idx_otp_user_id` (`user_id`),
+						  CONSTRAINT `fk_otp_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON DELETE CASCADE
+						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+						""");
+			}
 		};
 	}
 }

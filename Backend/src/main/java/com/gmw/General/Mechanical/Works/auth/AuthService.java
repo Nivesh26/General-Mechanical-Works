@@ -46,16 +46,22 @@ public class AuthService {
 	private final PasswordEncoder passwordEncoder;
 	private final JwtService jwtService;
 	private final GoogleTokenVerifier googleTokenVerifier;
+	private final LoginOtpService loginOtpService;
+	private final EmailService emailService;
 
 	public AuthService(
 			UserRepository userRepository,
 			PasswordEncoder passwordEncoder,
 			JwtService jwtService,
-			GoogleTokenVerifier googleTokenVerifier) {
+			GoogleTokenVerifier googleTokenVerifier,
+			LoginOtpService loginOtpService,
+			EmailService emailService) {
 		this.userRepository = userRepository;
 		this.passwordEncoder = passwordEncoder;
 		this.jwtService = jwtService;
 		this.googleTokenVerifier = googleTokenVerifier;
+		this.loginOtpService = loginOtpService;
+		this.emailService = emailService;
 	}
 
 	@Transactional
@@ -89,17 +95,48 @@ public class AuthService {
 		}
 	}
 
-	@Transactional(readOnly = true)
-	public AuthResponse login(LoginRequest request) {
-		String normalizedEmail = request.getEmail().trim().toLowerCase();
+	@Transactional
+	public LoginPendingResponse login(LoginRequest request) {
+		User user = authenticateWithPassword(request.getEmail(), request.getPassword());
+		LoginOtpService.PendingLogin pending = loginOtpService.create(user);
+		emailService.sendLoginVerificationCode(user.getEmail(), pending.code());
+		return new LoginPendingResponse(true, pending.verificationToken(), maskEmail(user.getEmail()));
+	}
+
+	@Transactional
+	public AuthResponse verifyLoginOtp(VerifyLoginOtpRequest request) {
+		LoginOtpService.PendingLogin pending = loginOtpService.verify(
+				request.getVerificationToken(),
+				request.getCode());
+		User user = userRepository.findById(pending.userId())
+				.orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found"));
+		return buildAuthResponse(user);
+	}
+
+	@Transactional
+	public void resendLoginOtp(ResendLoginOtpRequest request) {
+		LoginOtpService.PendingLogin pending = loginOtpService.resend(request.getVerificationToken());
+		emailService.sendLoginVerificationCode(pending.email(), pending.code());
+	}
+
+	private User authenticateWithPassword(String email, String password) {
+		String normalizedEmail = email.trim().toLowerCase();
 		User user = userRepository.findByEmailIgnoreCase(normalizedEmail)
 				.orElseThrow(() -> new BadCredentialsException("Invalid email or password"));
 		String passwordHash = user.getPasswordHash();
 		if (!StringUtils.hasText(passwordHash)
-				|| !passwordEncoder.matches(request.getPassword(), passwordHash)) {
+				|| !passwordEncoder.matches(password, passwordHash)) {
 			throw new BadCredentialsException("Invalid email or password");
 		}
-		return buildAuthResponse(user);
+		return user;
+	}
+
+	private static String maskEmail(String email) {
+		int at = email.indexOf('@');
+		if (at <= 1) {
+			return email;
+		}
+		return email.charAt(0) + "***" + email.substring(at);
 	}
 
 	@Transactional

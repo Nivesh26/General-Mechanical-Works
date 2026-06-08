@@ -11,17 +11,24 @@ import { postLoginPath } from '../lib/postLoginPath'
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
+type LoginStep = 'credentials' | 'otp'
+
 const Userlogin = () => {
-  const { login } = useAuth()
+  const { login, verifyLogin, resendLoginCode } = useAuth()
   const navigate = useNavigate()
 
+  const [step, setStep] = useState<LoginStep>('credentials')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const [errors, setErrors] = useState<Partial<Record<'email' | 'password', string>>>({})
+  const [verificationToken, setVerificationToken] = useState('')
+  const [maskedEmail, setMaskedEmail] = useState('')
+  const [otpCode, setOtpCode] = useState('')
+  const [errors, setErrors] = useState<Partial<Record<'email' | 'password' | 'otp', string>>>({})
   const [submitting, setSubmitting] = useState(false)
+  const [resending, setResending] = useState(false)
 
-  const validate = () => {
+  const validateCredentials = () => {
     const next: Partial<Record<'email' | 'password', string>> = {}
     const trimmed = email.trim()
     if (!trimmed) next.email = 'Email is required.'
@@ -32,19 +39,66 @@ const Userlogin = () => {
     return Object.keys(next).length === 0
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const validateOtp = () => {
+    const next: Partial<Record<'otp', string>> = {}
+    if (!otpCode.trim()) next.otp = 'Verification code is required.'
+    else if (!/^\d{6}$/.test(otpCode.trim())) next.otp = 'Enter the 6-digit code from your email.'
+    setErrors(next)
+    return Object.keys(next).length === 0
+  }
+
+  const handleCredentialsSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!validate()) return
+    if (!validateCredentials()) return
     setSubmitting(true)
     try {
-      const auth = await login(email.trim(), password)
-      toast.success('Signed in successfully.')
-      navigate(postLoginPath(auth.role), { replace: true })
+      const pending = await login(email.trim(), password)
+      setVerificationToken(pending.verificationToken)
+      setMaskedEmail(pending.email)
+      setOtpCode('')
+      setStep('otp')
+      toast.success(`Verification code sent to ${pending.email}`)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Login failed.')
     } finally {
       setSubmitting(false)
     }
+  }
+
+  const handleOtpSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!validateOtp()) return
+    setSubmitting(true)
+    try {
+      const auth = await verifyLogin(verificationToken, otpCode.trim())
+      toast.success('Signed in successfully.')
+      navigate(postLoginPath(auth.role), { replace: true })
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Verification failed.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleResendCode = async () => {
+    if (!verificationToken) return
+    setResending(true)
+    try {
+      await resendLoginCode(verificationToken)
+      toast.success('A new verification code has been sent.')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not resend code.')
+    } finally {
+      setResending(false)
+    }
+  }
+
+  const handleBackToLogin = () => {
+    setStep('credentials')
+    setOtpCode('')
+    setVerificationToken('')
+    setMaskedEmail('')
+    setErrors({})
   }
 
   const inputBorder = (hasError: boolean) =>
@@ -58,104 +112,176 @@ const Userlogin = () => {
       <main className="flex-1 flex items-center justify-center py-12 px-4">
         <div className="w-full max-w-md">
           <div className="bg-white rounded-xl shadow-lg shadow-gray-200/80 p-8 md:p-10">
-            <h1 className="text-2xl md:text-3xl font-bold text-black text-center mb-2">
-              Login
-            </h1>
-            <p className="text-sm text-black text-center mb-8">
-              Don&apos;t have an account?{' '}
-              <Link to="/signup" className="text-red-600 hover:underline font-medium">
-                Signup
-              </Link>
-            </p>
+            {step === 'credentials' ? (
+              <>
+                <h1 className="text-2xl md:text-3xl font-bold text-black text-center mb-2">
+                  Login
+                </h1>
+                <p className="text-sm text-black text-center mb-8">
+                  Don&apos;t have an account?{' '}
+                  <Link to="/signup" className="text-red-600 hover:underline font-medium">
+                    Signup
+                  </Link>
+                </p>
 
-            <form onSubmit={handleSubmit} className="space-y-6" noValidate>
-              <div>
-                <input
-                  type="email"
-                  name="email"
-                  autoComplete="email"
-                  placeholder="Email"
-                  value={email}
-                  onChange={(e) => {
-                    setEmail(e.target.value)
-                    setErrors((prev) => {
-                      if (!prev.email) return prev
-                      const n = { ...prev }
-                      delete n.email
-                      return n
-                    })
-                  }}
-                  aria-invalid={Boolean(errors.email)}
-                  aria-describedby={errors.email ? 'login-email-error' : undefined}
-                  className={inputBorder(Boolean(errors.email))}
-                />
-                {errors.email && (
-                  <p id="login-email-error" className="mt-1 text-sm text-red-600" role="alert">
-                    {errors.email}
-                  </p>
-                )}
-              </div>
-              <div>
-                <div className="relative">
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    name="password"
-                    autoComplete="current-password"
-                    placeholder="Password"
-                    value={password}
-                    onChange={(e) => {
-                      setPassword(e.target.value)
-                      setErrors((prev) => {
-                        if (!prev.password) return prev
-                        const n = { ...prev }
-                        delete n.password
-                        return n
-                      })
-                    }}
-                    aria-invalid={Boolean(errors.password)}
-                    aria-describedby={errors.password ? 'login-password-error' : undefined}
-                    className={`${inputBorder(Boolean(errors.password))} pr-9`}
-                  />
+                <form onSubmit={handleCredentialsSubmit} className="space-y-6" noValidate>
+                  <div>
+                    <input
+                      type="email"
+                      name="email"
+                      autoComplete="email"
+                      placeholder="Email"
+                      value={email}
+                      onChange={(e) => {
+                        setEmail(e.target.value)
+                        setErrors((prev) => {
+                          if (!prev.email) return prev
+                          const n = { ...prev }
+                          delete n.email
+                          return n
+                        })
+                      }}
+                      aria-invalid={Boolean(errors.email)}
+                      aria-describedby={errors.email ? 'login-email-error' : undefined}
+                      className={inputBorder(Boolean(errors.email))}
+                    />
+                    {errors.email && (
+                      <p id="login-email-error" className="mt-1 text-sm text-red-600" role="alert">
+                        {errors.email}
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        name="password"
+                        autoComplete="current-password"
+                        placeholder="Password"
+                        value={password}
+                        onChange={(e) => {
+                          setPassword(e.target.value)
+                          setErrors((prev) => {
+                            if (!prev.password) return prev
+                            const n = { ...prev }
+                            delete n.password
+                            return n
+                          })
+                        }}
+                        aria-invalid={Boolean(errors.password)}
+                        aria-describedby={errors.password ? 'login-password-error' : undefined}
+                        className={`${inputBorder(Boolean(errors.password))} pr-9`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((prev) => !prev)}
+                        className="absolute right-0 top-1/2 -translate-y-1/2 p-1 text-gray-500 hover:text-gray-700"
+                        aria-label={showPassword ? 'Hide password' : 'Show password'}
+                      >
+                        {showPassword ? <HiEyeSlash className="w-5 h-5" /> : <HiEye className="w-5 h-5" />}
+                      </button>
+                    </div>
+                    {errors.password && (
+                      <p id="login-password-error" className="mt-1 text-sm text-red-600" role="alert">
+                        {errors.password}
+                      </p>
+                    )}
+                    <div className="flex justify-end mt-1">
+                      <Link
+                        to="/forgetpassword"
+                        className="text-sm text-primary hover:underline"
+                      >
+                        Forget Password?
+                      </Link>
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="w-full py-3 rounded-lg bg-primary text-white font-bold hover:opacity-90 transition-opacity mt-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {submitting ? 'Signing in…' : 'Login'}
+                  </button>
+                </form>
+
+                <div className="flex items-center gap-4 my-8">
+                  <span className="flex-1 h-px bg-gray-300" />
+                  <span className="text-sm text-gray-500 font-medium">OR</span>
+                  <span className="flex-1 h-px bg-gray-300" />
+                </div>
+
+                <GoogleSignInButton disabled={submitting} />
+              </>
+            ) : (
+              <>
+                <h1 className="text-2xl md:text-3xl font-bold text-black text-center mb-2">
+                  Verify your email
+                </h1>
+                <p className="text-sm text-gray-600 text-center mb-8">
+                  Enter the 6-digit code sent to{' '}
+                  <span className="font-medium text-black">{maskedEmail}</span>
+                </p>
+
+                <form onSubmit={handleOtpSubmit} className="space-y-6" noValidate>
+                  <div>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      maxLength={6}
+                      placeholder="6-digit code"
+                      value={otpCode}
+                      onChange={(e) => {
+                        const digits = e.target.value.replace(/\D/g, '').slice(0, 6)
+                        setOtpCode(digits)
+                        setErrors((prev) => {
+                          if (!prev.otp) return prev
+                          const n = { ...prev }
+                          delete n.otp
+                          return n
+                        })
+                      }}
+                      aria-invalid={Boolean(errors.otp)}
+                      aria-describedby={errors.otp ? 'login-otp-error' : undefined}
+                      className={`${inputBorder(Boolean(errors.otp))} text-center text-2xl tracking-[0.4em] font-semibold`}
+                    />
+                    {errors.otp && (
+                      <p id="login-otp-error" className="mt-1 text-sm text-red-600 text-center" role="alert">
+                        {errors.otp}
+                      </p>
+                    )}
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="w-full py-3 rounded-lg bg-primary text-white font-bold hover:opacity-90 transition-opacity disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {submitting ? 'Verifying…' : 'Verify & sign in'}
+                  </button>
+                </form>
+
+                <div className="mt-6 flex flex-col items-center gap-3 text-sm">
                   <button
                     type="button"
-                    onClick={() => setShowPassword((prev) => !prev)}
-                    className="absolute right-0 top-1/2 -translate-y-1/2 p-1 text-gray-500 hover:text-gray-700"
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    onClick={handleResendCode}
+                    disabled={resending || submitting}
+                    className="text-primary hover:underline disabled:opacity-60 disabled:cursor-not-allowed"
                   >
-                    {showPassword ? <HiEyeSlash className="w-5 h-5" /> : <HiEye className="w-5 h-5" />}
+                    {resending ? 'Sending…' : 'Resend code'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleBackToLogin}
+                    disabled={submitting}
+                    className="text-gray-600 hover:underline disabled:opacity-60"
+                  >
+                    Back to login
                   </button>
                 </div>
-                {errors.password && (
-                  <p id="login-password-error" className="mt-1 text-sm text-red-600" role="alert">
-                    {errors.password}
-                  </p>
-                )}
-                <div className="flex justify-end mt-1">
-                  <Link
-                    to="/forgetpassword"
-                    className="text-sm text-primary hover:underline"
-                  >
-                    Forget Password?
-                  </Link>
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={submitting}
-                className="w-full py-3 rounded-lg bg-primary text-white font-bold hover:opacity-90 transition-opacity mt-2 disabled:opacity-60 disabled:cursor-not-allowed"
-              >
-                {submitting ? 'Signing in…' : 'Login'}
-              </button>
-            </form>
-
-            <div className="flex items-center gap-4 my-8">
-              <span className="flex-1 h-px bg-gray-300" />
-              <span className="text-sm text-gray-500 font-medium">OR</span>
-              <span className="flex-1 h-px bg-gray-300" />
-            </div>
-
-            <GoogleSignInButton disabled={submitting} />
+              </>
+            )}
 
             <p className="text-xs text-black mt-8 text-center">
               By joining, you agree to the{' '}

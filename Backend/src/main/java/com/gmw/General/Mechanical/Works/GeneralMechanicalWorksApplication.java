@@ -4,10 +4,11 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 
+import com.gmw.General.Mechanical.Works.config.EmailProperties;
 import com.gmw.General.Mechanical.Works.config.JwtProperties;
 
 @SpringBootApplication
-@EnableConfigurationProperties(JwtProperties.class)
+@EnableConfigurationProperties({ JwtProperties.class, EmailProperties.class })
 public class GeneralMechanicalWorksApplication {
 
 	public static void main(String[] args) {

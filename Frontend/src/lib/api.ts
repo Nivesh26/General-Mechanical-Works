@@ -44,6 +44,12 @@ export interface AuthResponse extends UserProfile {
   tokenType: string
 }
 
+export type LoginPendingResponse = {
+  verificationRequired: true
+  verificationToken: string
+  email: string
+}
+
 function getApiBase(): string {
   return import.meta.env.VITE_API_URL ?? 'http://localhost:8080'
 }
@@ -73,14 +79,33 @@ export async function authSignup(body: {
   return res.json() as Promise<AuthResponse>
 }
 
-export async function authLogin(email: string, password: string): Promise<AuthResponse> {
+export async function authLogin(email: string, password: string): Promise<LoginPendingResponse> {
   const res = await fetch(`${getApiBase()}/api/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify({ email, password }),
   })
   if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<LoginPendingResponse>
+}
+
+export async function authVerifyLogin(verificationToken: string, code: string): Promise<AuthResponse> {
+  const res = await fetch(`${getApiBase()}/api/auth/login/verify`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({ verificationToken, code }),
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
   return res.json() as Promise<AuthResponse>
+}
+
+export async function authResendLoginCode(verificationToken: string): Promise<void> {
+  const res = await fetch(`${getApiBase()}/api/auth/login/resend`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({ verificationToken }),
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
 }
 
 export async function authGoogle(idToken: string): Promise<AuthResponse> {
