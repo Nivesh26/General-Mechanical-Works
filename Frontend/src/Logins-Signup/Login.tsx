@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { HiEye, HiEyeSlash } from 'react-icons/hi2'
@@ -10,6 +10,8 @@ import { useAuth } from '../context/AuthContext'
 import { postLoginPath } from '../lib/postLoginPath'
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const OTP_LENGTH = 6
+const emptyOtpDigits = () => Array.from({ length: OTP_LENGTH }, () => '')
 
 type LoginStep = 'credentials' | 'otp'
 
@@ -23,10 +25,19 @@ const Userlogin = () => {
   const [showPassword, setShowPassword] = useState(false)
   const [verificationToken, setVerificationToken] = useState('')
   const [maskedEmail, setMaskedEmail] = useState('')
-  const [otpCode, setOtpCode] = useState('')
+  const [otpDigits, setOtpDigits] = useState<string[]>(emptyOtpDigits)
+  const otpInputRefs = useRef<(HTMLInputElement | null)[]>([])
   const [errors, setErrors] = useState<Partial<Record<'email' | 'password' | 'otp', string>>>({})
   const [submitting, setSubmitting] = useState(false)
   const [resending, setResending] = useState(false)
+
+  const otpCode = otpDigits.join('')
+
+  useEffect(() => {
+    if (step === 'otp') {
+      otpInputRefs.current[0]?.focus()
+    }
+  }, [step])
 
   const validateCredentials = () => {
     const next: Partial<Record<'email' | 'password', string>> = {}
@@ -55,7 +66,7 @@ const Userlogin = () => {
       const pending = await login(email.trim(), password)
       setVerificationToken(pending.verificationToken)
       setMaskedEmail(pending.email)
-      setOtpCode('')
+      setOtpDigits(emptyOtpDigits())
       setStep('otp')
       toast.success(`Verification code sent to ${pending.email}`)
     } catch (err) {
@@ -95,10 +106,61 @@ const Userlogin = () => {
 
   const handleBackToLogin = () => {
     setStep('credentials')
-    setOtpCode('')
+    setOtpDigits(emptyOtpDigits())
     setVerificationToken('')
     setMaskedEmail('')
     setErrors({})
+  }
+
+  const clearOtpError = () => {
+    setErrors((prev) => {
+      if (!prev.otp) return prev
+      const n = { ...prev }
+      delete n.otp
+      return n
+    })
+  }
+
+  const updateOtpDigits = (next: string[]) => {
+    setOtpDigits(next)
+    clearOtpError()
+  }
+
+  const handleOtpDigitChange = (index: number, value: string) => {
+    const digit = value.replace(/\D/g, '').slice(-1)
+    const next = [...otpDigits]
+    next[index] = digit
+    updateOtpDigits(next)
+    if (digit && index < OTP_LENGTH - 1) {
+      otpInputRefs.current[index + 1]?.focus()
+    }
+  }
+
+  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace' && !otpDigits[index] && index > 0) {
+      otpInputRefs.current[index - 1]?.focus()
+    }
+    if (e.key === 'ArrowLeft' && index > 0) {
+      e.preventDefault()
+      otpInputRefs.current[index - 1]?.focus()
+    }
+    if (e.key === 'ArrowRight' && index < OTP_LENGTH - 1) {
+      e.preventDefault()
+      otpInputRefs.current[index + 1]?.focus()
+    }
+  }
+
+  const handleOtpPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault()
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, OTP_LENGTH)
+    if (!pasted) return
+    const next = emptyOtpDigits()
+    for (let i = 0; i < pasted.length; i += 1) {
+      next[i] = pasted[i]
+    }
+    updateOtpDigits(next)
+    const focusIndex = Math.min(pasted.length, OTP_LENGTH - 1)
+    otpInputRefs.current[focusIndex]?.focus()
   }
 
   const inputBorder = (hasError: boolean) =>
@@ -225,29 +287,37 @@ const Userlogin = () => {
 
                 <form onSubmit={handleOtpSubmit} className="space-y-6" noValidate>
                   <div>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      autoComplete="one-time-code"
-                      maxLength={6}
-                      placeholder="6-digit code"
-                      value={otpCode}
-                      onChange={(e) => {
-                        const digits = e.target.value.replace(/\D/g, '').slice(0, 6)
-                        setOtpCode(digits)
-                        setErrors((prev) => {
-                          if (!prev.otp) return prev
-                          const n = { ...prev }
-                          delete n.otp
-                          return n
-                        })
-                      }}
-                      aria-invalid={Boolean(errors.otp)}
-                      aria-describedby={errors.otp ? 'login-otp-error' : undefined}
-                      className={`${inputBorder(Boolean(errors.otp))} text-center text-2xl tracking-[0.4em] font-semibold`}
-                    />
+                    <div
+                      className="flex justify-center gap-2 sm:gap-3"
+                      role="group"
+                      aria-label="6-digit verification code"
+                    >
+                      {otpDigits.map((digit, index) => (
+                        <input
+                          key={index}
+                          ref={(el) => {
+                            otpInputRefs.current[index] = el
+                          }}
+                          type="text"
+                          inputMode="numeric"
+                          autoComplete={index === 0 ? 'one-time-code' : 'off'}
+                          maxLength={1}
+                          value={digit}
+                          onChange={(e) => handleOtpDigitChange(index, e.target.value)}
+                          onKeyDown={(e) => handleOtpKeyDown(index, e)}
+                          onPaste={handleOtpPaste}
+                          aria-label={`Digit ${index + 1} of ${OTP_LENGTH}`}
+                          aria-invalid={Boolean(errors.otp)}
+                          className={`w-11 h-12 sm:w-12 sm:h-14 text-center text-xl sm:text-2xl font-semibold rounded-lg border-2 bg-white text-gray-900 focus:outline-none transition-colors ${
+                            errors.otp
+                              ? 'border-red-500 focus:border-red-500'
+                              : 'border-gray-300 focus:border-primary'
+                          }`}
+                        />
+                      ))}
+                    </div>
                     {errors.otp && (
-                      <p id="login-otp-error" className="mt-1 text-sm text-red-600 text-center" role="alert">
+                      <p id="login-otp-error" className="mt-3 text-sm text-red-600 text-center" role="alert">
                         {errors.otp}
                       </p>
                     )}
