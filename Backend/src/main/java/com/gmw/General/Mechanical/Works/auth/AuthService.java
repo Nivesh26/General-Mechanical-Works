@@ -86,7 +86,9 @@ public class AuthService {
 		}
 		user.setRole(Role.USER);
 		try {
-			return buildAuthResponse(userRepository.save(user));
+			User saved = userRepository.save(user);
+			emailService.sendWelcomeEmail(saved.getEmail(), saved.getName());
+			return buildAuthResponse(saved);
 		} catch (DataIntegrityViolationException ex) {
 			if (userRepository.existsByEmailIgnoreCase(normalizedEmail)) {
 				throw new EmailAlreadyRegisteredException(normalizedEmail);
@@ -183,7 +185,9 @@ public class AuthService {
 		created.setPasswordHash(passwordEncoder.encode("google-oauth:" + UUID.randomUUID()));
 		created.setRole(Role.USER);
 		applyGooglePictureIfNoLocalUpload(created, payload);
-		return buildAuthResponse(userRepository.save(created));
+		User saved = userRepository.save(created);
+		emailService.sendWelcomeEmail(saved.getEmail(), saved.getName());
+		return buildAuthResponse(saved);
 	}
 
 	private static void applyGoogleNameIfBlank(User user, GoogleIdToken.Payload payload) {

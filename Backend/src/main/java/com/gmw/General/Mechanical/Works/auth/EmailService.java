@@ -31,4 +31,22 @@ public class EmailService {
 				""".formatted(code));
 		mailSender.send(message);
 	}
+
+	public void sendWelcomeEmail(String toEmail, String name) {
+		String greeting = (name != null && !name.isBlank()) ? "Hi " + name.trim() + "," : "Hi,";
+		SimpleMailMessage message = new SimpleMailMessage();
+		message.setFrom(emailProperties.getFrom());
+		message.setTo(toEmail);
+		message.setSubject("Welcome to General Mechanical Works");
+		message.setText("""
+				%s
+
+				Welcome to General Mechanical Works!
+
+				Thank you for creating an account with us. We're glad to have you on board.
+
+				— General Mechanical Works
+				""".formatted(greeting));
+		mailSender.send(message);
+	}
 }
