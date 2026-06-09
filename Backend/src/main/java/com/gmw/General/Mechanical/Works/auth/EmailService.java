@@ -52,4 +52,20 @@ public class EmailService {
 				""".formatted(greeting));
 		mailSender.send(message);
 	}
+
+	@Async("mailTaskExecutor")
+	public void sendPasswordResetCode(String toEmail, String code) {
+		SimpleMailMessage message = new SimpleMailMessage();
+		message.setFrom(emailProperties.getFrom());
+		message.setTo(toEmail);
+		message.setSubject("Your General Mechanical Works password reset code");
+		message.setText("""
+				Your password reset code is: %s
+
+				This code expires in 10 minutes. If you did not request a password reset, you can ignore this email.
+
+				— General Mechanical Works
+				""".formatted(code));
+		mailSender.send(message);
+	}
 }

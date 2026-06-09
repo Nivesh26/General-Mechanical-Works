@@ -195,6 +195,7 @@ public class SchemaMigrationConfig {
 						  `user_id` BIGINT NOT NULL,
 						  `email` VARCHAR(255) NOT NULL,
 						  `code` VARCHAR(6) NOT NULL,
+						  `purpose` VARCHAR(32) NOT NULL DEFAULT 'LOGIN',
 						  `expires_at` DATETIME NOT NULL,
 						  `last_sent_at` DATETIME NOT NULL,
 						  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -204,6 +205,19 @@ public class SchemaMigrationConfig {
 						  CONSTRAINT `fk_otp_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON DELETE CASCADE
 						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
 						""");
+			}
+
+			Integer otpPurposeExists = jdbcTemplate.queryForObject(
+					"""
+					SELECT COUNT(*) FROM information_schema.COLUMNS
+					WHERE TABLE_SCHEMA = DATABASE()
+					  AND TABLE_NAME = 'otp'
+					  AND COLUMN_NAME = 'purpose'
+					""",
+					Integer.class);
+			if (otpPurposeExists == null || otpPurposeExists == 0) {
+				jdbcTemplate.execute(
+						"ALTER TABLE `otp` ADD COLUMN `purpose` VARCHAR(32) NOT NULL DEFAULT 'LOGIN'");
 			}
 		};
 	}

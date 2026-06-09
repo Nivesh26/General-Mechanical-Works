@@ -100,19 +100,59 @@ public class AuthService {
 
 	public LoginPendingResponse login(LoginRequest request) {
 		User user = authenticateWithPassword(request.getEmail(), request.getPassword());
-		LoginOtpService.PendingLogin pending = loginOtpService.create(user);
+		LoginOtpService.PendingLogin pending = loginOtpService.create(user, OtpPurpose.LOGIN);
 		emailService.sendLoginVerificationCode(user.getEmail(), pending.code());
 		return new LoginPendingResponse(true, pending.verificationToken(), maskEmail(user.getEmail()));
 	}
 
 	public AuthResponse verifyLoginOtp(VerifyLoginOtpRequest request) {
-		User user = loginOtpService.verify(request.getVerificationToken(), request.getCode());
+		User user = loginOtpService.verify(
+				request.getVerificationToken(),
+				request.getCode(),
+				OtpPurpose.LOGIN);
 		return buildAuthResponse(user);
 	}
 
 	public void resendLoginOtp(ResendLoginOtpRequest request) {
-		LoginOtpService.PendingLogin pending = loginOtpService.resend(request.getVerificationToken());
+		LoginOtpService.PendingLogin pending = loginOtpService.resend(
+				request.getVerificationToken(),
+				OtpPurpose.LOGIN);
 		emailService.sendLoginVerificationCode(pending.email(), pending.code());
+	}
+
+	public LoginPendingResponse requestPasswordReset(ForgotPasswordRequest request) {
+		String normalizedEmail = request.getEmail().trim().toLowerCase();
+		var userOpt = userRepository.findByEmailIgnoreCase(normalizedEmail);
+		if (userOpt.isPresent() && StringUtils.hasText(userOpt.get().getPasswordHash())) {
+			User user = userOpt.get();
+			LoginOtpService.PendingLogin pending = loginOtpService.create(user, OtpPurpose.PASSWORD_RESET);
+			emailService.sendPasswordResetCode(user.getEmail(), pending.code());
+			return new LoginPendingResponse(true, pending.verificationToken(), maskEmail(user.getEmail()));
+		}
+		return new LoginPendingResponse(true, null, maskEmail(normalizedEmail));
+	}
+
+	public void resendPasswordResetOtp(ResendLoginOtpRequest request) {
+		LoginOtpService.PendingLogin pending = loginOtpService.resend(
+				request.getVerificationToken(),
+				OtpPurpose.PASSWORD_RESET);
+		emailService.sendPasswordResetCode(pending.email(), pending.code());
+	}
+
+	@Transactional
+	public void resetPassword(ResetPasswordRequest request) {
+		User user = loginOtpService.verify(
+				request.getVerificationToken(),
+				request.getCode(),
+				OtpPurpose.PASSWORD_RESET);
+		String passwordHash = user.getPasswordHash();
+		if (StringUtils.hasText(passwordHash)
+				&& passwordEncoder.matches(request.getNewPassword(), passwordHash)) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+					"New password must be different from your current password");
+		}
+		user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+		userRepository.save(user);
 	}
 
 	private User authenticateWithPassword(String email, String password) {

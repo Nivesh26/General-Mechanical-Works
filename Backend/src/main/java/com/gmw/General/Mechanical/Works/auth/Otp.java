@@ -6,6 +6,8 @@ import com.gmw.General.Mechanical.Works.user.User;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -35,6 +37,10 @@ public class Otp {
 
 	@Column(nullable = false, length = 6)
 	private String code;
+
+	@Enumerated(EnumType.STRING)
+	@Column(nullable = false, length = 32)
+	private OtpPurpose purpose = OtpPurpose.LOGIN;
 
 	@Column(name = "expires_at", nullable = false)
 	private LocalDateTime expiresAt;
@@ -86,6 +92,14 @@ public class Otp {
 
 	public void setCode(String code) {
 		this.code = code;
+	}
+
+	public OtpPurpose getPurpose() {
+		return purpose;
+	}
+
+	public void setPurpose(OtpPurpose purpose) {
+		this.purpose = purpose;
 	}
 
 	public LocalDateTime getExpiresAt() {

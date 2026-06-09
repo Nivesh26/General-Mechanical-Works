@@ -28,6 +28,9 @@ public class PublicAuthEndpointFilter extends OncePerRequestFilter {
 			"/api/auth/login",
 			"/api/auth/login/verify",
 			"/api/auth/login/resend",
+			"/api/auth/forgot-password",
+			"/api/auth/forgot-password/resend",
+			"/api/auth/forgot-password/reset",
 			"/api/auth/signup",
 			"/api/auth/google");
 

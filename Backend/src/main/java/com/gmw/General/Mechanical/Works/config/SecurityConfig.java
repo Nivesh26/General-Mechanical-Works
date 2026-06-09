@@ -45,6 +45,11 @@ public class SecurityConfig {
 						.permitAll()
 						.requestMatchers(HttpMethod.POST, "/api/auth/login/verify", "/api/auth/login/resend")
 						.permitAll()
+						.requestMatchers(HttpMethod.POST,
+								"/api/auth/forgot-password",
+								"/api/auth/forgot-password/resend",
+								"/api/auth/forgot-password/reset")
+						.permitAll()
 						.requestMatchers(HttpMethod.GET, "/api/auth/me").authenticated()
 						.requestMatchers(HttpMethod.POST, "/api/auth/me/password").authenticated()
 						.requestMatchers(HttpMethod.POST, "/api/auth/me/avatar").authenticated()

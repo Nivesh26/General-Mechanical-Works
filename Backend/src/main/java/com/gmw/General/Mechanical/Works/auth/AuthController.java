@@ -44,6 +44,21 @@ public class AuthController {
 		authService.resendLoginOtp(request);
 	}
 
+	@PostMapping("/forgot-password")
+	public LoginPendingResponse forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+		return authService.requestPasswordReset(request);
+	}
+
+	@PostMapping("/forgot-password/resend")
+	public void resendForgotPasswordCode(@Valid @RequestBody ResendLoginOtpRequest request) {
+		authService.resendPasswordResetOtp(request);
+	}
+
+	@PostMapping("/forgot-password/reset")
+	public void resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+		authService.resetPassword(request);
+	}
+
 	@PostMapping("/google")
 	public AuthResponse google(@Valid @RequestBody GoogleAuthRequest request) {
 		return authService.loginWithGoogle(request.getIdToken());

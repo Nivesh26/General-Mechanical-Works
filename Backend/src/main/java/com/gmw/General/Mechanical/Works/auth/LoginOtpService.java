@@ -25,9 +25,9 @@ public class LoginOtpService {
 	}
 
 	@Transactional
-	public PendingLogin create(User user) {
+	public PendingLogin create(User user, OtpPurpose purpose) {
 		Long userId = user.getId();
-		otpRepository.deleteByUserId(userId);
+		otpRepository.deleteByUserIdAndPurpose(userId, purpose);
 
 		LocalDateTime now = LocalDateTime.now();
 		String code = generateCode();
@@ -38,6 +38,7 @@ public class LoginOtpService {
 		otp.setUser(user);
 		otp.setEmail(user.getEmail());
 		otp.setCode(code);
+		otp.setPurpose(purpose);
 		otp.setExpiresAt(now.plusSeconds(OTP_TTL_SECONDS));
 		otp.setLastSentAt(now);
 		otpRepository.save(otp);
@@ -46,8 +47,8 @@ public class LoginOtpService {
 	}
 
 	@Transactional
-	public PendingLogin resend(String verificationToken) {
-		Otp otp = getValidOtp(verificationToken);
+	public PendingLogin resend(String verificationToken, OtpPurpose purpose) {
+		Otp otp = getValidOtp(verificationToken, purpose);
 		LocalDateTime now = LocalDateTime.now();
 		if (otp.getLastSentAt().plusSeconds(RESEND_COOLDOWN_SECONDS).isAfter(now)) {
 			throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
@@ -63,8 +64,8 @@ public class LoginOtpService {
 	}
 
 	@Transactional
-	public User verify(String verificationToken, String code) {
-		Otp otp = getValidOtp(verificationToken);
+	public User verify(String verificationToken, String code, OtpPurpose purpose) {
+		Otp otp = getValidOtp(verificationToken, purpose);
 		if (!otp.getCode().equals(code.trim())) {
 			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid verification code");
 		}
@@ -73,14 +74,14 @@ public class LoginOtpService {
 		return user;
 	}
 
-	private Otp getValidOtp(String verificationToken) {
-		Otp otp = otpRepository.findByVerificationToken(verificationToken)
+	private Otp getValidOtp(String verificationToken, OtpPurpose purpose) {
+		Otp otp = otpRepository.findByVerificationTokenAndPurpose(verificationToken, purpose)
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED,
-						"Verification session expired. Please sign in again."));
+						"Verification session expired. Please try again."));
 		if (otp.getExpiresAt().isBefore(LocalDateTime.now())) {
 			otpRepository.delete(otp);
 			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,
-					"Verification code expired. Please sign in again.");
+					"Verification code expired. Please try again.");
 		}
 		return otp;
 	}

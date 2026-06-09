@@ -46,7 +46,7 @@ export interface AuthResponse extends UserProfile {
 
 export type LoginPendingResponse = {
   verificationRequired: true
-  verificationToken: string
+  verificationToken: string | null
   email: string
 }
 
@@ -104,6 +104,38 @@ export async function authResendLoginCode(verificationToken: string): Promise<vo
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify({ verificationToken }),
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+}
+
+export async function authForgotPassword(email: string): Promise<LoginPendingResponse> {
+  const res = await fetch(`${getApiBase()}/api/auth/forgot-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({ email }),
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<LoginPendingResponse>
+}
+
+export async function authResendForgotPasswordCode(verificationToken: string): Promise<void> {
+  const res = await fetch(`${getApiBase()}/api/auth/forgot-password/resend`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({ verificationToken }),
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+}
+
+export async function authResetPassword(
+  verificationToken: string,
+  code: string,
+  newPassword: string,
+): Promise<void> {
+  const res = await fetch(`${getApiBase()}/api/auth/forgot-password/reset`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({ verificationToken, code, newPassword }),
   })
   if (!res.ok) throw new Error(await parseErrorMessage(res))
 }

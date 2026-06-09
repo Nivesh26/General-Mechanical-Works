@@ -8,8 +8,10 @@ import org.springframework.data.repository.query.Param;
 
 public interface OtpRepository extends JpaRepository<Otp, Long> {
 
-	@Query("SELECT o FROM Otp o JOIN FETCH o.user WHERE o.verificationToken = :token")
-	Optional<Otp> findByVerificationToken(@Param("token") String verificationToken);
+	@Query("SELECT o FROM Otp o JOIN FETCH o.user WHERE o.verificationToken = :token AND o.purpose = :purpose")
+	Optional<Otp> findByVerificationTokenAndPurpose(
+			@Param("token") String verificationToken,
+			@Param("purpose") OtpPurpose purpose);
 
-	void deleteByUserId(Long userId);
+	void deleteByUserIdAndPurpose(Long userId, OtpPurpose purpose);
 }
