@@ -4,9 +4,18 @@ import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface ShopOrderRepository extends JpaRepository<ShopOrder, Long> {
 
 	@Query("SELECT o FROM ShopOrder o LEFT JOIN FETCH o.lines ORDER BY o.placedAt DESC")
 	List<ShopOrder> findAllWithLinesOrderByPlacedAtDesc();
+
+	@Query("""
+			SELECT o FROM ShopOrder o
+			LEFT JOIN FETCH o.lines
+			WHERE LOWER(o.user.email) = LOWER(:email)
+			ORDER BY o.placedAt DESC
+			""")
+	List<ShopOrder> findByUserEmailWithLinesOrderByPlacedAtDesc(@Param("email") String email);
 }

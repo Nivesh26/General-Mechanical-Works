@@ -1,12 +1,16 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import Header from '../UserComponent/Header'
 import Footer from '../UserComponent/Footer'
 import Copyright from '../UserComponent/Copyright'
 import EngineOil from '../assets/EngineOil.png'
-import Brakes from '../assets/Brakekit.png'
-import Battery from '../assets/Battery.png'
-import Tyre from '../assets/Tyre.png'
+import { useAuth } from '../context/AuthContext'
+import {
+  fetchMyOrders,
+  toAbsoluteApiUrl,
+  type AdminOrder as ApiOrder,
+  type ApiOrderStatus,
+} from '../lib/api'
 import {
   HiOutlineChevronDown,
   HiOutlineChevronUp,
@@ -20,6 +24,14 @@ import {
 type ProductLineStatus = 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled'
 
 type PaymentMethod = 'COD' | 'Esewa' | 'Khalti'
+
+const API_TO_UI_STATUS: Record<ApiOrderStatus, ProductLineStatus> = {
+  PENDING: 'pending',
+  CONFIRMED: 'confirmed',
+  SHIPPED: 'shipped',
+  DELIVERED: 'delivered',
+  CANCELLED: 'cancelled',
+}
 
 type TrackedProductLine = {
   id: string
@@ -45,86 +57,40 @@ type TrackedProductLine = {
   description: string
 }
 
-/** Demo data — replace with API (user’s orders) */
-const MOCK_LINES: TrackedProductLine[] = [
-  {
-    id: 'line-1',
-    orderId: 'GMW-2025-001234',
-    name: 'Premium Synthetic Engine Oil',
-    image: EngineOil,
-    sku: 'GMW-OIL-SYN-1L',
-    qty: 1,
-    unitPrice: 3500,
-    status: 'pending',
-    orderedOn: '28 Feb 2025',
-    paymentMethod: 'COD',
-    estimatedDelivery: '8 Mar 2025',
-    description:
-      'Full synthetic 4-stroke engine oil. Suitable for modern motorcycles. API SN, JASO MA2.',
-  },
-  {
-    id: 'line-2',
-    orderId: 'GMW-2025-001234',
-    name: 'Brake Service Kit',
-    image: Brakes,
-    sku: 'GMW-BRK-KIT-STD',
-    qty: 1,
-    unitPrice: 5200,
-    status: 'confirmed',
-    orderedOn: '28 Feb 2025',
-    paymentMethod: 'COD',
-    confirmedOn: '28 Feb 2025, 4:20 PM',
-    estimatedDelivery: '10 Mar 2025',
-    description:
-      'Complete front brake pad and hardware kit. OEM-style fit for common commuter bikes.',
-  },
-  {
-    id: 'line-3',
-    orderId: 'GMW-2025-007700',
-    name: 'Battery 12V maintenance-free',
-    image: Battery,
-    sku: 'GMW-BAT-12V-7AH',
-    qty: 1,
-    unitPrice: 8900,
-    status: 'shipped',
-    orderedOn: '10 Feb 2025',
-    paymentMethod: 'Esewa',
-    shippedOn: '11 Feb 2025',
-    estimatedDelivery: '14 Feb 2025',
-    description:
-      'Sealed lead-acid battery, 12V 7Ah. Packed and handed to courier; tracking updates by SMS.',
-  },
-  {
-    id: 'line-4',
-    orderId: 'GMW-2025-008100',
-    name: 'All-weather tyre 100/90-17',
-    image: Tyre,
-    sku: 'GMW-TYR-10090-17',
-    qty: 1,
-    unitPrice: 12500,
-    status: 'delivered',
-    orderedOn: '2 Jan 2025',
-    paymentMethod: 'Khalti',
-    deliveredOn: '6 Jan 2025',
-    description: 'Tubeless rear tyre with wet-grip compound. Delivered and signed at your address.',
-  },
-  {
-    id: 'line-5',
-    orderId: 'GMW-2025-006600',
-    name: 'Chain lubricant spray',
-    image: EngineOil,
-    sku: 'GMW-CHAIN-LUBE',
-    qty: 1,
-    unitPrice: 1200,
-    status: 'cancelled',
-    orderedOn: '5 Feb 2025',
-    paymentMethod: 'Esewa',
-    cancelledOn: '7 Feb 2025',
-    description: 'Order cancelled before packing; refund issued to your original payment method.',
-  },
-]
-
 const formatRs = (n: number) => `Rs. ${n.toLocaleString('en-IN')}`
+
+function formatOrderDate(isoDate: string) {
+  const date = new Date(`${isoDate}T12:00:00`)
+  if (Number.isNaN(date.getTime())) return isoDate
+  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+function mapOrdersToLines(orders: ApiOrder[]): TrackedProductLine[] {
+  const lines: TrackedProductLine[] = []
+  for (const order of orders) {
+    const status = API_TO_UI_STATUS[order.status]
+    const orderedOn = formatOrderDate(order.placedAt)
+    const paymentMethod: PaymentMethod = order.paymentMethod === 'COD' ? 'COD' : 'COD'
+
+    order.items.forEach((item, index) => {
+      const sizePart = item.sizeLabel?.trim() ? ` Size: ${item.sizeLabel.trim()}.` : ''
+      lines.push({
+        id: String(item.id ?? `${order.id}-${index}`),
+        orderId: order.orderNumber,
+        name: item.productName,
+        image: toAbsoluteApiUrl(item.imagePath) ?? EngineOil,
+        sku: item.sku,
+        qty: item.quantity,
+        unitPrice: Number(item.unitPrice),
+        status,
+        orderedOn,
+        paymentMethod,
+        description: `${item.productName}.${sizePart} Ordered on ${orderedOn}.`,
+      })
+    })
+  }
+  return lines
+}
 
 function PaymentMethodBadge({ method }: { method: PaymentMethod }) {
   const styles: Record<PaymentMethod, string> = {
@@ -360,9 +326,35 @@ function ProductLineCard({
 }
 
 const Ordertracking = () => {
-  const [lines, setLines] = useState<TrackedProductLine[]>(MOCK_LINES)
+  const { token } = useAuth()
+  const [lines, setLines] = useState<TrackedProductLine[]>([])
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [filter, setFilter] = useState<FilterTab>('all')
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set())
+
+  const loadOrders = useCallback(async () => {
+    if (!token) {
+      setLines([])
+      setLoading(false)
+      return
+    }
+    setLoading(true)
+    setLoadError(null)
+    try {
+      const orders = await fetchMyOrders(token)
+      setLines(mapOrdersToLines(orders))
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : 'Could not load your orders.')
+      setLines([])
+    } finally {
+      setLoading(false)
+    }
+  }, [token])
+
+  useEffect(() => {
+    void loadOrders()
+  }, [loadOrders])
 
   const counts = useMemo(() => {
     const pending = lines.filter((l) => l.status === 'pending').length
@@ -383,22 +375,6 @@ const Ordertracking = () => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
       else next.add(id)
-      return next
-    })
-  }
-
-  const cancelProduct = (id: string) => {
-    if (
-      !window.confirm(
-        'Cancel this product? It will be removed from your order (including confirmed items). This cannot be undone.'
-      )
-    ) {
-      return
-    }
-    setLines((prev) => prev.filter((l) => l.id !== id))
-    setExpandedIds((prev) => {
-      const next = new Set(prev)
-      next.delete(id)
       return next
     })
   }
@@ -459,10 +435,37 @@ const Ordertracking = () => {
             ))}
           </div>
 
-          {visible.length === 0 ? (
-            <p className="rounded-2xl border border-dashed border-gray-200 bg-white/80 py-12 text-center text-sm text-gray-500">
-              No products in this view.
+          {loading ? (
+            <p className="rounded-2xl border border-gray-200 bg-white/80 py-12 text-center text-sm text-gray-500">
+              Loading your orders…
             </p>
+          ) : loadError ? (
+            <div className="rounded-2xl border border-red-200 bg-red-50/80 py-12 text-center text-sm text-red-700">
+              <p>{loadError}</p>
+              <button
+                type="button"
+                onClick={() => void loadOrders()}
+                className="mt-4 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
+              >
+                Try again
+              </button>
+            </div>
+          ) : visible.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-gray-200 bg-white/80 py-12 text-center text-sm text-gray-500">
+              {filter === 'all' ? (
+                <>
+                  <p>You have not placed any orders yet.</p>
+                  <Link
+                    to="/products"
+                    className="mt-3 inline-block font-medium text-primary hover:underline"
+                  >
+                    Browse products
+                  </Link>
+                </>
+              ) : (
+                'No products in this view.'
+              )}
+            </div>
           ) : (
             <ul className="space-y-4">
               {visible.map((line) => (
@@ -471,11 +474,6 @@ const Ordertracking = () => {
                     line={line}
                     expanded={expandedIds.has(line.id)}
                     onToggle={() => toggleExpand(line.id)}
-                    onCancelProduct={
-                      line.status === 'pending' || line.status === 'confirmed'
-                        ? () => cancelProduct(line.id)
-                        : undefined
-                    }
                   />
                 </li>
               ))}

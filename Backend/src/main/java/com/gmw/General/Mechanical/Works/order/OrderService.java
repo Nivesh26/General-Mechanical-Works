@@ -46,6 +46,13 @@ public class OrderService {
 				.toList();
 	}
 
+	@Transactional(readOnly = true)
+	public List<OrderDto> listForUser(String email) {
+		return shopOrderRepository.findByUserEmailWithLinesOrderByPlacedAtDesc(email.trim()).stream()
+				.map(OrderMapper::toDto)
+				.toList();
+	}
+
 	@Transactional
 	public OrderDto placeOrder(String email, PlaceOrderRequest request) {
 		if (!"COD".equalsIgnoreCase(request.getPaymentMethod().trim())) {
@@ -179,10 +186,12 @@ public class OrderService {
 					order.getTotal(),
 					order.getLines().stream()
 							.map(line -> new OrderLineDto(
+									line.getId(),
 									line.getProductName(),
 									line.getSku(),
 									line.getQuantity(),
 									line.getUnitPrice(),
+									line.getSizeLabel(),
 									line.getImagePath()))
 							.toList());
 		}

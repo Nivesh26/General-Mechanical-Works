@@ -718,10 +718,12 @@ export type ApiOrderStatus = 'PENDING' | 'CONFIRMED' | 'SHIPPED' | 'DELIVERED' |
 export type ApiPaymentMethod = 'COD'
 
 export type AdminOrderLine = {
+  id?: number
   productName: string
   sku: string
   quantity: number
   unitPrice: number
+  sizeLabel?: string
   imagePath: string | null
 }
 
@@ -756,6 +758,14 @@ export async function placeOrder(
   })
   if (!res.ok) throw new Error(await parseErrorMessage(res))
   return res.json() as Promise<AdminOrder>
+}
+
+export async function fetchMyOrders(token: string): Promise<AdminOrder[]> {
+  const res = await fetch(`${getApiBase()}/api/orders/me`, {
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<AdminOrder[]>
 }
 
 export async function fetchAdminOrders(token: string): Promise<AdminOrder[]> {
