@@ -197,6 +197,14 @@ export async function fetchAdminUserVehicles(token: string, userId: number): Pro
   return res.json() as Promise<ApiVehicleDto[]>
 }
 
+export async function fetchAdminUserOrders(token: string, userId: number): Promise<AdminOrder[]> {
+  const res = await fetch(`${getApiBase()}/api/admin/users/${userId}/orders`, {
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<AdminOrder[]>
+}
+
 export async function patchUserProfile(
   token: string,
   body: ProfileUpdatePayload,

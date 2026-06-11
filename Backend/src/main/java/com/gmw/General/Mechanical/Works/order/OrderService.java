@@ -53,6 +53,16 @@ public class OrderService {
 				.toList();
 	}
 
+	@Transactional(readOnly = true)
+	public List<OrderDto> listForUserId(Long userId) {
+		if (!userRepository.existsById(userId)) {
+			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
+		}
+		return shopOrderRepository.findByUserIdWithLinesOrderByPlacedAtDesc(userId).stream()
+				.map(OrderMapper::toDto)
+				.toList();
+	}
+
 	@Transactional
 	public OrderDto placeOrder(String email, PlaceOrderRequest request) {
 		if (!"COD".equalsIgnoreCase(request.getPaymentMethod().trim())) {

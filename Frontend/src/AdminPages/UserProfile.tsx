@@ -6,8 +6,11 @@ import { ADMIN_MAIN_SCROLL_CLASS, ADMIN_PAGE_HEADER_SPACING } from '../AdminComp
 import { useAuth } from '../context/AuthContext'
 import {
   fetchAdminUser,
+  fetchAdminUserOrders,
   fetchAdminUserVehicles,
   toAbsoluteApiUrl,
+  type AdminOrder,
+  type ApiOrderStatus,
   type ApiVehicleDto,
   type ProfileGender,
   type UserProfile,
@@ -23,10 +26,11 @@ type UserBike = {
   isMain: boolean
 }
 
-type OrderStatus = 'Completed' | 'Pending' | 'Cancelled'
+type OrderStatus = 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled'
 
 type ProductOrder = {
   id: string
+  orderNumber: string
   product: string
   quantity: number
   date: string
@@ -48,37 +52,15 @@ type ServiceRecord = {
 
 type UserSectionTab = 'bikes' | 'orders' | 'history'
 
-/** Product orders & service history — static until those tables exist. */
-const STATIC_ORDERS: ProductOrder[] = [
-  {
-    id: 'ord-104',
-    product: 'Engine oil (10W-40) — Motul',
-    quantity: 2,
-    date: '28 Apr 2026',
-    amount: 'NPR 3,400',
-    paymentMethod: 'COD',
-    status: 'Pending',
-  },
-  {
-    id: 'ord-089',
-    product: 'Brake pads — front (Honda CB 350)',
-    quantity: 1,
-    date: '12 Mar 2026',
-    amount: 'NPR 4,200',
-    paymentMethod: 'eSewa',
-    status: 'Completed',
-  },
-  {
-    id: 'ord-071',
-    product: 'Chain & sprocket kit',
-    quantity: 1,
-    date: '3 Feb 2026',
-    amount: 'NPR 12,500',
-    paymentMethod: 'Khalti',
-    status: 'Completed',
-  },
-]
+const API_TO_ORDER_STATUS: Record<ApiOrderStatus, OrderStatus> = {
+  PENDING: 'pending',
+  CONFIRMED: 'confirmed',
+  SHIPPED: 'shipped',
+  DELIVERED: 'delivered',
+  CANCELLED: 'cancelled',
+}
 
+/** Service history — static until that table exists. */
 const STATIC_SERVICE_HISTORY: ServiceRecord[] = [
   {
     id: 'srv-221',
@@ -135,17 +117,70 @@ function vehicleToAdminBike(v: ApiVehicleDto): UserBike {
   }
 }
 
+function formatOrderDate(isoDate: string) {
+  const date = new Date(`${isoDate}T12:00:00`)
+  if (Number.isNaN(date.getTime())) return isoDate
+  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+function formatNpr(amount: number) {
+  return `NPR ${amount.toLocaleString('en-IN')}`
+}
+
+function mapOrdersToProductOrders(orders: AdminOrder[]): ProductOrder[] {
+  const rows: ProductOrder[] = []
+  for (const order of orders) {
+    const date = formatOrderDate(order.placedAt)
+    const status = API_TO_ORDER_STATUS[order.status]
+    const paymentMethod: ProductOrder['paymentMethod'] =
+      order.paymentMethod === 'COD' ? 'COD' : 'COD'
+
+    order.items.forEach((item, index) => {
+      const lineTotal = Number(item.unitPrice) * item.quantity
+      rows.push({
+        id: String(item.id ?? `${order.id}-${index}`),
+        orderNumber: order.orderNumber,
+        product: item.productName,
+        quantity: item.quantity,
+        date,
+        amount: formatNpr(lineTotal),
+        paymentMethod,
+        status,
+      })
+    })
+  }
+  return rows
+}
+
 function orderStatusStyle(status: OrderStatus): CSSProperties {
-  const base: CSSProperties = {
+  const map: Record<OrderStatus, { label: string; bg: string; color: string }> = {
+    pending: { label: 'Pending', bg: '#fef3c7', color: '#b45309' },
+    confirmed: { label: 'Confirmed', bg: '#dbeafe', color: '#1d4ed8' },
+    shipped: { label: 'Shipped', bg: '#e0e7ff', color: '#4338ca' },
+    delivered: { label: 'Delivered', bg: '#dcfce7', color: '#166534' },
+    cancelled: { label: 'Cancelled', bg: '#fee2e2', color: '#b91c1c' },
+  }
+  const s = map[status]
+  return {
     display: 'inline-block',
     padding: '4px 10px',
     borderRadius: '999px',
     fontSize: '12px',
     fontWeight: 700,
+    backgroundColor: s.bg,
+    color: s.color,
   }
-  if (status === 'Completed') return { ...base, backgroundColor: '#dcfce7', color: '#166534' }
-  if (status === 'Pending') return { ...base, backgroundColor: '#fef3c7', color: '#92400e' }
-  return { ...base, backgroundColor: '#f1f5f9', color: '#64748b' }
+}
+
+function orderStatusLabel(status: OrderStatus): string {
+  const labels: Record<OrderStatus, string> = {
+    pending: 'Pending',
+    confirmed: 'Confirmed',
+    shipped: 'Shipped',
+    delivered: 'Delivered',
+    cancelled: 'Cancelled',
+  }
+  return labels[status]
 }
 
 function serviceStatusStyle(status: ServiceStatus): CSSProperties {
@@ -191,16 +226,20 @@ const AdminUserProfile = () => {
   const [activeTab, setActiveTab] = useState<UserSectionTab>('bikes')
   const [user, setUser] = useState<UserProfile | null>(null)
   const [bikes, setBikes] = useState<UserBike[]>([])
+  const [orders, setOrders] = useState<ProductOrder[]>([])
   const [loading, setLoading] = useState(true)
   const [bikesLoading, setBikesLoading] = useState(true)
+  const [ordersLoading, setOrdersLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const loadProfile = useCallback(async () => {
     if (!token || !Number.isFinite(userId)) {
       setUser(null)
       setBikes([])
+      setOrders([])
       setLoading(false)
       setBikesLoading(false)
+      setOrdersLoading(false)
       if (!Number.isFinite(userId)) {
         setError('No user selected. Open a profile from the Users list.')
       }
@@ -208,21 +247,26 @@ const AdminUserProfile = () => {
     }
     setLoading(true)
     setBikesLoading(true)
+    setOrdersLoading(true)
     setError(null)
     try {
-      const [profile, vehicles] = await Promise.all([
+      const [profile, vehicles, userOrders] = await Promise.all([
         fetchAdminUser(token, userId),
         fetchAdminUserVehicles(token, userId),
+        fetchAdminUserOrders(token, userId),
       ])
       setUser(profile)
       setBikes(vehicles.map(vehicleToAdminBike))
+      setOrders(mapOrdersToProductOrders(userOrders))
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load user profile')
       setUser(null)
       setBikes([])
+      setOrders([])
     } finally {
       setLoading(false)
       setBikesLoading(false)
+      setOrdersLoading(false)
     }
   }, [token, userId])
 
@@ -516,7 +560,9 @@ const AdminUserProfile = () => {
                       backgroundColor: '#f8fafc',
                     }}
                   >
-                    <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: '#1e293b' }}>Product orders</h3>
+                    <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: '#1e293b' }}>
+                      Product orders ({orders.length})
+                    </h3>
                     <p style={{ margin: '6px 0 0', fontSize: '13px', color: '#64748b' }}>
                       Parts and products linked to this customer (purchased or pending).
                     </p>
@@ -536,26 +582,42 @@ const AdminUserProfile = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {STATIC_ORDERS.map((order, index) => (
-                          <tr key={order.id} style={{ borderTop: '1px solid #e2e8f0' }}>
-                            <td style={{ ...td, textAlign: 'center', color: '#64748b', fontWeight: 600 }}>
-                              {index + 1}
-                            </td>
-                            <td style={{ ...td, fontFamily: 'ui-monospace, monospace', fontSize: '13px' }}>{order.id}</td>
-                            <td style={td}>
-                              <span style={{ fontWeight: 600, color: '#1e293b' }}>{order.product}</span>
-                            </td>
-                            <td style={{ ...td, textAlign: 'center' }}>{order.quantity}</td>
-                            <td style={td}>{order.date}</td>
-                            <td style={td}>
-                              <span style={paymentMethodStyle(order.paymentMethod)}>{order.paymentMethod}</span>
-                            </td>
-                            <td style={td}>{order.amount}</td>
-                            <td style={td}>
-                              <span style={orderStatusStyle(order.status)}>{order.status}</span>
+                        {ordersLoading ? (
+                          <tr style={{ borderTop: '1px solid #e2e8f0' }}>
+                            <td style={td} colSpan={8}>
+                              Loading product orders…
                             </td>
                           </tr>
-                        ))}
+                        ) : orders.length > 0 ? (
+                          orders.map((order, index) => (
+                            <tr key={order.id} style={{ borderTop: '1px solid #e2e8f0' }}>
+                              <td style={{ ...td, textAlign: 'center', color: '#64748b', fontWeight: 600 }}>
+                                {index + 1}
+                              </td>
+                              <td style={{ ...td, fontFamily: 'ui-monospace, monospace', fontSize: '13px' }}>
+                                {order.orderNumber}
+                              </td>
+                              <td style={td}>
+                                <span style={{ fontWeight: 600, color: '#1e293b' }}>{order.product}</span>
+                              </td>
+                              <td style={{ ...td, textAlign: 'center' }}>{order.quantity}</td>
+                              <td style={td}>{order.date}</td>
+                              <td style={td}>
+                                <span style={paymentMethodStyle(order.paymentMethod)}>{order.paymentMethod}</span>
+                              </td>
+                              <td style={td}>{order.amount}</td>
+                              <td style={td}>
+                                <span style={orderStatusStyle(order.status)}>{orderStatusLabel(order.status)}</span>
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr style={{ borderTop: '1px solid #e2e8f0' }}>
+                            <td style={td} colSpan={8}>
+                              No product orders for this customer yet.
+                            </td>
+                          </tr>
+                        )}
                       </tbody>
                     </table>
                   </div>

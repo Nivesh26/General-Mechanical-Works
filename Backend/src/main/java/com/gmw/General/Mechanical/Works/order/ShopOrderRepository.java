@@ -18,4 +18,12 @@ public interface ShopOrderRepository extends JpaRepository<ShopOrder, Long> {
 			ORDER BY o.placedAt DESC
 			""")
 	List<ShopOrder> findByUserEmailWithLinesOrderByPlacedAtDesc(@Param("email") String email);
+
+	@Query("""
+			SELECT o FROM ShopOrder o
+			LEFT JOIN FETCH o.lines
+			WHERE o.user.id = :userId
+			ORDER BY o.placedAt DESC
+			""")
+	List<ShopOrder> findByUserIdWithLinesOrderByPlacedAtDesc(@Param("userId") Long userId);
 }
