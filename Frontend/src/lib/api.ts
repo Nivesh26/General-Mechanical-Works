@@ -712,3 +712,74 @@ export async function deleteAdminProduct(token: string, id: number): Promise<voi
   })
   if (!res.ok) throw new Error(await parseErrorMessage(res))
 }
+
+export type ApiOrderStatus = 'PENDING' | 'CONFIRMED' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED'
+
+export type ApiPaymentMethod = 'COD'
+
+export type AdminOrderLine = {
+  productName: string
+  sku: string
+  quantity: number
+  unitPrice: number
+  imagePath: string | null
+}
+
+export type AdminOrder = {
+  id: number
+  orderNumber: string
+  customerName: string
+  customerEmail: string
+  phone: string | null
+  address: string
+  placedAt: string
+  status: ApiOrderStatus
+  paymentMethod: ApiPaymentMethod
+  subtotal: number
+  taxAmount: number
+  total: number
+  items: AdminOrderLine[]
+}
+
+export async function placeOrder(
+  token: string,
+  body: { cartLineIds: number[]; paymentMethod: 'COD' },
+): Promise<AdminOrder> {
+  const res = await fetch(`${getApiBase()}/api/orders/me`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<AdminOrder>
+}
+
+export async function fetchAdminOrders(token: string): Promise<AdminOrder[]> {
+  const res = await fetch(`${getApiBase()}/api/admin/orders`, {
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<AdminOrder[]>
+}
+
+export async function updateAdminOrderStatus(
+  token: string,
+  orderId: number,
+  status: Exclude<ApiOrderStatus, 'CANCELLED'>,
+): Promise<AdminOrder> {
+  const res = await fetch(`${getApiBase()}/api/admin/orders/${orderId}/status`, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({ status }),
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<AdminOrder>
+}

@@ -219,6 +219,63 @@ public class SchemaMigrationConfig {
 				jdbcTemplate.execute(
 						"ALTER TABLE `otp` ADD COLUMN `purpose` VARCHAR(32) NOT NULL DEFAULT 'LOGIN'");
 			}
+
+			Integer shopOrderTableExists = jdbcTemplate.queryForObject(
+					"""
+					SELECT COUNT(*) FROM information_schema.TABLES
+					WHERE TABLE_SCHEMA = DATABASE()
+					  AND TABLE_NAME = 'shop_order'
+					""",
+					Integer.class);
+			if (shopOrderTableExists == null || shopOrderTableExists == 0) {
+				jdbcTemplate.execute("""
+						CREATE TABLE `shop_order` (
+						  `id` BIGINT NOT NULL AUTO_INCREMENT,
+						  `order_number` VARCHAR(32) NOT NULL,
+						  `user_id` BIGINT NOT NULL,
+						  `customer_name` VARCHAR(255) NOT NULL,
+						  `customer_email` VARCHAR(255) NOT NULL,
+						  `phone` VARCHAR(32) NULL,
+						  `address` VARCHAR(512) NULL,
+						  `placed_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+						  `status` VARCHAR(32) NOT NULL DEFAULT 'PENDING',
+						  `payment_method` VARCHAR(32) NOT NULL,
+						  `subtotal` DECIMAL(12,2) NOT NULL,
+						  `tax_amount` DECIMAL(12,2) NOT NULL,
+						  `total` DECIMAL(12,2) NOT NULL,
+						  PRIMARY KEY (`id`),
+						  UNIQUE KEY `uk_shop_order_number` (`order_number`),
+						  KEY `idx_shop_order_user_id` (`user_id`),
+						  CONSTRAINT `fk_shop_order_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON DELETE CASCADE
+						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+						""");
+			}
+
+			Integer orderLineTableExists = jdbcTemplate.queryForObject(
+					"""
+					SELECT COUNT(*) FROM information_schema.TABLES
+					WHERE TABLE_SCHEMA = DATABASE()
+					  AND TABLE_NAME = 'order_line'
+					""",
+					Integer.class);
+			if (orderLineTableExists == null || orderLineTableExists == 0) {
+				jdbcTemplate.execute("""
+						CREATE TABLE `order_line` (
+						  `id` BIGINT NOT NULL AUTO_INCREMENT,
+						  `order_id` BIGINT NOT NULL,
+						  `product_id` BIGINT NOT NULL,
+						  `product_name` VARCHAR(255) NOT NULL,
+						  `sku` VARCHAR(64) NOT NULL,
+						  `quantity` INT NOT NULL,
+						  `unit_price` DECIMAL(12,2) NOT NULL,
+						  `size_label` VARCHAR(64) NOT NULL DEFAULT '',
+						  `image_path` VARCHAR(1024) NULL,
+						  PRIMARY KEY (`id`),
+						  KEY `idx_order_line_order_id` (`order_id`),
+						  CONSTRAINT `fk_order_line_order` FOREIGN KEY (`order_id`) REFERENCES `shop_order` (`id`) ON DELETE CASCADE
+						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+						""");
+			}
 		};
 	}
 }

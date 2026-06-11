@@ -1,15 +1,37 @@
 import type { CSSProperties } from 'react'
-import { Fragment, useMemo, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
+import { toast } from 'react-toastify'
 import AdminNavbar from '../AdminComponent/AdminNavbar'
 import { ADMIN_MAIN_SCROLL_CLASS, ADMIN_PAGE_SUBTITLE, ADMIN_PAGE_TITLE } from '../AdminComponent/adminMainStyles'
-/** Product photos from `Frontend/src/assets` (same as admin catalog). */
+import { useAuth } from '../context/AuthContext'
+import {
+  fetchAdminOrders,
+  toAbsoluteApiUrl,
+  updateAdminOrderStatus,
+  type AdminOrder as ApiAdminOrder,
+  type ApiOrderStatus,
+} from '../lib/api'
+/** Product photos from `Frontend/src/assets` (fallback when order has no image). */
 import EngineOil from '../assets/EngineOil.png'
-import Brakes from '../assets/Brakekit.png'
-import Tyre from '../assets/Tyre.png'
 
 type OrderStatus = 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled'
 
-type PaymentMethod = 'eSewa' | 'Khalti' | 'COD'
+type PaymentMethod = 'COD'
+
+const API_TO_UI_STATUS: Record<ApiOrderStatus, OrderStatus> = {
+  PENDING: 'pending',
+  CONFIRMED: 'confirmed',
+  SHIPPED: 'shipped',
+  DELIVERED: 'delivered',
+  CANCELLED: 'cancelled',
+}
+
+const UI_TO_API_STATUS: Record<Exclude<OrderStatus, 'cancelled'>, ApiOrderStatus> = {
+  pending: 'PENDING',
+  confirmed: 'CONFIRMED',
+  shipped: 'SHIPPED',
+  delivered: 'DELIVERED',
+}
 
 type OrderLine = {
   productName: string
@@ -33,6 +55,27 @@ type Order = {
   items: OrderLine[]
 }
 
+function mapApiOrder(order: ApiAdminOrder): Order {
+  return {
+    id: String(order.id),
+    orderNumber: order.orderNumber,
+    customerName: order.customerName,
+    customerEmail: order.customerEmail,
+    phone: order.phone ?? '—',
+    address: order.address,
+    placedAt: order.placedAt,
+    status: API_TO_UI_STATUS[order.status],
+    paymentMethod: order.paymentMethod,
+    items: order.items.map((item) => ({
+      productName: item.productName,
+      sku: item.sku,
+      quantity: item.quantity,
+      unitPrice: Number(item.unitPrice),
+      imageUrl: toAbsoluteApiUrl(item.imagePath) ?? EngineOil,
+    })),
+  }
+}
+
 const formatRs = (n: number) => `Rs. ${n.toLocaleString('en-IN')}`
 
 const lineTotal = (line: OrderLine) => line.quantity * line.unitPrice
@@ -49,116 +92,6 @@ function orderGrandTotal(order: Order) {
   const sub = orderTotal(order)
   return sub + orderTaxAmount(sub)
 }
-
-const initialOrders: Order[] = [
-  {
-    id: 'o1',
-    orderNumber: 'ORD-2410',
-    customerName: 'Sita Gurung',
-    customerEmail: 'sita.gurung@example.com',
-    phone: '+977 9811122334',
-    address: 'Baneshwor, Kathmandu, Nepal',
-    placedAt: '2025-03-24',
-    status: 'pending',
-    paymentMethod: 'eSewa',
-    items: [
-      {
-        productName: 'Premium Synthetic Engine Oil',
-        sku: 'SKU-1001',
-        quantity: 1,
-        unitPrice: 3500,
-        imageUrl: EngineOil,
-      },
-    ],
-  },
-  {
-    id: 'o2',
-    orderNumber: 'ORD-2408',
-    customerName: 'Nivesh Shrestha',
-    customerEmail: 'nivesh@example.com',
-    phone: '+977 9841122334',
-    address: 'Patan, Lalitpur, Nepal',
-    placedAt: '2025-03-23',
-    status: 'confirmed',
-    paymentMethod: 'eSewa',
-    items: [
-      {
-        productName: 'All-weather Tyre 100/90-17',
-        sku: 'SKU-1003',
-        quantity: 1,
-        unitPrice: 12500,
-        imageUrl: Tyre,
-      },
-    ],
-  },
-  {
-    id: 'o3',
-    orderNumber: 'ORD-2407',
-    customerName: 'Kiran Thapa',
-    customerEmail: 'kiran.thapa@example.com',
-    phone: '+977 9855511222',
-    address: 'Itahari, Sunsari, Nepal',
-    placedAt: '2025-03-22',
-    status: 'shipped',
-    paymentMethod: 'Khalti',
-    items: [
-      {
-        productName: 'Brake Service Kit',
-        sku: 'SKU-1002',
-        quantity: 1,
-        unitPrice: 5200,
-        imageUrl: Brakes,
-      },
-    ],
-  },
-  {
-    id: 'o4',
-    orderNumber: 'ORD-2406',
-    customerName: 'Diya Patel',
-    customerEmail: 'diya.patel@example.com',
-    phone: '+977 9812345678',
-    address: 'Biratnagar, Nepal',
-    placedAt: '2025-03-21',
-    status: 'delivered',
-    paymentMethod: 'Khalti',
-    items: [
-      {
-        productName: 'Premium Synthetic Engine Oil',
-        sku: 'SKU-1001',
-        quantity: 2,
-        unitPrice: 3500,
-        imageUrl: EngineOil,
-      },
-    ],
-  },
-  {
-    id: 'o5',
-    orderNumber: 'ORD-2405',
-    customerName: 'Aarav Sharma',
-    customerEmail: 'aarav.sharma@example.com',
-    phone: '+977 9849925333',
-    address: 'Thamel, Kathmandu, Nepal',
-    placedAt: '2025-03-20',
-    status: 'pending',
-    paymentMethod: 'COD',
-    items: [
-      {
-        productName: 'Brake Service Kit',
-        sku: 'SKU-1002',
-        quantity: 1,
-        unitPrice: 5200,
-        imageUrl: Brakes,
-      },
-      {
-        productName: 'Premium Synthetic Engine Oil',
-        sku: 'SKU-1001',
-        quantity: 1,
-        unitPrice: 3500,
-        imageUrl: EngineOil,
-      },
-    ],
-  },
-]
 
 /** Statuses admins may assign — never `cancelled` (only the customer can cancel). */
 const ADMIN_STATUS_OPTIONS: Exclude<OrderStatus, 'cancelled'>[] = [
@@ -180,7 +113,6 @@ function statusRank(status: OrderStatus): number | null {
   return STATUS_ORDER[status]
 }
 
-/** Forward-only: same stage or later. No reverting to earlier stages. Cancelled is read-only. */
 function statusChoicesForOrder(current: OrderStatus): OrderStatus[] {
   if (current === 'cancelled') return []
   const rank = statusRank(current)!
@@ -214,12 +146,6 @@ function StatusBadge({ status }: { status: OrderStatus }) {
 }
 
 function PaymentBadge({ method }: { method: PaymentMethod }) {
-  const map: Record<PaymentMethod, { label: string; bg: string; color: string }> = {
-    eSewa: { label: 'eSewa', bg: '#dcfce7', color: '#166534' },
-    Khalti: { label: 'Khalti', bg: '#ede7f6', color: '#5e35b1' },
-    COD: { label: 'COD', bg: '#f1f5f9', color: '#475569' },
-  }
-  const p = map[method]
   return (
     <span
       style={{
@@ -228,20 +154,44 @@ function PaymentBadge({ method }: { method: PaymentMethod }) {
         padding: '4px 10px',
         fontSize: '12px',
         fontWeight: 700,
-        backgroundColor: p.bg,
-        color: p.color,
+        backgroundColor: '#f1f5f9',
+        color: '#475569',
       }}
     >
-      {p.label}
+      {method}
     </span>
   )
 }
 
 const AdminOrders = () => {
-  const [orders, setOrders] = useState<Order[]>(initialOrders)
+  const { token } = useAuth()
+  const [orders, setOrders] = useState<Order[]>([])
+  const [loading, setLoading] = useState(true)
   const [searchInput, setSearchInput] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | OrderStatus>('all')
   const [expandedId, setExpandedId] = useState<string | null>(null)
+
+  const loadOrders = useCallback(async () => {
+    if (!token) {
+      setOrders([])
+      setLoading(false)
+      return
+    }
+    setLoading(true)
+    try {
+      const list = await fetchAdminOrders(token)
+      setOrders(list.map(mapApiOrder))
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not load orders.')
+      setOrders([])
+    } finally {
+      setLoading(false)
+    }
+  }, [token])
+
+  useEffect(() => {
+    void loadOrders()
+  }, [loadOrders])
 
   const filteredOrders = useMemo(() => {
     const q = searchInput.trim().toLowerCase()
@@ -277,18 +227,23 @@ const AdminOrders = () => {
     return c
   }, [orders])
 
-  const updateStatus = (orderId: string, nextStatus: OrderStatus) => {
+  const updateStatus = async (orderId: string, nextStatus: OrderStatus) => {
     const current = orders.find((o) => o.id === orderId)?.status
-    if (current == null) return
+    if (current == null || !token) return
     if (nextStatus === 'cancelled') return
     if (current === 'cancelled') return
     const rCur = statusRank(current)
     const rNext = statusRank(nextStatus)
     if (rCur == null || rNext == null) return
     if (rNext < rCur) return
-    setOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, status: nextStatus } : o)))
-    if (statusFilter !== 'all' && nextStatus !== statusFilter) {
-      setStatusFilter(nextStatus)
+    try {
+      const updated = await updateAdminOrderStatus(token, Number(orderId), UI_TO_API_STATUS[nextStatus])
+      setOrders((prev) => prev.map((o) => (o.id === orderId ? mapApiOrder(updated) : o)))
+      if (statusFilter !== 'all' && nextStatus !== statusFilter) {
+        setStatusFilter(nextStatus)
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not update order status.')
     }
   }
 
@@ -421,7 +376,14 @@ const AdminOrders = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredOrders.map((order) => {
+                {loading ? (
+                  <tr>
+                    <td colSpan={8} style={{ padding: '24px', textAlign: 'center', color: '#64748b', fontSize: '14px' }}>
+                      Loading orders…
+                    </td>
+                  </tr>
+                ) : (
+                  filteredOrders.map((order) => {
                   const subtotal = orderTotal(order)
                   const tax = orderTaxAmount(subtotal)
                   const grandTotal = orderGrandTotal(order)
@@ -479,7 +441,7 @@ const AdminOrders = () => {
                               <select
                                 key={`${order.id}-${order.status}`}
                                 value={order.status}
-                                onChange={(e) => updateStatus(order.id, e.target.value as OrderStatus)}
+                                onChange={(e) => void updateStatus(order.id, e.target.value as OrderStatus)}
                                 aria-label={`Update status for ${order.orderNumber}`}
                                 style={{
                                   padding: '6px 10px',
@@ -587,8 +549,9 @@ const AdminOrders = () => {
                       )}
                     </Fragment>
                   )
-                })}
-                {filteredOrders.length === 0 && (
+                  })
+                )}
+                {!loading && filteredOrders.length === 0 && (
                   <tr>
                     <td colSpan={8} style={{ padding: '24px', textAlign: 'center', color: '#64748b', fontSize: '14px' }}>
                       No orders match your filters.
