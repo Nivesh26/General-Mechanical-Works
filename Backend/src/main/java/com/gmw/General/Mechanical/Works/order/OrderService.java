@@ -2,8 +2,10 @@ package com.gmw.General.Mechanical.Works.order;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 
@@ -16,6 +18,7 @@ import org.springframework.web.server.ResponseStatusException;
 import com.gmw.General.Mechanical.Works.cart.Cart;
 import com.gmw.General.Mechanical.Works.cart.CartRepository;
 import com.gmw.General.Mechanical.Works.product.Product;
+import com.gmw.General.Mechanical.Works.product.ProductRepository;
 import com.gmw.General.Mechanical.Works.user.User;
 import com.gmw.General.Mechanical.Works.user.UserRepository;
 
@@ -25,25 +28,37 @@ public class OrderService {
 	private static final BigDecimal TAX_RATE = new BigDecimal("0.13");
 	private static final DateTimeFormatter PLACED_AT_FORMAT =
 			DateTimeFormatter.ofPattern("yyyy-MM-dd", Locale.ROOT);
+	private static final DateTimeFormatter CANCELLED_AT_FORMAT =
+			DateTimeFormatter.ofPattern("d MMM yyyy", Locale.ENGLISH);
 
 	private final ShopOrderRepository shopOrderRepository;
 	private final CartRepository cartRepository;
 	private final UserRepository userRepository;
+	private final ProductRepository productRepository;
 
 	public OrderService(
 			ShopOrderRepository shopOrderRepository,
 			CartRepository cartRepository,
-			UserRepository userRepository) {
+			UserRepository userRepository,
+			ProductRepository productRepository) {
 		this.shopOrderRepository = shopOrderRepository;
 		this.cartRepository = cartRepository;
 		this.userRepository = userRepository;
+		this.productRepository = productRepository;
 	}
 
 	@Transactional(readOnly = true)
 	public List<OrderDto> listAllForAdmin() {
 		return shopOrderRepository.findAllWithLinesOrderByPlacedAtDesc().stream()
+				.sorted(adminOrderDisplayOrder())
 				.map(OrderMapper::toDto)
 				.toList();
+	}
+
+	private static Comparator<ShopOrder> adminOrderDisplayOrder() {
+		return Comparator
+				.comparing((ShopOrder order) -> order.getStatus() == OrderStatus.CANCELLED)
+				.thenComparing(ShopOrder::getPlacedAt, Comparator.reverseOrder());
 	}
 
 	@Transactional(readOnly = true)
@@ -155,6 +170,45 @@ public class OrderService {
 		return OrderMapper.toDto(shopOrderRepository.save(order));
 	}
 
+	@Transactional
+	public OrderDto cancelOrderLineForUser(String email, Long orderId, Long lineId) {
+		User user = requireUser(email);
+		ShopOrder order = shopOrderRepository.findByIdAndUser_IdWithLines(orderId, user.getId())
+				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
+
+		OrderStatus orderStatus = order.getStatus();
+		if (orderStatus != OrderStatus.PENDING && orderStatus != OrderStatus.CONFIRMED) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+					"Only pending or confirmed orders can be cancelled");
+		}
+
+		OrderLine line = order.getLines().stream()
+				.filter(l -> l.getId().equals(lineId))
+				.findFirst()
+				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order item not found"));
+
+		if (line.isCancelled()) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "This product is already cancelled");
+		}
+
+		LocalDateTime now = LocalDateTime.now();
+		line.setCancelled(true);
+		line.setCancelledAt(now);
+
+		Product product = productRepository.findById(line.getProductId()).orElse(null);
+		if (product != null) {
+			product.setStock(product.getStock() + line.getQuantity());
+		}
+
+		boolean allCancelled = order.getLines().stream().allMatch(OrderLine::isCancelled);
+		if (allCancelled) {
+			order.setStatus(OrderStatus.CANCELLED);
+			order.setCancelledAt(now);
+		}
+
+		return OrderMapper.toDto(shopOrderRepository.save(order));
+	}
+
 	private static int rank(OrderStatus status) {
 		return switch (status) {
 			case PENDING -> 0;
@@ -202,8 +256,17 @@ public class OrderService {
 									line.getQuantity(),
 									line.getUnitPrice(),
 									line.getSizeLabel(),
-									line.getImagePath()))
+									line.getImagePath(),
+									line.isCancelled(),
+									formatCancelledAt(line.getCancelledAt())))
 							.toList());
+		}
+
+		private static String formatCancelledAt(LocalDateTime cancelledAt) {
+			if (cancelledAt == null) {
+				return null;
+			}
+			return cancelledAt.format(CANCELLED_AT_FORMAT);
 		}
 	}
 }

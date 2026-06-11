@@ -1,14 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { toast } from 'react-toastify'
 import Header from '../UserComponent/Header'
 import Footer from '../UserComponent/Footer'
 import Copyright from '../UserComponent/Copyright'
 import EngineOil from '../assets/EngineOil.png'
 import { useAuth } from '../context/AuthContext'
 import {
+  cancelMyOrderLine,
   fetchMyOrders,
   toAbsoluteApiUrl,
   type AdminOrder as ApiOrder,
+  type AdminOrderLine as ApiOrderLine,
   type ApiOrderStatus,
 } from '../lib/api'
 import {
@@ -35,6 +38,7 @@ const API_TO_UI_STATUS: Record<ApiOrderStatus, ProductLineStatus> = {
 
 type TrackedProductLine = {
   id: string
+  shopOrderId: number
   orderId: string
   name: string
   image: string
@@ -44,6 +48,7 @@ type TrackedProductLine = {
   status: ProductLineStatus
   orderedOn: string
   paymentMethod: PaymentMethod
+  canCancel: boolean
   /** Shown when pending */
   estimatedDelivery?: string
   /** Shown when confirmed */
@@ -65,17 +70,24 @@ function formatOrderDate(isoDate: string) {
   return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
+function lineStatus(order: ApiOrder, item: ApiOrderLine): ProductLineStatus {
+  if (item.cancelled || order.status === 'CANCELLED') return 'cancelled'
+  return API_TO_UI_STATUS[order.status]
+}
+
 function mapOrdersToLines(orders: ApiOrder[]): TrackedProductLine[] {
   const lines: TrackedProductLine[] = []
   for (const order of orders) {
-    const status = API_TO_UI_STATUS[order.status]
     const orderedOn = formatOrderDate(order.placedAt)
     const paymentMethod: PaymentMethod = order.paymentMethod === 'COD' ? 'COD' : 'COD'
+    const orderCanCancel = order.status === 'PENDING' || order.status === 'CONFIRMED'
 
     order.items.forEach((item, index) => {
+      const status = lineStatus(order, item)
       const sizePart = item.sizeLabel?.trim() ? ` Size: ${item.sizeLabel.trim()}.` : ''
       lines.push({
         id: String(item.id ?? `${order.id}-${index}`),
+        shopOrderId: order.id,
         orderId: order.orderNumber,
         name: item.productName,
         image: toAbsoluteApiUrl(item.imagePath) ?? EngineOil,
@@ -85,6 +97,8 @@ function mapOrdersToLines(orders: ApiOrder[]): TrackedProductLine[] {
         status,
         orderedOn,
         paymentMethod,
+        canCancel: orderCanCancel && !item.cancelled,
+        cancelledOn: item.cancelledAt ?? undefined,
         description: `${item.productName}.${sizePart} Ordered on ${orderedOn}.`,
       })
     })
@@ -141,7 +155,7 @@ function StatusBadge({ status }: { status: ProductLineStatus }) {
   }
   if (status === 'cancelled') {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-700 ring-1 ring-gray-200">
+      <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-800 ring-1 ring-red-200/80">
         <HiOutlineNoSymbol className="h-3.5 w-3.5" aria-hidden />
         Cancelled
       </span>
@@ -160,15 +174,16 @@ function ProductLineCard({
   expanded,
   onToggle,
   onCancelProduct,
+  cancelling,
 }: {
   line: TrackedProductLine
   expanded: boolean
   onToggle: () => void
   onCancelProduct?: () => void
+  cancelling?: boolean
 }) {
   const lineTotal = line.unitPrice * line.qty
-  const canCancel =
-    (line.status === 'pending' || line.status === 'confirmed') && onCancelProduct
+  const canCancel = line.canCancel && onCancelProduct
 
   return (
     <article className="rounded-2xl border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md">
@@ -199,9 +214,10 @@ function ProductLineCard({
                 <button
                   type="button"
                   onClick={onCancelProduct}
-                  className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm font-medium text-red-700 transition-colors hover:bg-red-50"
+                  disabled={cancelling}
+                  className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm font-medium text-red-700 transition-colors hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Cancel product
+                  {cancelling ? 'Cancelling…' : 'Cancel product'}
                 </button>
               </div>
             )}
@@ -332,6 +348,7 @@ const Ordertracking = () => {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [filter, setFilter] = useState<FilterTab>('all')
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set())
+  const [cancellingLineId, setCancellingLineId] = useState<string | null>(null)
 
   const loadOrders = useCallback(async () => {
     if (!token) {
@@ -377,6 +394,27 @@ const Ordertracking = () => {
       else next.add(id)
       return next
     })
+  }
+
+  const cancelProduct = async (line: TrackedProductLine) => {
+    if (!token) return
+    if (
+      !window.confirm(
+        `Cancel "${line.name}" from order ${line.orderId}? This cannot be undone.`,
+      )
+    ) {
+      return
+    }
+    setCancellingLineId(line.id)
+    try {
+      await cancelMyOrderLine(token, line.shopOrderId, Number(line.id))
+      toast.success('Product cancelled.')
+      await loadOrders()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not cancel product.')
+    } finally {
+      setCancellingLineId(null)
+    }
   }
 
   return (
@@ -474,6 +512,10 @@ const Ordertracking = () => {
                     line={line}
                     expanded={expandedIds.has(line.id)}
                     onToggle={() => toggleExpand(line.id)}
+                    onCancelProduct={
+                      line.canCancel ? () => void cancelProduct(line) : undefined
+                    }
+                    cancelling={cancellingLineId === line.id}
                   />
                 </li>
               ))}

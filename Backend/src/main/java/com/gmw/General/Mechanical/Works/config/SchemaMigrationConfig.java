@@ -238,6 +238,7 @@ public class SchemaMigrationConfig {
 						  `phone` VARCHAR(32) NULL,
 						  `address` VARCHAR(512) NULL,
 						  `placed_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+						  `cancelled_at` DATETIME NULL,
 						  `status` VARCHAR(32) NOT NULL DEFAULT 'PENDING',
 						  `payment_method` VARCHAR(32) NOT NULL,
 						  `subtotal` DECIMAL(12,2) NOT NULL,
@@ -270,11 +271,50 @@ public class SchemaMigrationConfig {
 						  `unit_price` DECIMAL(12,2) NOT NULL,
 						  `size_label` VARCHAR(64) NOT NULL DEFAULT '',
 						  `image_path` VARCHAR(1024) NULL,
+						  `cancelled` TINYINT(1) NOT NULL DEFAULT 0,
+						  `cancelled_at` DATETIME NULL,
 						  PRIMARY KEY (`id`),
 						  KEY `idx_order_line_order_id` (`order_id`),
 						  CONSTRAINT `fk_order_line_order` FOREIGN KEY (`order_id`) REFERENCES `shop_order` (`id`) ON DELETE CASCADE
 						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
 						""");
+			}
+
+			Integer shopOrderCancelledAtExists = jdbcTemplate.queryForObject(
+					"""
+					SELECT COUNT(*) FROM information_schema.COLUMNS
+					WHERE TABLE_SCHEMA = DATABASE()
+					  AND TABLE_NAME = 'shop_order'
+					  AND COLUMN_NAME = 'cancelled_at'
+					""",
+					Integer.class);
+			if (shopOrderCancelledAtExists == null || shopOrderCancelledAtExists == 0) {
+				jdbcTemplate.execute("ALTER TABLE `shop_order` ADD COLUMN `cancelled_at` DATETIME NULL");
+			}
+
+			Integer orderLineCancelledExists = jdbcTemplate.queryForObject(
+					"""
+					SELECT COUNT(*) FROM information_schema.COLUMNS
+					WHERE TABLE_SCHEMA = DATABASE()
+					  AND TABLE_NAME = 'order_line'
+					  AND COLUMN_NAME = 'cancelled'
+					""",
+					Integer.class);
+			if (orderLineCancelledExists == null || orderLineCancelledExists == 0) {
+				jdbcTemplate.execute(
+						"ALTER TABLE `order_line` ADD COLUMN `cancelled` TINYINT(1) NOT NULL DEFAULT 0");
+			}
+
+			Integer orderLineCancelledAtExists = jdbcTemplate.queryForObject(
+					"""
+					SELECT COUNT(*) FROM information_schema.COLUMNS
+					WHERE TABLE_SCHEMA = DATABASE()
+					  AND TABLE_NAME = 'order_line'
+					  AND COLUMN_NAME = 'cancelled_at'
+					""",
+					Integer.class);
+			if (orderLineCancelledAtExists == null || orderLineCancelledAtExists == 0) {
+				jdbcTemplate.execute("ALTER TABLE `order_line` ADD COLUMN `cancelled_at` DATETIME NULL");
 			}
 		};
 	}

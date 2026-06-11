@@ -1,6 +1,7 @@
 package com.gmw.General.Mechanical.Works.order;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -44,6 +45,12 @@ public class OrderLine {
 
 	@Column(name = "image_path", length = 1024)
 	private String imagePath;
+
+	@Column(nullable = false)
+	private boolean cancelled = false;
+
+	@Column(name = "cancelled_at")
+	private LocalDateTime cancelledAt;
 
 	public Long getId() {
 		return id;
@@ -111,5 +118,21 @@ public class OrderLine {
 
 	public void setImagePath(String imagePath) {
 		this.imagePath = imagePath;
+	}
+
+	public boolean isCancelled() {
+		return cancelled;
+	}
+
+	public void setCancelled(boolean cancelled) {
+		this.cancelled = cancelled;
+	}
+
+	public LocalDateTime getCancelledAt() {
+		return cancelledAt;
+	}
+
+	public void setCancelledAt(LocalDateTime cancelledAt) {
+		this.cancelledAt = cancelledAt;
 	}
 }

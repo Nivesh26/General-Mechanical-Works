@@ -733,6 +733,8 @@ export type AdminOrderLine = {
   unitPrice: number
   sizeLabel?: string
   imagePath: string | null
+  cancelled?: boolean
+  cancelledAt?: string | null
 }
 
 export type AdminOrder = {
@@ -774,6 +776,19 @@ export async function fetchMyOrders(token: string): Promise<AdminOrder[]> {
   })
   if (!res.ok) throw new Error(await parseErrorMessage(res))
   return res.json() as Promise<AdminOrder[]>
+}
+
+export async function cancelMyOrderLine(
+  token: string,
+  orderId: number,
+  lineId: number,
+): Promise<AdminOrder> {
+  const res = await fetch(`${getApiBase()}/api/orders/me/${orderId}/lines/${lineId}/cancel`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<AdminOrder>
 }
 
 export async function fetchAdminOrders(token: string): Promise<AdminOrder[]> {

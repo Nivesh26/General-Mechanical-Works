@@ -4,6 +4,7 @@ import java.security.Principal;
 import java.util.List;
 
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -12,7 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 import jakarta.validation.Valid;
 
 @RestController
-@RequestMapping("/api/orders")
+@RequestMapping("/api/orders/me")
 public class OrderController {
 
 	private final OrderService orderService;
@@ -21,13 +22,21 @@ public class OrderController {
 		this.orderService = orderService;
 	}
 
-	@GetMapping("/me")
+	@GetMapping
 	public List<OrderDto> myOrders(Principal principal) {
 		return orderService.listForUser(principal.getName());
 	}
 
-	@PostMapping("/me")
+	@PostMapping
 	public OrderDto placeOrder(Principal principal, @Valid @RequestBody PlaceOrderRequest request) {
 		return orderService.placeOrder(principal.getName(), request);
+	}
+
+	@PostMapping("/{orderId}/lines/{lineId}/cancel")
+	public OrderDto cancelOrderLine(
+			Principal principal,
+			@PathVariable Long orderId,
+			@PathVariable Long lineId) {
+		return orderService.cancelOrderLineForUser(principal.getName(), orderId, lineId);
 	}
 }

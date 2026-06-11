@@ -195,7 +195,7 @@ const AdminOrders = () => {
 
   const filteredOrders = useMemo(() => {
     const q = searchInput.trim().toLowerCase()
-    return orders.filter((order) => {
+    const filtered = orders.filter((order) => {
       if (statusFilter !== 'all' && order.status !== statusFilter) return false
       if (!q) return true
       const haystack = [
@@ -209,6 +209,11 @@ const AdminOrders = () => {
         .join(' ')
         .toLowerCase()
       return haystack.includes(q)
+    })
+    return [...filtered].sort((a, b) => {
+      if (a.status === 'cancelled' && b.status !== 'cancelled') return 1
+      if (a.status !== 'cancelled' && b.status === 'cancelled') return -1
+      return b.placedAt.localeCompare(a.placedAt)
     })
   }, [orders, searchInput, statusFilter])
 

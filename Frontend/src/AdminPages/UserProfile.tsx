@@ -131,12 +131,15 @@ function mapOrdersToProductOrders(orders: AdminOrder[]): ProductOrder[] {
   const rows: ProductOrder[] = []
   for (const order of orders) {
     const date = formatOrderDate(order.placedAt)
-    const status = API_TO_ORDER_STATUS[order.status]
-    const paymentMethod: ProductOrder['paymentMethod'] =
-      order.paymentMethod === 'COD' ? 'COD' : 'COD'
 
     order.items.forEach((item, index) => {
       const lineTotal = Number(item.unitPrice) * item.quantity
+      const status: OrderStatus = item.cancelled || order.status === 'CANCELLED'
+        ? 'cancelled'
+        : API_TO_ORDER_STATUS[order.status]
+      const paymentMethod: ProductOrder['paymentMethod'] =
+        order.paymentMethod === 'COD' ? 'COD' : 'COD'
+
       rows.push({
         id: String(item.id ?? `${order.id}-${index}`),
         orderNumber: order.orderNumber,
@@ -149,7 +152,11 @@ function mapOrdersToProductOrders(orders: AdminOrder[]): ProductOrder[] {
       })
     })
   }
-  return rows
+  return rows.sort((a, b) => {
+    if (a.status === 'cancelled' && b.status !== 'cancelled') return 1
+    if (a.status !== 'cancelled' && b.status === 'cancelled') return -1
+    return b.date.localeCompare(a.date)
+  })
 }
 
 function orderStatusStyle(status: OrderStatus): CSSProperties {

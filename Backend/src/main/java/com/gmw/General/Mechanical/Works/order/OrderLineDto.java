@@ -9,5 +9,7 @@ public record OrderLineDto(
 		int quantity,
 		BigDecimal unitPrice,
 		String sizeLabel,
-		String imagePath) {
+		String imagePath,
+		boolean cancelled,
+		String cancelledAt) {
 }
