@@ -50,6 +50,7 @@ public class SecurityConfig {
 								"/api/auth/forgot-password/resend",
 								"/api/auth/forgot-password/reset")
 						.permitAll()
+						.requestMatchers(HttpMethod.POST, "/api/contact").permitAll()
 						.requestMatchers(HttpMethod.GET, "/api/auth/me").authenticated()
 						.requestMatchers(HttpMethod.POST, "/api/auth/me/password").authenticated()
 						.requestMatchers(HttpMethod.POST, "/api/auth/me/avatar").authenticated()

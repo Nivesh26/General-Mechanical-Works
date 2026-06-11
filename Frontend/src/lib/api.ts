@@ -140,6 +140,20 @@ export async function authResetPassword(
   if (!res.ok) throw new Error(await parseErrorMessage(res))
 }
 
+export async function submitContactMessage(body: {
+  name: string
+  phone: string
+  email: string
+  message: string
+}): Promise<void> {
+  const res = await fetch(`${getApiBase()}/api/contact`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+}
+
 export async function authGoogle(idToken: string): Promise<AuthResponse> {
   const res = await fetch(`${getApiBase()}/api/auth/google`, {
     method: 'POST',

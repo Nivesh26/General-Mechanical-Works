@@ -68,4 +68,26 @@ public class EmailService {
 				""".formatted(code));
 		mailSender.send(message);
 	}
+
+	@Async("mailTaskExecutor")
+	public void sendContactMessage(String name, String phone, String senderEmail, String message) {
+		SimpleMailMessage mail = new SimpleMailMessage();
+		mail.setFrom(emailProperties.getFrom());
+		mail.setTo(emailProperties.getFrom());
+		mail.setReplyTo(senderEmail);
+		mail.setSubject("New contact message from " + name);
+		mail.setText("""
+				You received a new message from the General Mechanical Works contact form.
+
+				Name: %s
+				Phone: %s
+				Email: %s
+
+				Message:
+				%s
+
+				— General Mechanical Works website
+				""".formatted(name, phone, senderEmail, message));
+		mailSender.send(mail);
+	}
 }

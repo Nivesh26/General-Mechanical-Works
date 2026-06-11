@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { HiOutlinePhone, HiOutlineEnvelope, HiOutlineMapPin } from "react-icons/hi2";
+import { toast } from "react-toastify";
+import { submitContactMessage } from "../lib/api";
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -12,6 +14,7 @@ const Contactform = () => {
   const [message, setMessage] = useState("");
   const [errors, setErrors] = useState<Partial<Record<FieldKey, string>>>({});
   const [sentOk, setSentOk] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const validate = (): boolean => {
     const next: Partial<Record<FieldKey, string>> = {};
@@ -38,17 +41,30 @@ const Contactform = () => {
     return Object.keys(next).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
-    // TODO: wire to contact API
-    setErrors({});
-    setName("");
-    setPhone("");
-    setEmail("");
-    setMessage("");
-    setSentOk(true);
-    window.setTimeout(() => setSentOk(false), 5000);
+    setSubmitting(true);
+    try {
+      await submitContactMessage({
+        name: name.trim(),
+        phone: phone.trim(),
+        email: email.trim(),
+        message: message.trim(),
+      });
+      setErrors({});
+      setName("");
+      setPhone("");
+      setEmail("");
+      setMessage("");
+      setSentOk(true);
+      toast.success("Message sent. We'll get back to you soon.");
+      window.setTimeout(() => setSentOk(false), 5000);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not send message.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const inputBorder = (hasError: boolean) =>
@@ -205,9 +221,10 @@ const Contactform = () => {
 
             <button
               type="submit"
-              className="w-full sm:w-auto px-8 py-3.5 rounded-full bg-primary text-white font-bold text-[15px] shadow-md hover:opacity-95 transition-opacity"
+              disabled={submitting}
+              className="w-full sm:w-auto px-8 py-3.5 rounded-full bg-primary text-white font-bold text-[15px] shadow-md hover:opacity-95 transition-opacity disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              Send Message
+              {submitting ? "Sending…" : "Send Message"}
             </button>
             {sentOk && (
               <p className="text-sm text-green-700 font-medium" role="status">
