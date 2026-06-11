@@ -19,6 +19,8 @@ import {
 
 type ProductLineStatus = 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled'
 
+type PaymentMethod = 'COD' | 'Esewa' | 'Khalti'
+
 type TrackedProductLine = {
   id: string
   orderId: string
@@ -29,6 +31,7 @@ type TrackedProductLine = {
   unitPrice: number
   status: ProductLineStatus
   orderedOn: string
+  paymentMethod: PaymentMethod
   /** Shown when pending */
   estimatedDelivery?: string
   /** Shown when confirmed */
@@ -54,6 +57,7 @@ const MOCK_LINES: TrackedProductLine[] = [
     unitPrice: 3500,
     status: 'pending',
     orderedOn: '28 Feb 2025',
+    paymentMethod: 'COD',
     estimatedDelivery: '8 Mar 2025',
     description:
       'Full synthetic 4-stroke engine oil. Suitable for modern motorcycles. API SN, JASO MA2.',
@@ -68,6 +72,7 @@ const MOCK_LINES: TrackedProductLine[] = [
     unitPrice: 5200,
     status: 'confirmed',
     orderedOn: '28 Feb 2025',
+    paymentMethod: 'COD',
     confirmedOn: '28 Feb 2025, 4:20 PM',
     estimatedDelivery: '10 Mar 2025',
     description:
@@ -83,6 +88,7 @@ const MOCK_LINES: TrackedProductLine[] = [
     unitPrice: 8900,
     status: 'shipped',
     orderedOn: '10 Feb 2025',
+    paymentMethod: 'Esewa',
     shippedOn: '11 Feb 2025',
     estimatedDelivery: '14 Feb 2025',
     description:
@@ -98,6 +104,7 @@ const MOCK_LINES: TrackedProductLine[] = [
     unitPrice: 12500,
     status: 'delivered',
     orderedOn: '2 Jan 2025',
+    paymentMethod: 'Khalti',
     deliveredOn: '6 Jan 2025',
     description: 'Tubeless rear tyre with wet-grip compound. Delivered and signed at your address.',
   },
@@ -111,12 +118,33 @@ const MOCK_LINES: TrackedProductLine[] = [
     unitPrice: 1200,
     status: 'cancelled',
     orderedOn: '5 Feb 2025',
+    paymentMethod: 'Esewa',
     cancelledOn: '7 Feb 2025',
     description: 'Order cancelled before packing; refund issued to your original payment method.',
   },
 ]
 
 const formatRs = (n: number) => `Rs. ${n.toLocaleString('en-IN')}`
+
+function PaymentMethodBadge({ method }: { method: PaymentMethod }) {
+  const styles: Record<PaymentMethod, string> = {
+    COD: 'border-gray-300 bg-gray-100 text-gray-900',
+    Esewa: 'border-green-300 bg-green-100 text-green-900',
+    Khalti: 'border-purple-300 bg-purple-100 text-purple-900',
+  }
+  const labels: Record<PaymentMethod, string> = {
+    COD: 'COD',
+    Esewa: 'eSewa',
+    Khalti: 'Khalti',
+  }
+  return (
+    <span
+      className={`inline-flex shrink-0 items-center rounded-md border px-2.5 py-1 text-xs font-bold ${styles[method]}`}
+    >
+      {labels[method]}
+    </span>
+  )
+}
 
 type FilterTab = 'all' | ProductLineStatus
 
@@ -177,8 +205,8 @@ function ProductLineCard({
     (line.status === 'pending' || line.status === 'confirmed') && onCancelProduct
 
   return (
-    <article className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden transition-shadow hover:shadow-md">
-      <div className="flex flex-col sm:flex-row gap-4 p-4 sm:p-5">
+    <article className="rounded-2xl border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md">
+      <div className="flex flex-col gap-4 p-4 sm:p-5">
         <div className="flex gap-4 flex-1 min-w-0">
           <div className="h-24 w-24 sm:h-28 sm:w-28 shrink-0 rounded-xl bg-linear-to-br from-gray-50 to-slate-100 p-2 ring-1 ring-black/5">
             <img src={line.image} alt={line.name} className="h-full w-full object-contain" />
@@ -192,11 +220,6 @@ function ProductLineCard({
                 <StatusBadge status={line.status} />
               </div>
             </div>
-            <p className="mt-1 text-xs text-gray-500">
-              Order <span className="font-mono font-medium text-gray-700">{line.orderId}</span>
-              <span className="mx-1.5 text-gray-300">·</span>
-              Ordered {line.orderedOn}
-            </p>
             <p className="mt-2 text-sm text-gray-600">
               Qty <span className="font-medium text-gray-900">{line.qty}</span>
               <span className="mx-2 text-gray-300">·</span>
@@ -216,6 +239,20 @@ function ProductLineCard({
                 </button>
               </div>
             )}
+          </div>
+        </div>
+
+        <div className="flex w-full flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-gray-100 pt-3">
+          <div className="text-xs text-gray-500">
+            <span>
+              Order <span className="font-mono font-medium text-gray-700">{line.orderId}</span>
+            </span>
+            <span className="mx-1.5 text-gray-300">·</span>
+            <span>Ordered {line.orderedOn}</span>
+          </div>
+          <div className="flex items-center gap-2 ml-auto">
+            <span className="text-xs font-medium text-gray-500">Payment</span>
+            <PaymentMethodBadge method={line.paymentMethod} />
           </div>
         </div>
       </div>
@@ -257,6 +294,12 @@ function ProductLineCard({
             <div className="rounded-lg bg-gray-50 px-3 py-2">
               <dt className="text-xs text-gray-500">Line total</dt>
               <dd className="font-semibold text-primary mt-0.5 tabular-nums">{formatRs(lineTotal)}</dd>
+            </div>
+            <div className="rounded-lg bg-gray-50 px-3 py-2">
+              <dt className="text-xs text-gray-500">Payment method</dt>
+              <dd className="mt-1">
+                <PaymentMethodBadge method={line.paymentMethod} />
+              </dd>
             </div>
             {line.status === 'pending' && (
               <div className="rounded-lg bg-amber-50/80 px-3 py-2 ring-1 ring-amber-100">

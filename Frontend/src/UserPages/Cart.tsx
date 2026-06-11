@@ -4,7 +4,7 @@ import { toast } from 'react-toastify'
 import Header from '../UserComponent/Header'
 import Footer from '../UserComponent/Footer'
 import Copyright from '../UserComponent/Copyright'
-import { HiOutlineTrash, HiOutlineMinus, HiOutlinePlus } from 'react-icons/hi2'
+import { HiOutlineTrash, HiOutlineMinus, HiOutlinePlus, HiOutlineTruck } from 'react-icons/hi2'
 import { PAGE_GUTTER } from '../lib/layoutClasses'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
@@ -184,13 +184,23 @@ const Cart = () => {
       <Header />
 
       <main className={`flex-1 ${PAGE_GUTTER} py-8 sm:py-10`}>
-        <div className="mb-8 text-left">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
-            <span className="text-primary font-sec">Cart</span>
-          </h1>
-          <p className="text-sm text-gray-500 whitespace-nowrap">
-            Review items, then checkout.
-          </p>
+        <div className="mb-8 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div className="text-left">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
+              <span className="text-primary font-sec">Cart</span>
+            </h1>
+            <p className="text-sm text-gray-500 whitespace-nowrap">
+              Review items, then checkout.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => navigate('/ordertracking')}
+            className="inline-flex items-center gap-2 shrink-0 px-6 py-3 rounded-lg border-2 border-primary text-primary font-semibold text-sm hover:bg-primary/5 transition-colors cursor-pointer"
+          >
+            <HiOutlineTruck className="w-5 h-5 shrink-0" aria-hidden />
+            Order Tracking
+          </button>
         </div>
 
         {loading ? (
@@ -331,7 +341,7 @@ const Cart = () => {
 
             <aside className="w-full lg:w-80 shrink-0 lg:sticky lg:top-24">
               <div className="rounded-2xl border border-gray-200 bg-gray-50/80 p-6 shadow-sm">
-                <h2 className="text-lg font-bold text-gray-900 mb-4">Order Summary</h2>
+                  <h2 className="text-lg font-bold text-gray-900 mb-4">Order Summary</h2>
                 <div className="space-y-3 text-sm">
                   <div className="flex justify-between gap-2 text-gray-600">
                     <span className="shrink-0">Selected</span>
