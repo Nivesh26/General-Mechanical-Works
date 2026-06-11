@@ -53,7 +53,7 @@ const ServiceWorkshopPanel = () => {
               key={s.id}
               type="button"
               onClick={() => toggleService(s.id)}
-              className={`rounded-xl p-4 border-2 text-left flex items-start gap-3 transition-colors ${
+              className={`rounded-xl p-4 border-2 text-left flex items-start gap-3 transition-colors cursor-pointer ${
                 selectedServiceIds.includes(s.id)
                   ? "border-primary bg-primary/5"
                   : "border-gray-200 hover:border-gray-300 bg-white"
@@ -96,7 +96,7 @@ const ServiceWorkshopPanel = () => {
                   key={t}
                   type="button"
                   onClick={() => setSlot(slot === t ? "" : t)}
-                  className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                  className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors cursor-pointer ${
                     slot === t
                       ? "bg-primary text-white border-primary"
                       : "bg-white text-gray-700 border-gray-300 hover:border-primary"

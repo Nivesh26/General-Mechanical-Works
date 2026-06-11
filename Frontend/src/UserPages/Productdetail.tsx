@@ -302,7 +302,7 @@ const Productdetail = () => {
                   </div>
                   <button
                     type="button"
-                    className="inline-block px-5 py-2.5 rounded-lg bg-primary text-white text-sm font-semibold hover:opacity-90 transition-opacity"
+                    className="inline-block px-5 py-2.5 rounded-lg bg-primary text-white text-sm font-semibold hover:opacity-90 transition-opacity cursor-pointer"
                   >
                  Post
                   </button>

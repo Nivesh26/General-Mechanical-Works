@@ -85,6 +85,11 @@ public class OrderService {
 		}
 
 		User user = requireUser(email);
+		if (!StringUtils.hasText(user.getLocation())) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+					"Please add your delivery location in your profile before placing an order");
+		}
+
 		List<Long> cartLineIds = request.getCartLineIds();
 		if (cartLineIds.isEmpty()) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No cart items selected");
@@ -121,7 +126,7 @@ public class OrderService {
 		order.setCustomerName(user.getName());
 		order.setCustomerEmail(user.getEmail());
 		order.setPhone(StringUtils.hasText(user.getPhone()) ? user.getPhone() : null);
-		order.setAddress(StringUtils.hasText(user.getLocation()) ? user.getLocation() : "Address not provided");
+		order.setAddress(user.getLocation().trim());
 		order.setStatus(OrderStatus.PENDING);
 		order.setPaymentMethod(PaymentMethod.COD);
 		order.setSubtotal(subtotal);

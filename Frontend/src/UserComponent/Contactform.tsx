@@ -222,7 +222,7 @@ const Contactform = () => {
             <button
               type="submit"
               disabled={submitting}
-              className="w-full sm:w-auto px-8 py-3.5 rounded-full bg-primary text-white font-bold text-[15px] shadow-md hover:opacity-95 transition-opacity disabled:opacity-60 disabled:cursor-not-allowed"
+              className="w-full sm:w-auto px-8 py-3.5 rounded-full bg-primary text-white font-bold text-[15px] shadow-md hover:opacity-95 transition-opacity cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {submitting ? "Sending…" : "Send Message"}
             </button>

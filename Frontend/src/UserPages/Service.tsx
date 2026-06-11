@@ -51,7 +51,7 @@ const Service = () => {
                   key={m.id}
                   type="button"
                   onClick={() => setBookingMode(m.id)}
-                  className={`rounded-xl p-4 border-2 text-left flex items-start gap-3 transition-colors ${
+                  className={`rounded-xl p-4 border-2 text-left flex items-start gap-3 transition-colors cursor-pointer ${
                     bookingMode === m.id
                       ? 'border-primary bg-primary/5'
                       : 'border-gray-200 hover:border-gray-300 bg-white'

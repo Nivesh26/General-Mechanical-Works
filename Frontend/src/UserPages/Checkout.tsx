@@ -43,12 +43,14 @@ const productImageById: Record<number, string> = {
 }
 
 const Checkout = () => {
-  const location = useLocation()
+  const routerLocation = useLocation()
   const navigate = useNavigate()
-  const { token } = useAuth()
+  const { token, user, loading: authLoading } = useAuth()
   const { refreshCart } = useCart()
-  const state = (location.state as CheckoutState | null) ?? null
+  const state = (routerLocation.state as CheckoutState | null) ?? null
   const [submitting, setSubmitting] = useState(false)
+
+  const hasDeliveryLocation = Boolean(user?.location?.trim())
 
   const selectedItems = useMemo<CheckoutProduct[]>(() => {
     if (!state?.selectedItems?.length) return []
@@ -76,7 +78,8 @@ const Checkout = () => {
   )
   const total = useMemo(() => state?.total ?? subtotal + taxAmount, [state?.total, subtotal, taxAmount])
 
-  const canPlaceOrder = Boolean(token) && cartLineIds.length > 0 && selectedItems.length > 0
+  const canPlaceOrder =
+    Boolean(token) && cartLineIds.length > 0 && selectedItems.length > 0 && hasDeliveryLocation
 
   const handlePlaceOrder = async () => {
     if (!token) {
@@ -84,9 +87,21 @@ const Checkout = () => {
       navigate('/login')
       return
     }
+    if (!hasDeliveryLocation) {
+      toast.error('Please add your delivery location in your profile before placing an order.')
+      return
+    }
     if (cartLineIds.length === 0) {
       toast.error('Add items from your cart before checkout.')
       navigate('/cart')
+      return
+    }
+
+    if (
+      !window.confirm(
+        `Place this order for ${formatRs(total)} with Cash on Delivery (COD)? You can track it from Order Tracking after confirmation.`,
+      )
+    ) {
       return
     }
 
@@ -115,7 +130,7 @@ const Checkout = () => {
             <h2 className="text-xl font-bold text-gray-900 mb-4">Payment Method</h2>
             <div className="space-y-3">
               <div
-                className="h-20 flex items-center gap-3 rounded-xl border-2 border-primary bg-primary/5 px-4 cursor-default"
+                className="h-20 flex items-center gap-3 rounded-xl border-2 border-primary bg-primary/5 px-4 cursor-pointer"
                 aria-current="true"
               >
                 <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 border-primary">
@@ -192,10 +207,24 @@ const Checkout = () => {
                 <span className="text-xl font-bold text-primary">{formatRs(total)}</span>
               </div>
             </div>
+            {!authLoading && !hasDeliveryLocation ? (
+              <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50 p-4">
+                <p className="text-sm text-amber-950">
+                  We need your delivery location before you can place an order. Please add it in your profile first.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => navigate('/profile')}
+                  className="mt-3 w-full rounded-lg border border-primary bg-white py-2.5 text-sm font-semibold text-primary hover:bg-primary/5 transition-colors cursor-pointer"
+                >
+                  Go to profile
+                </button>
+              </div>
+            ) : null}
             <button
               type="button"
               onClick={() => void handlePlaceOrder()}
-              disabled={!canPlaceOrder || submitting}
+              disabled={!canPlaceOrder || submitting || authLoading}
               className="mt-6 w-full rounded-lg bg-primary py-3 text-white font-semibold hover:opacity-90 transition-opacity cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {submitting ? 'Placing order…' : 'Place Order'}
