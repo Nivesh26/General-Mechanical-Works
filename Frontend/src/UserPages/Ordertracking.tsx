@@ -47,6 +47,7 @@ type TrackedProductLine = {
   unitPrice: number
   status: ProductLineStatus
   orderedOn: string
+  placedAtIso: string
   paymentMethod: PaymentMethod
   canCancel: boolean
   /** Shown when pending */
@@ -96,6 +97,7 @@ function mapOrdersToLines(orders: ApiOrder[]): TrackedProductLine[] {
         unitPrice: Number(item.unitPrice),
         status,
         orderedOn,
+        placedAtIso: order.placedAt,
         paymentMethod,
         canCancel: orderCanCancel && !item.cancelled,
         cancelledOn: item.cancelledAt ?? undefined,
@@ -383,8 +385,12 @@ const Ordertracking = () => {
   }, [lines])
 
   const visible = useMemo(() => {
-    if (filter === 'all') return lines
-    return lines.filter((l) => l.status === filter)
+    const filtered = filter === 'all' ? lines : lines.filter((l) => l.status === filter)
+    return [...filtered].sort((a, b) => {
+      if (a.status === 'cancelled' && b.status !== 'cancelled') return 1
+      if (a.status !== 'cancelled' && b.status === 'cancelled') return -1
+      return b.placedAtIso.localeCompare(a.placedAtIso)
+    })
   }, [lines, filter])
 
   const toggleExpand = (id: string) => {

@@ -38,6 +38,8 @@ type OrderLine = {
   sku: string
   quantity: number
   unitPrice: number
+  cancelled: boolean
+  cancelledAt?: string | null
   /** First product image (same as catalog) */
   imageUrl: string
 }
@@ -71,16 +73,40 @@ function mapApiOrder(order: ApiAdminOrder): Order {
       sku: item.sku,
       quantity: item.quantity,
       unitPrice: Number(item.unitPrice),
+      cancelled: Boolean(item.cancelled),
+      cancelledAt: item.cancelledAt ?? null,
       imageUrl: toAbsoluteApiUrl(item.imagePath) ?? EngineOil,
     })),
   }
+}
+
+function activeLines(order: Order) {
+  return order.items.filter((line) => !line.cancelled)
+}
+
+function cancelledLineCount(order: Order) {
+  return order.items.filter((line) => line.cancelled).length
+}
+
+function itemsSummary(order: Order) {
+  const cancelled = cancelledLineCount(order)
+  if (order.items.length === 1) {
+    const line = order.items[0]
+    return line.cancelled
+      ? `${line.productName} ×${line.quantity} (cancelled)`
+      : `${line.productName} ×${line.quantity}`
+  }
+  if (cancelled > 0) {
+    return `${order.items.length} items · ${cancelled} cancelled`
+  }
+  return `${order.items.length} items`
 }
 
 const formatRs = (n: number) => `Rs. ${n.toLocaleString('en-IN')}`
 
 const lineTotal = (line: OrderLine) => line.quantity * line.unitPrice
 
-const orderTotal = (order: Order) => order.items.reduce((sum, line) => sum + lineTotal(line), 0)
+const orderTotal = (order: Order) => activeLines(order).reduce((sum, line) => sum + lineTotal(line), 0)
 
 const ORDER_TAX_RATE = 0.13
 
@@ -117,6 +143,27 @@ function statusChoicesForOrder(current: OrderStatus): OrderStatus[] {
   if (current === 'cancelled') return []
   const rank = statusRank(current)!
   return ADMIN_STATUS_OPTIONS.filter((s) => STATUS_ORDER[s] >= rank)
+}
+
+function LineStatusBadge({ line, orderStatus }: { line: OrderLine; orderStatus: OrderStatus }) {
+  if (line.cancelled || orderStatus === 'cancelled') {
+    return (
+      <span
+        style={{
+          display: 'inline-block',
+          borderRadius: '999px',
+          padding: '4px 10px',
+          fontSize: '12px',
+          fontWeight: 700,
+          backgroundColor: '#fee2e2',
+          color: '#b91c1c',
+        }}
+      >
+        Cancelled
+      </span>
+    )
+  }
+  return <StatusBadge status={orderStatus} />
 }
 
 function StatusBadge({ status }: { status: OrderStatus }) {
@@ -392,10 +439,12 @@ const AdminOrders = () => {
                   const subtotal = orderTotal(order)
                   const tax = orderTaxAmount(subtotal)
                   const grandTotal = orderGrandTotal(order)
-                  const itemsSummary =
-                    order.items.length === 1
-                      ? `${order.items[0].productName} ×${order.items[0].quantity}`
-                      : `${order.items.length} items`
+                  const summary = itemsSummary(order)
+                  const sortedLines = [...order.items].sort((a, b) => {
+                    if (a.cancelled && !b.cancelled) return 1
+                    if (!a.cancelled && b.cancelled) return -1
+                    return 0
+                  })
                   const isOpen = expandedId === order.id
                   return (
                     <Fragment key={order.id}>
@@ -410,7 +459,7 @@ const AdminOrders = () => {
                           <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>{order.customerEmail}</div>
                         </td>
                         <td style={tdStyle}>
-                          <div style={{ fontSize: '13px', color: '#475569', maxWidth: '240px' }}>{itemsSummary}</div>
+                          <div style={{ fontSize: '13px', color: '#475569', maxWidth: '240px' }}>{summary}</div>
                         </td>
                         <td style={tdStyle}>
                           <span style={{ fontSize: '13px', color: '#475569' }}>{order.placedAt}</span>
@@ -491,11 +540,18 @@ const AdminOrders = () => {
                                     <th style={{ textAlign: 'right', padding: '8px 0', color: '#64748b', fontWeight: 600 }}>Qty</th>
                                     <th style={{ textAlign: 'right', padding: '8px 0', color: '#64748b', fontWeight: 600 }}>Unit</th>
                                     <th style={{ textAlign: 'right', padding: '8px 0', color: '#64748b', fontWeight: 600 }}>Line</th>
+                                    <th style={{ textAlign: 'right', padding: '8px 0', color: '#64748b', fontWeight: 600 }}>Status</th>
                                   </tr>
                                 </thead>
                                 <tbody>
-                                  {order.items.map((line, idx) => (
-                                    <tr key={`${order.id}-line-${idx}`} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                  {sortedLines.map((line, idx) => (
+                                    <tr
+                                      key={`${order.id}-line-${idx}`}
+                                      style={{
+                                        borderBottom: '1px solid #f1f5f9',
+                                        opacity: line.cancelled ? 0.65 : 1,
+                                      }}
+                                    >
                                       <td style={{ padding: '12px 8px 12px 0', verticalAlign: 'middle', width: '56px' }}>
                                         <img
                                           src={line.imageUrl}
@@ -512,7 +568,9 @@ const AdminOrders = () => {
                                         />
                                       </td>
                                       <td style={{ padding: '12px 0', color: '#334155', verticalAlign: 'middle' }}>
-                                        {line.productName}
+                                        <span style={line.cancelled ? { textDecoration: 'line-through' } : undefined}>
+                                          {line.productName}
+                                        </span>
                                       </td>
                                       <td style={{ padding: '12px 0', fontFamily: 'monospace', color: '#334155', verticalAlign: 'middle' }}>
                                         {line.sku}
@@ -526,10 +584,18 @@ const AdminOrders = () => {
                                       <td style={{ padding: '12px 0', textAlign: 'right', fontWeight: 600, color: '#0f172a', verticalAlign: 'middle' }}>
                                         {formatRs(lineTotal(line))}
                                       </td>
+                                      <td style={{ padding: '12px 0', textAlign: 'right', verticalAlign: 'middle' }}>
+                                        <LineStatusBadge line={line} orderStatus={order.status} />
+                                      </td>
                                     </tr>
                                   ))}
                                 </tbody>
                               </table>
+                              {cancelledLineCount(order) > 0 && cancelledLineCount(order) < order.items.length ? (
+                                <p style={{ margin: '10px 0 0', fontSize: '12px', color: '#64748b' }}>
+                                  Totals below exclude cancelled items.
+                                </p>
+                              ) : null}
                               <div
                                 style={{
                                   margin: '12px 0 0',
