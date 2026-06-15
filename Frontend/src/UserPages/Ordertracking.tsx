@@ -80,7 +80,12 @@ function mapOrdersToLines(orders: ApiOrder[]): TrackedProductLine[] {
   const lines: TrackedProductLine[] = []
   for (const order of orders) {
     const orderedOn = formatOrderDate(order.placedAt)
-    const paymentMethod: PaymentMethod = order.paymentMethod === 'COD' ? 'COD' : 'COD'
+    const paymentMethod: PaymentMethod =
+      order.paymentMethod === 'ESEWA'
+        ? 'Esewa'
+        : order.paymentMethod === 'KHALTI'
+          ? 'Khalti'
+          : 'COD'
     const orderCanCancel = order.status === 'PENDING' || order.status === 'CONFIRMED'
 
     order.items.forEach((item, index) => {

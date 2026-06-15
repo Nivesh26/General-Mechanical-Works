@@ -72,6 +72,18 @@ public class ShopOrder {
 	@Column(nullable = false, precision = 12, scale = 2)
 	private BigDecimal total;
 
+	@Column(nullable = false)
+	private boolean paid = true;
+
+	@Column(name = "esewa_transaction_uuid", unique = true, length = 64)
+	private String esewaTransactionUuid;
+
+	@Column(name = "khalti_pidx", unique = true, length = 64)
+	private String khaltiPidx;
+
+	@Column(name = "pending_cart_line_ids", length = 512)
+	private String pendingCartLineIds;
+
 	@OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
 	private List<OrderLine> lines = new ArrayList<>();
 
@@ -184,6 +196,38 @@ public class ShopOrder {
 
 	public void setTotal(BigDecimal total) {
 		this.total = total;
+	}
+
+	public boolean isPaid() {
+		return paid;
+	}
+
+	public void setPaid(boolean paid) {
+		this.paid = paid;
+	}
+
+	public String getEsewaTransactionUuid() {
+		return esewaTransactionUuid;
+	}
+
+	public void setEsewaTransactionUuid(String esewaTransactionUuid) {
+		this.esewaTransactionUuid = esewaTransactionUuid;
+	}
+
+	public String getKhaltiPidx() {
+		return khaltiPidx;
+	}
+
+	public void setKhaltiPidx(String khaltiPidx) {
+		this.khaltiPidx = khaltiPidx;
+	}
+
+	public String getPendingCartLineIds() {
+		return pendingCartLineIds;
+	}
+
+	public void setPendingCartLineIds(String pendingCartLineIds) {
+		this.pendingCartLineIds = pendingCartLineIds;
 	}
 
 	public List<OrderLine> getLines() {

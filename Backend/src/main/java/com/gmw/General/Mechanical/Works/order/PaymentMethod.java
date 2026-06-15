@@ -1,5 +1,7 @@
 package com.gmw.General.Mechanical.Works.order;
 
 public enum PaymentMethod {
-	COD
+	COD,
+	ESEWA,
+	KHALTI
 }

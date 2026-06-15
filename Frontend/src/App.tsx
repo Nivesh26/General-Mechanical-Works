@@ -33,6 +33,8 @@ import ChatbotWidget from './UserComponent/ChatbotWidget'
 import AdminUserProfile from './AdminPages/UserProfile'
 import AdminService from './AdminPages/AdminService'
 import Checkout from './UserPages/Checkout'
+import EsewaPaymentResult from './UserPages/EsewaPaymentResult'
+import KhaltiPaymentResult from './UserPages/KhaltiPaymentResult'
 import { AdminPrivateRoute } from './components/AdminPrivateRoute'
 import { UserPrivateRoute } from './components/UserPrivateRoute'
 
@@ -89,6 +91,8 @@ function AppRoutes() {
       <Route path="/ordertracking" element={userPage(<Ordertracking />)} />
       <Route path="/blogs/:id" element={withFade(<Blogs />)} />
       <Route path="/checkout" element={userPage(<Checkout />)} />
+      <Route path="/payment/esewa/result" element={withFade(<EsewaPaymentResult />)} />
+      <Route path="/payment/khalti/result" element={withFade(<KhaltiPaymentResult />)} />
 
       {/* Login and Signup */}
       <Route path="/login" element={withFade(<Login />)} />

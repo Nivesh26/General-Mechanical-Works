@@ -36,4 +36,26 @@ public interface ShopOrderRepository extends JpaRepository<ShopOrder, Long> {
 	Optional<ShopOrder> findByIdAndUser_IdWithLines(
 			@Param("orderId") Long orderId,
 			@Param("userId") Long userId);
+
+	Optional<ShopOrder> findByEsewaTransactionUuid(String esewaTransactionUuid);
+
+	Optional<ShopOrder> findByKhaltiPidx(String khaltiPidx);
+
+	@Query("""
+			SELECT o FROM ShopOrder o
+			LEFT JOIN FETCH o.lines
+			WHERE o.paymentMethod = 'ESEWA'
+			  AND o.paid = false
+			  AND o.status = 'PENDING'
+			""")
+	List<ShopOrder> findUnpaidEsewaPendingWithLines();
+
+	@Query("""
+			SELECT o FROM ShopOrder o
+			LEFT JOIN FETCH o.lines
+			WHERE o.paymentMethod = 'KHALTI'
+			  AND o.paid = false
+			  AND o.status = 'PENDING'
+			""")
+	List<ShopOrder> findUnpaidKhaltiPendingWithLines();
 }

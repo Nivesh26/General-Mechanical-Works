@@ -49,21 +49,34 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 			@NonNull HttpServletResponse response,
 			@NonNull FilterChain filterChain) throws ServletException, IOException {
 		String header = request.getHeader(HttpHeaders.AUTHORIZATION);
+		String token = null;
 		if (header != null && header.startsWith("Bearer ")) {
-			String token = header.substring(7);
-			if (jwtService.isTokenValid(token)) {
-				String email = jwtService.extractEmail(token);
-				String role = jwtService.extractRole(token);
-				String authority = "ROLE_" + role;
-				UsernamePasswordAuthenticationToken authentication =
-						new UsernamePasswordAuthenticationToken(
-								email,
-								null,
-								List.of(new SimpleGrantedAuthority(authority)));
-				authentication.setDetails(token);
-				SecurityContextHolder.getContext().setAuthentication(authentication);
-			}
+			token = header.substring(7);
+		} else if (isEsewaLaunchRequest(request)) {
+			token = request.getParameter("access_token");
+		}
+
+		if (token != null && jwtService.isTokenValid(token)) {
+			String email = jwtService.extractEmail(token);
+			String role = jwtService.extractRole(token);
+			String authority = "ROLE_" + role;
+			UsernamePasswordAuthenticationToken authentication =
+					new UsernamePasswordAuthenticationToken(
+							email,
+							null,
+							List.of(new SimpleGrantedAuthority(authority)));
+			authentication.setDetails(token);
+			SecurityContextHolder.getContext().setAuthentication(authentication);
 		}
 		filterChain.doFilter(request, response);
+	}
+
+	private static boolean isEsewaLaunchRequest(HttpServletRequest request) {
+		if (!"GET".equalsIgnoreCase(request.getMethod())) {
+			return false;
+		}
+		String path = PublicAuthEndpointFilter.normalizePath(
+				PublicAuthEndpointFilter.pathWithoutContext(request));
+		return path.startsWith("/api/payments/esewa/launch/");
 	}
 }

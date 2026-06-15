@@ -723,7 +723,7 @@ export async function deleteAdminProduct(token: string, id: number): Promise<voi
 
 export type ApiOrderStatus = 'PENDING' | 'CONFIRMED' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED'
 
-export type ApiPaymentMethod = 'COD'
+export type ApiPaymentMethod = 'COD' | 'ESEWA' | 'KHALTI'
 
 export type AdminOrderLine = {
   id?: number
@@ -768,6 +768,54 @@ export async function placeOrder(
   })
   if (!res.ok) throw new Error(await parseErrorMessage(res))
   return res.json() as Promise<AdminOrder>
+}
+
+export type EsewaInitResponse = {
+  orderId: number
+}
+
+export async function initEsewaPayment(
+  token: string,
+  body: { cartLineIds: number[]; paymentMethod: 'ESEWA' },
+): Promise<EsewaInitResponse> {
+  const res = await fetch(`${getApiBase()}/api/payments/esewa/init`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<EsewaInitResponse>
+}
+
+export function esewaLaunchUrl(orderId: number, token: string): string {
+  const params = new URLSearchParams({ access_token: token })
+  return `${getApiBase()}/api/payments/esewa/launch/${orderId}?${params.toString()}`
+}
+
+export type KhaltiInitResponse = {
+  paymentUrl: string
+  orderId: number
+}
+
+export async function initKhaltiPayment(
+  token: string,
+  body: { cartLineIds: number[]; paymentMethod: 'KHALTI' },
+): Promise<KhaltiInitResponse> {
+  const res = await fetch(`${getApiBase()}/api/payments/khalti/init`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<KhaltiInitResponse>
 }
 
 export async function fetchMyOrders(token: string): Promise<AdminOrder[]> {

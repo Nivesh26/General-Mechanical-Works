@@ -29,3 +29,18 @@ spring.mail.properties.mail.smtp.timeout=5000
 spring.mail.properties.mail.smtp.writetimeout=5000
 
 app.mail.from=${EMAIL_USER}
+
+# Public URLs used for eSewa payment redirects (must match how users reach your app)
+app.frontend-url=http://localhost:5173
+app.backend-public-url=http://localhost:8080
+
+# eSewa ePay v2 (UAT). Override secret in local application.properties — never commit secrets.
+app.esewa.merchant-code=EPAYTEST
+app.esewa.secret-key=8gBm/:&EnhH.1/q
+app.esewa.form-url=https://rc.esewa.com.np/api/epay/main/v2/form
+app.esewa.status-url=https://rc.esewa.com.np/api/epay/transaction/status/
+
+# Khalti ePayment (sandbox). Use live_secret_key from test-admin.khalti.com — never commit secrets.
+# Example: app.khalti.secret-key=${KHALTI_SECRET_KEY:your_key_here}
+app.khalti.secret-key=${KHALTI_SECRET_KEY:}
+app.khalti.api-base-url=https://dev.khalti.com/api/v2

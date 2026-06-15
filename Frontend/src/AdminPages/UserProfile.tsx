@@ -138,7 +138,11 @@ function mapOrdersToProductOrders(orders: AdminOrder[]): ProductOrder[] {
         ? 'cancelled'
         : API_TO_ORDER_STATUS[order.status]
       const paymentMethod: ProductOrder['paymentMethod'] =
-        order.paymentMethod === 'COD' ? 'COD' : 'COD'
+        order.paymentMethod === 'ESEWA'
+          ? 'eSewa'
+          : order.paymentMethod === 'KHALTI'
+            ? 'Khalti'
+            : 'COD'
 
       rows.push({
         id: String(item.id ?? `${order.id}-${index}`),

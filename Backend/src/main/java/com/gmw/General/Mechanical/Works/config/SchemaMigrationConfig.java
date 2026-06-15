@@ -316,6 +316,74 @@ public class SchemaMigrationConfig {
 			if (orderLineCancelledAtExists == null || orderLineCancelledAtExists == 0) {
 				jdbcTemplate.execute("ALTER TABLE `order_line` ADD COLUMN `cancelled_at` DATETIME NULL");
 			}
+
+			Integer shopOrderPaidExists = jdbcTemplate.queryForObject(
+					"""
+					SELECT COUNT(*) FROM information_schema.COLUMNS
+					WHERE TABLE_SCHEMA = DATABASE()
+					  AND TABLE_NAME = 'shop_order'
+					  AND COLUMN_NAME = 'paid'
+					""",
+					Integer.class);
+			if (shopOrderPaidExists == null || shopOrderPaidExists == 0) {
+				jdbcTemplate.execute(
+						"ALTER TABLE `shop_order` ADD COLUMN `paid` TINYINT(1) NOT NULL DEFAULT 1");
+			}
+			jdbcTemplate.update(
+					"UPDATE `shop_order` SET `paid` = 1 WHERE `payment_method` = 'COD' AND `paid` = 0");
+			jdbcTemplate.update("""
+					UPDATE `shop_order`
+					SET `status` = 'CANCELLED', `cancelled_at` = NOW(), `pending_cart_line_ids` = NULL
+					WHERE `payment_method` = 'ESEWA' AND `paid` = 0 AND `status` = 'PENDING'
+					""");
+
+			Integer shopOrderEsewaUuidExists = jdbcTemplate.queryForObject(
+					"""
+					SELECT COUNT(*) FROM information_schema.COLUMNS
+					WHERE TABLE_SCHEMA = DATABASE()
+					  AND TABLE_NAME = 'shop_order'
+					  AND COLUMN_NAME = 'esewa_transaction_uuid'
+					""",
+					Integer.class);
+			if (shopOrderEsewaUuidExists == null || shopOrderEsewaUuidExists == 0) {
+				jdbcTemplate.execute(
+						"ALTER TABLE `shop_order` ADD COLUMN `esewa_transaction_uuid` VARCHAR(64) NULL");
+				jdbcTemplate.execute(
+						"ALTER TABLE `shop_order` ADD UNIQUE KEY `uk_shop_order_esewa_txn` (`esewa_transaction_uuid`)");
+			}
+
+			Integer shopOrderPendingCartExists = jdbcTemplate.queryForObject(
+					"""
+					SELECT COUNT(*) FROM information_schema.COLUMNS
+					WHERE TABLE_SCHEMA = DATABASE()
+					  AND TABLE_NAME = 'shop_order'
+					  AND COLUMN_NAME = 'pending_cart_line_ids'
+					""",
+					Integer.class);
+			if (shopOrderPendingCartExists == null || shopOrderPendingCartExists == 0) {
+				jdbcTemplate.execute(
+						"ALTER TABLE `shop_order` ADD COLUMN `pending_cart_line_ids` VARCHAR(512) NULL");
+			}
+
+			Integer shopOrderKhaltiPidxExists = jdbcTemplate.queryForObject(
+					"""
+					SELECT COUNT(*) FROM information_schema.COLUMNS
+					WHERE TABLE_SCHEMA = DATABASE()
+					  AND TABLE_NAME = 'shop_order'
+					  AND COLUMN_NAME = 'khalti_pidx'
+					""",
+					Integer.class);
+			if (shopOrderKhaltiPidxExists == null || shopOrderKhaltiPidxExists == 0) {
+				jdbcTemplate.execute(
+						"ALTER TABLE `shop_order` ADD COLUMN `khalti_pidx` VARCHAR(64) NULL");
+				jdbcTemplate.execute(
+						"ALTER TABLE `shop_order` ADD UNIQUE KEY `uk_shop_order_khalti_pidx` (`khalti_pidx`)");
+			}
+			jdbcTemplate.update("""
+					UPDATE `shop_order`
+					SET `status` = 'CANCELLED', `cancelled_at` = NOW(), `pending_cart_line_ids` = NULL
+					WHERE `payment_method` = 'KHALTI' AND `paid` = 0 AND `status` = 'PENDING'
+					""");
 		};
 	}
 }

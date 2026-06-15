@@ -16,7 +16,7 @@ import EngineOil from '../assets/EngineOil.png'
 
 type OrderStatus = 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled'
 
-type PaymentMethod = 'COD'
+type PaymentMethod = 'COD' | 'ESEWA' | 'KHALTI'
 
 const API_TO_UI_STATUS: Record<ApiOrderStatus, OrderStatus> = {
   PENDING: 'pending',
@@ -193,6 +193,12 @@ function StatusBadge({ status }: { status: OrderStatus }) {
 }
 
 function PaymentBadge({ method }: { method: PaymentMethod }) {
+  const styles: Record<PaymentMethod, { bg: string; color: string; label: string }> = {
+    COD: { bg: '#f1f5f9', color: '#475569', label: 'COD' },
+    ESEWA: { bg: '#dcfce7', color: '#166534', label: 'eSewa' },
+    KHALTI: { bg: '#ede9fe', color: '#5b21b6', label: 'Khalti' },
+  }
+  const s = styles[method]
   return (
     <span
       style={{
@@ -201,11 +207,11 @@ function PaymentBadge({ method }: { method: PaymentMethod }) {
         padding: '4px 10px',
         fontSize: '12px',
         fontWeight: 700,
-        backgroundColor: '#f1f5f9',
-        color: '#475569',
+        backgroundColor: s.bg,
+        color: s.color,
       }}
     >
-      {method}
+      {s.label}
     </span>
   )
 }

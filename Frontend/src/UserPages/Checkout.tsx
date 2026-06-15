@@ -11,7 +11,7 @@ import EsewaLogo from '../assets/E-sewa.png'
 import KhaltiLogo from '../assets/Khalti.png'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
-import { placeOrder } from '../lib/api'
+import { esewaLaunchUrl, initEsewaPayment, initKhaltiPayment, placeOrder } from '../lib/api'
 import { productImageUrl } from '../lib/products'
 
 type CheckoutItem = {
@@ -34,6 +34,8 @@ type CheckoutProduct = CheckoutItem & {
   image: string
 }
 
+type PaymentChoice = 'COD' | 'ESEWA' | 'KHALTI'
+
 const TAX_RATE = 0.13
 const formatRs = (n: number) => `Rs. ${n.toLocaleString('en-IN')}`
 
@@ -49,6 +51,7 @@ const Checkout = () => {
   const { refreshCart } = useCart()
   const state = (routerLocation.state as CheckoutState | null) ?? null
   const [submitting, setSubmitting] = useState(false)
+  const [paymentMethod, setPaymentMethod] = useState<PaymentChoice>('COD')
 
   const hasDeliveryLocation = Boolean(user?.location?.trim())
 
@@ -97,26 +100,46 @@ const Checkout = () => {
       return
     }
 
-    if (
-      !window.confirm(
-        `Place this order for ${formatRs(total)} with Cash on Delivery (COD)? You can track it from Order Tracking after confirmation.`,
-      )
-    ) {
+    const confirmMessage =
+      paymentMethod === 'COD'
+        ? `Place this order for ${formatRs(total)} with Cash on Delivery (COD)? You can track it from Order Tracking after confirmation.`
+        : paymentMethod === 'ESEWA'
+          ? `Pay ${formatRs(total)} with eSewa and place this order? You will be redirected to eSewa to complete payment.`
+          : `Pay ${formatRs(total)} with Khalti and place this order? You will be redirected to Khalti to complete payment.`
+
+    if (!window.confirm(confirmMessage)) {
       return
     }
 
     setSubmitting(true)
     try {
-      const order = await placeOrder(token, {
+      if (paymentMethod === 'COD') {
+        const order = await placeOrder(token, {
+          cartLineIds,
+          paymentMethod: 'COD',
+        })
+        await refreshCart()
+        toast.success(`Order ${order.orderNumber} placed successfully.`)
+        navigate('/ordertracking', { replace: true })
+        return
+      }
+
+      if (paymentMethod === 'ESEWA') {
+        const payment = await initEsewaPayment(token, {
+          cartLineIds,
+          paymentMethod: 'ESEWA',
+        })
+        window.location.href = esewaLaunchUrl(payment.orderId, token)
+        return
+      }
+
+      const khaltiPayment = await initKhaltiPayment(token, {
         cartLineIds,
-        paymentMethod: 'COD',
+        paymentMethod: 'KHALTI',
       })
-      await refreshCart()
-      toast.success(`Order ${order.orderNumber} placed successfully.`)
-      navigate('/ordertracking', { replace: true })
+      window.location.href = khaltiPayment.paymentUrl
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Could not place order.')
-    } finally {
       setSubmitting(false)
     }
   }
@@ -129,35 +152,75 @@ const Checkout = () => {
           <section className="rounded-2xl border border-gray-200 bg-white p-6 md:p-8 shadow-sm">
             <h2 className="text-xl font-bold text-gray-900 mb-4">Payment Method</h2>
             <div className="space-y-3">
-              <div
-                className="h-20 flex items-center gap-3 rounded-xl border-2 border-primary bg-primary/5 px-4 cursor-pointer"
-                aria-current="true"
+              <button
+                type="button"
+                onClick={() => setPaymentMethod('COD')}
+                className={`h-20 w-full flex items-center gap-3 rounded-xl border-2 px-4 text-left cursor-pointer transition-colors ${
+                  paymentMethod === 'COD'
+                    ? 'border-primary bg-primary/5'
+                    : 'border-gray-200 bg-white hover:border-gray-300'
+                }`}
+                aria-pressed={paymentMethod === 'COD'}
               >
-                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 border-primary">
-                  <span className="h-2.5 w-2.5 rounded-full bg-primary" />
+                <span
+                  className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${
+                    paymentMethod === 'COD' ? 'border-primary' : 'border-gray-300'
+                  }`}
+                >
+                  {paymentMethod === 'COD' ? (
+                    <span className="h-2.5 w-2.5 rounded-full bg-primary" />
+                  ) : null}
                 </span>
                 <HiOutlineBanknotes className="h-7 w-7 text-gray-700 shrink-0" />
                 <div className="min-w-0">
                   <p className="font-semibold text-gray-900">Cash on Delivery (COD)</p>
                   <p className="text-sm text-gray-500">Pay when your order arrives.</p>
                 </div>
-              </div>
+              </button>
 
-              <div
-                className="h-20 flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 px-4 opacity-60 cursor-not-allowed"
-                aria-disabled="true"
+              <button
+                type="button"
+                onClick={() => setPaymentMethod('ESEWA')}
+                className={`h-20 w-full flex items-center gap-3 rounded-xl border-2 px-4 text-left cursor-pointer transition-colors ${
+                  paymentMethod === 'ESEWA'
+                    ? 'border-primary bg-primary/5'
+                    : 'border-gray-200 bg-white hover:border-gray-300'
+                }`}
+                aria-pressed={paymentMethod === 'ESEWA'}
               >
-                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 border-gray-300" />
+                <span
+                  className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${
+                    paymentMethod === 'ESEWA' ? 'border-primary' : 'border-gray-300'
+                  }`}
+                >
+                  {paymentMethod === 'ESEWA' ? (
+                    <span className="h-2.5 w-2.5 rounded-full bg-primary" />
+                  ) : null}
+                </span>
                 <img src={EsewaLogo} alt="eSewa" className="h-8 w-auto shrink-0 object-contain" />
-              </div>
+              </button>
 
-              <div
-                className="h-20 flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 px-4 opacity-60 cursor-not-allowed"
-                aria-disabled="true"
+              <button
+                type="button"
+                onClick={() => setPaymentMethod('KHALTI')}
+                className={`h-20 w-full flex items-center gap-3 rounded-xl border-2 px-4 text-left cursor-pointer transition-colors ${
+                  paymentMethod === 'KHALTI'
+                    ? 'border-primary bg-primary/5'
+                    : 'border-gray-200 bg-white hover:border-gray-300'
+                }`}
+                aria-pressed={paymentMethod === 'KHALTI'}
               >
-                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 border-gray-300" />
+                <span
+                  className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${
+                    paymentMethod === 'KHALTI' ? 'border-primary' : 'border-gray-300'
+                  }`}
+                >
+                  {paymentMethod === 'KHALTI' ? (
+                    <span className="h-2.5 w-2.5 rounded-full bg-primary" />
+                  ) : null}
+                </span>
                 <img src={KhaltiLogo} alt="Khalti" className="h-8 w-auto shrink-0 object-contain" />
-              </div>
+              </button>
             </div>
           </section>
 
@@ -227,7 +290,17 @@ const Checkout = () => {
               disabled={!canPlaceOrder || submitting || authLoading}
               className="mt-6 w-full rounded-lg bg-primary py-3 text-white font-semibold hover:opacity-90 transition-opacity cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {submitting ? 'Placing order…' : 'Place Order'}
+              {submitting
+                ? paymentMethod === 'COD'
+                  ? 'Placing order…'
+                  : paymentMethod === 'ESEWA'
+                    ? 'Redirecting to eSewa…'
+                    : 'Redirecting to Khalti…'
+                : paymentMethod === 'COD'
+                  ? 'Place Order'
+                  : paymentMethod === 'ESEWA'
+                    ? 'Pay with eSewa'
+                    : 'Pay with Khalti'}
             </button>
           </aside>
         </div>
