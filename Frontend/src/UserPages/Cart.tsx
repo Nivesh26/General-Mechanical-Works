@@ -66,7 +66,7 @@ const Cart = () => {
       const display = rows.map(toDisplayItem)
       setItems(display)
       setQuantities(Object.fromEntries(rows.map((r) => [r.id, r.quantity])))
-      setSelectedIds(display.map((d) => d.id))
+      setSelectedIds([])
       await refreshCart()
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Could not load cart.')

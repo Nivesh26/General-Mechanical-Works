@@ -37,6 +37,9 @@ import EsewaPaymentResult from './UserPages/EsewaPaymentResult'
 import KhaltiPaymentResult from './UserPages/KhaltiPaymentResult'
 import { AdminPrivateRoute } from './components/AdminPrivateRoute'
 import { UserPrivateRoute } from './components/UserPrivateRoute'
+import { ScrollReveal } from './components/ScrollReveal'
+
+const PAGE_ROUTE_FADE_MS = 160
 
 /** Scroll to top on every navigation so new pages don’t open mid-page. */
 function ScrollToTop() {
@@ -46,76 +49,79 @@ function ScrollToTop() {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
     document.documentElement.scrollTop = 0
     document.body.scrollTop = 0
+    document.querySelectorAll('.admin-main-scroll').forEach((el) => {
+      el.scrollTop = 0
+    })
   }, [pathname, search])
 
   return null
 }
 
-const PageTransition = ({ children }: { children: ReactNode }) => {
+function AnimatedRoutes() {
   const location = useLocation()
-  const [visible, setVisible] = useState(false)
+  const [displayLocation, setDisplayLocation] = useState(location)
+  const [phase, setPhase] = useState<'in' | 'out'>('in')
 
   useEffect(() => {
-    setVisible(false)
-    const frame = requestAnimationFrame(() => setVisible(true))
-    return () => cancelAnimationFrame(frame)
-  }, [location.pathname])
+    const samePath = location.pathname === displayLocation.pathname
+    const sameSearch = location.search === displayLocation.search
+    if (samePath && sameSearch) return
+
+    setPhase('out')
+    const timer = window.setTimeout(() => {
+      setDisplayLocation(location)
+      setPhase('in')
+    }, PAGE_ROUTE_FADE_MS)
+
+    return () => window.clearTimeout(timer)
+  }, [location, displayLocation])
+
+  const adminPage = (node: ReactNode) => <AdminPrivateRoute>{node}</AdminPrivateRoute>
+  const userPage = (node: ReactNode) => <UserPrivateRoute>{node}</UserPrivateRoute>
 
   return (
-    <div className={`page-fade ${visible ? 'page-fade-in' : ''}`}>
-      {children}
+    <div className={`page-route ${phase === 'in' ? 'page-route-in' : 'page-route-out'}`}>
+      <Routes location={displayLocation}>
+        {/* User */}
+        <Route path="/" element={<Home />} />
+        <Route path="/aboutus" element={<Aboutus />} />
+        <Route path="/services" element={<Service />} />
+        <Route path="/products" element={<Products />} />
+        <Route path="/contactus" element={<Contactus />} />
+        <Route path="/profile" element={<Profile />} />
+        <Route path="/profilevehicles" element={<Vehicles />} />
+        <Route path="/profilesecurity" element={<ProfileSecurity />} />
+        <Route path="/productdetail/:id" element={<Productdetail />} />
+        <Route path="/cart" element={userPage(<Cart />)} />
+        <Route path="/ordertracking" element={userPage(<Ordertracking />)} />
+        <Route path="/blogs/:id" element={<Blogs />} />
+        <Route path="/checkout" element={userPage(<Checkout />)} />
+        <Route path="/payment/esewa/result" element={<EsewaPaymentResult />} />
+        <Route path="/payment/khalti/result" element={<KhaltiPaymentResult />} />
+
+        {/* Login and Signup */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+        <Route path="/forgetpassword" element={<Forgetpassword />} />
+
+        {/* Admin (requires login + ADMIN role) */}
+        <Route path="/admindashboard" element={adminPage(<AdminDashboard />)} />
+        <Route path="/adminorders" element={adminPage(<AdminOrders />)} />
+        <Route path="/adminproducts" element={adminPage(<AdminProducts />)} />
+        <Route path="/adminusers" element={adminPage(<AdminUsers />)} />
+        <Route path="/adminsettings" element={adminPage(<AdminSetting />)} />
+        <Route path="/adminreviews" element={adminPage(<AdminReviews />)} />
+        <Route path="/adminmessages" element={adminPage(<AdminMessage />)} />
+        <Route path="/adminappointments" element={adminPage(<AdminAppointments />)} />
+        <Route path="/adminservice" element={adminPage(<AdminService />)} />
+        <Route path="/adminbills" element={adminPage(<AdminBill />)} />
+        <Route path="/adminblogs" element={adminPage(<AdminBlog />)} />
+        <Route path="/adminoffers" element={adminPage(<AdminOffer />)} />
+        <Route path="/adminservicereviews" element={adminPage(<AdminServiceReviews />)} />
+        <Route path="/adminpaymentsinvoices" element={adminPage(<AdminPayments />)} />
+        <Route path="/adminuserprofile" element={adminPage(<AdminUserProfile />)} />
+      </Routes>
     </div>
-  )
-}
-
-function AppRoutes() {
-  const withFade = (node: ReactNode) => <PageTransition>{node}</PageTransition>
-  const adminPage = (node: ReactNode) =>
-    withFade(<AdminPrivateRoute>{node}</AdminPrivateRoute>)
-  const userPage = (node: ReactNode) =>
-    withFade(<UserPrivateRoute>{node}</UserPrivateRoute>)
-
-  return (
-    <Routes>
-      {/* User */}
-      <Route path="/" element={withFade(<Home />)} />
-      <Route path="/aboutus" element={withFade(<Aboutus />)} />
-      <Route path="/services" element={withFade(<Service />)} />
-      <Route path="/products" element={withFade(<Products />)} />
-      <Route path="/contactus" element={withFade(<Contactus />)} />
-      <Route path="/profile" element={withFade(<Profile />)} />
-      <Route path="/profilevehicles" element={withFade(<Vehicles />)} />
-      <Route path="/profilesecurity" element={withFade(<ProfileSecurity />)} />
-      <Route path="/productdetail/:id" element={withFade(<Productdetail />)} />
-      <Route path="/cart" element={userPage(<Cart />)} />
-      <Route path="/ordertracking" element={userPage(<Ordertracking />)} />
-      <Route path="/blogs/:id" element={withFade(<Blogs />)} />
-      <Route path="/checkout" element={userPage(<Checkout />)} />
-      <Route path="/payment/esewa/result" element={withFade(<EsewaPaymentResult />)} />
-      <Route path="/payment/khalti/result" element={withFade(<KhaltiPaymentResult />)} />
-
-      {/* Login and Signup */}
-      <Route path="/login" element={withFade(<Login />)} />
-      <Route path="/signup" element={withFade(<Signup />)} />
-      <Route path="/forgetpassword" element={withFade(<Forgetpassword />)} />
-
-      {/* Admin (requires login + ADMIN role) */}
-      <Route path="/admindashboard" element={adminPage(<AdminDashboard />)} />
-      <Route path="/adminorders" element={adminPage(<AdminOrders />)} />
-      <Route path="/adminproducts" element={adminPage(<AdminProducts />)} />
-      <Route path="/adminusers" element={adminPage(<AdminUsers />)} />
-      <Route path="/adminsettings" element={adminPage(<AdminSetting />)} />
-      <Route path="/adminreviews" element={adminPage(<AdminReviews />)} />
-      <Route path="/adminmessages" element={adminPage(<AdminMessage />)} />
-      <Route path="/adminappointments" element={adminPage(<AdminAppointments />)} />
-      <Route path="/adminservice" element={adminPage(<AdminService />)} />
-      <Route path="/adminbills" element={adminPage(<AdminBill />)} />
-      <Route path="/adminblogs" element={adminPage(<AdminBlog />)} />
-      <Route path="/adminoffers" element={adminPage(<AdminOffer />)} />
-      <Route path="/adminservicereviews" element={adminPage(<AdminServiceReviews />)} />
-      <Route path="/adminpaymentsinvoices" element={adminPage(<AdminPayments />)} />
-      <Route path="/adminuserprofile" element={adminPage(<AdminUserProfile />)} />
-    </Routes>
   )
 }
 
@@ -131,7 +137,9 @@ function App() {
   return (
     <BrowserRouter>
       <ScrollToTop />
-      <AppRoutes />
+      <ScrollReveal>
+        <AnimatedRoutes />
+      </ScrollReveal>
       <ChatbotOnUserPages />
     </BrowserRouter>
   )
