@@ -1,6 +1,6 @@
-import type { ChangeEvent, CSSProperties, FormEvent } from 'react'
-import { useRef, useState } from 'react'
-import { HiEye, HiEyeSlash, HiOutlinePencilSquare } from 'react-icons/hi2'
+import type { CSSProperties, FormEvent } from 'react'
+import { useState } from 'react'
+import { HiEye, HiEyeSlash } from 'react-icons/hi2'
 import { toast } from 'react-toastify'
 import AdminNavbar from '../AdminComponent/AdminNavbar'
 import { ADMIN_MAIN_SCROLL_CLASS, ADMIN_PAGE_HEADER_SPACING, ADMIN_PAGE_SUBTITLE, ADMIN_PAGE_TITLE } from '../AdminComponent/adminMainStyles'
@@ -11,15 +11,6 @@ type ProfileErrors = Partial<Record<'name' | 'email' | 'phone', string>>
 type PasswordErrors = Partial<Record<'current' | 'next' | 'confirm', string>>
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-const AVATAR_MAX_BYTES = 2 * 1024 * 1024
-
-function initialsFromName(value: string) {
-  const parts = value.trim().split(/\s+/).filter(Boolean)
-  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase()
-  if (parts.length === 1 && parts[0].length >= 2) return parts[0].slice(0, 2).toUpperCase()
-  if (parts.length === 1) return parts[0].slice(0, 1).toUpperCase()
-  return 'A'
-}
 
 const AdminSetting = () => {
   const { token } = useAuth()
@@ -37,33 +28,6 @@ const AdminSetting = () => {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false)
   const [showNewPassword, setShowNewPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
-  const [avatarError, setAvatarError] = useState<string | null>(null)
-  const avatarFileRef = useRef<HTMLInputElement>(null)
-
-  const onAvatarFile = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    e.target.value = ''
-    setAvatarError(null)
-    if (!file) return
-    if (!file.type.startsWith('image/')) {
-      setAvatarError('Please choose an image file.')
-      return
-    }
-    if (file.size > AVATAR_MAX_BYTES) {
-      setAvatarError('Image must be 2 MB or smaller.')
-      return
-    }
-    const reader = new FileReader()
-    reader.onload = () => {
-      const dataUrl = reader.result as string
-      if (typeof dataUrl === 'string' && dataUrl.startsWith('data:image/')) {
-        setAvatarUrl(dataUrl)
-      }
-    }
-    reader.readAsDataURL(file)
-  }
 
   const validateProfile = () => {
     const next: ProfileErrors = {}
@@ -135,84 +99,6 @@ const AdminSetting = () => {
             <h2 style={cardTitleStyle}>Admin Settings</h2>
 
             <div style={{ marginBottom: '18px', paddingBottom: '16px', borderBottom: '1px solid #e2e8f0' }}>
-              <h3 style={subTitleStyle}>Admin Profile</h3>
-
-            <div style={{ marginBottom: '18px' }}>
-              <input
-                ref={avatarFileRef}
-                type="file"
-                accept="image/*"
-                onChange={onAvatarFile}
-                style={{ display: 'none' }}
-                aria-hidden
-              />
-              <div style={{ position: 'relative', width: '88px', height: '88px', flexShrink: 0 }}>
-                {avatarUrl ? (
-                  <img
-                    src={avatarUrl}
-                    alt=""
-                    style={{
-                      width: '88px',
-                      height: '88px',
-                      borderRadius: '50%',
-                      objectFit: 'cover',
-                      border: borderNormal,
-                      display: 'block',
-                      backgroundColor: '#f1f5f9',
-                    }}
-                  />
-                ) : (
-                  <div
-                    style={{
-                      width: '88px',
-                      height: '88px',
-                      borderRadius: '50%',
-                      backgroundColor: '#e2e8f0',
-                      border: borderNormal,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '26px',
-                      fontWeight: 700,
-                      color: '#64748b',
-                    }}
-                    aria-hidden
-                  >
-                    {initialsFromName(name)}
-                  </div>
-                )}
-                <button
-                  type="button"
-                  onClick={() => avatarFileRef.current?.click()}
-                  aria-label="Change profile picture"
-                  style={{
-                    position: 'absolute',
-                    right: '-2px',
-                    bottom: '-2px',
-                    width: '28px',
-                    height: '28px',
-                    borderRadius: '50%',
-                    border: '2px solid #fff',
-                    backgroundColor: '#bd162c',
-                    color: '#fff',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: 'pointer',
-                    padding: 0,
-                    boxShadow: '0 1px 4px rgba(0,0,0,0.12)',
-                  }}
-                >
-                  <HiOutlinePencilSquare style={{ width: '14px', height: '14px' }} aria-hidden />
-                </button>
-              </div>
-              {avatarError && (
-                <p style={{ ...errStyle, margin: '8px 0 0' }} role="alert">
-                  {avatarError}
-                </p>
-              )}
-            </div>
-
             <form
               onSubmit={onProfileSubmit}
               noValidate

@@ -36,7 +36,7 @@ const Footer = () => {
               <a href="#" className="text-white hover:opacity-80 transition-opacity no-underline outline-none focus:outline-none focus:ring-0" aria-label="TikTok">
                 <FaTiktok className="w-6 h-6" />
               </a>
-              <a href="#" className="text-white hover:opacity-80 transition-opacity no-underline outline-none focus:outline-none focus:ring-0" aria-label="LinkedIn">
+              <a href="https://www.linkedin.com/in/nivesh-shrestha-6318b8282" target="_blank" rel="noopener noreferrer" className="text-white hover:opacity-80 transition-opacity no-underline outline-none focus:outline-none focus:ring-0" aria-label="LinkedIn">
                 <FaLinkedin className="w-6 h-6" />
               </a>
             </div>
