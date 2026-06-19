@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom'
+
 const Copyright = () => {
   return (
     <div className="bg-[#be1e2d] text-white px-4 py-3 sm:p-4 text-center text-xs sm:text-base">
@@ -8,13 +10,13 @@ const Copyright = () => {
         Nivesh Shrestha
       </a>{" "}
       |{" "}
-      <a href="#" className="underline">
+      <Link to="/termsandpolicy#privacy" className="underline hover:opacity-90">
         Privacy Policy
-      </a>{" "}
+      </Link>{" "}
       |{" "}
-      <a href="#" className="underline">
+      <Link to="/termsandpolicy#terms" className="underline hover:opacity-90">
         Terms of Service
-      </a>
+      </Link>
     </p>
   </div>
   )

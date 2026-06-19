@@ -35,6 +35,7 @@ import AdminService from './AdminPages/AdminService'
 import Checkout from './UserPages/Checkout'
 import EsewaPaymentResult from './UserPages/EsewaPaymentResult'
 import KhaltiPaymentResult from './UserPages/KhaltiPaymentResult'
+import Termsandpolicy from './UserPages/Termsandpolicy'
 import { AdminPrivateRoute } from './components/AdminPrivateRoute'
 import { UserPrivateRoute } from './components/UserPrivateRoute'
 import { ScrollReveal } from './components/ScrollReveal'
@@ -88,6 +89,7 @@ function AnimatedRoutes() {
         <Route path="/services" element={<Service />} />
         <Route path="/products" element={<Products />} />
         <Route path="/contactus" element={<Contactus />} />
+        <Route path="/termsandpolicy" element={<Termsandpolicy />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/profilevehicles" element={<Vehicles />} />
         <Route path="/profilesecurity" element={<ProfileSecurity />} />
