@@ -5,11 +5,28 @@ function prefersReducedMotion(): boolean {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches
 }
 
-function markScrollFadeItems(container: Element, selector: string): Element[] {
+function isInViewport(el: Element, root: Element | null): boolean {
+  const rect = el.getBoundingClientRect()
+  if (root) {
+    const rootRect = root.getBoundingClientRect()
+    return rect.top < rootRect.bottom && rect.bottom > rootRect.top
+  }
+  return rect.top < window.innerHeight && rect.bottom > 0
+}
+
+function markScrollFadeItems(
+  container: Element,
+  selector: string,
+  root: Element | null,
+): Element[] {
   const items = Array.from(container.querySelectorAll(selector))
   items.forEach((el) => {
-    el.classList.remove('is-visible')
     el.classList.add('scroll-fade-item')
+    if (isInViewport(el, root)) {
+      el.classList.add('is-visible')
+    } else {
+      el.classList.remove('is-visible')
+    }
   })
   return items
 }
@@ -21,6 +38,7 @@ function collectFadeTargets(): { items: Element[]; root: Element | null }[] {
     const items = markScrollFadeItems(
       adminMain,
       ':scope > section, :scope > header, :scope > div',
+      adminMain,
     )
     if (items.length > 0) {
       groups.push({ items, root: adminMain })
@@ -35,8 +53,12 @@ function collectFadeTargets(): { items: Element[]; root: Element | null }[] {
       return tag !== 'HEADER'
     })
     userItems.forEach((el) => {
-      el.classList.remove('is-visible')
       el.classList.add('scroll-fade-item')
+      if (isInViewport(el, null)) {
+        el.classList.add('is-visible')
+      } else {
+        el.classList.remove('is-visible')
+      }
     })
     if (userItems.length > 0) {
       groups.push({ items: userItems, root: null })
@@ -92,7 +114,7 @@ export function ScrollReveal({ children }: { children: ReactNode }) {
     const timer = window.setTimeout(() => {
       cleanup()
       cleanup = setupScrollReveal()
-    }, 80)
+    }, 40)
 
     return () => {
       cancelAnimationFrame(frame)

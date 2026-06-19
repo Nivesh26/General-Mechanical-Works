@@ -40,7 +40,7 @@ import { AdminPrivateRoute } from './components/AdminPrivateRoute'
 import { UserPrivateRoute } from './components/UserPrivateRoute'
 import { ScrollReveal } from './components/ScrollReveal'
 
-const PAGE_ROUTE_FADE_MS = 90
+const PAGE_ROUTE_FADE_MS = 35
 
 /** Scroll to top on every navigation so new pages don’t open mid-page. */
 function ScrollToTop() {
