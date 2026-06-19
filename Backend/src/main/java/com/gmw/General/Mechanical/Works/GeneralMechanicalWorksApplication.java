@@ -9,6 +9,7 @@ import com.gmw.General.Mechanical.Works.config.JwtProperties;
 import com.gmw.General.Mechanical.Works.payment.AppUrlProperties;
 import com.gmw.General.Mechanical.Works.payment.EsewaProperties;
 import com.gmw.General.Mechanical.Works.payment.KhaltiProperties;
+import com.gmw.General.Mechanical.Works.storage.CloudinaryProperties;
 
 @SpringBootApplication
 @EnableConfigurationProperties({
@@ -16,7 +17,8 @@ import com.gmw.General.Mechanical.Works.payment.KhaltiProperties;
 		EmailProperties.class,
 		EsewaProperties.class,
 		KhaltiProperties.class,
-		AppUrlProperties.class })
+		AppUrlProperties.class,
+		CloudinaryProperties.class })
 public class GeneralMechanicalWorksApplication {
 
 	public static void main(String[] args) {

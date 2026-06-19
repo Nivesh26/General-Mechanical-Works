@@ -1,16 +1,10 @@
 package com.gmw.General.Mechanical.Works.product;
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.math.BigDecimal;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.Set;
-import java.util.UUID;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -20,6 +14,9 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.gmw.General.Mechanical.Works.storage.ImageStorageService;
+import com.gmw.General.Mechanical.Works.storage.ImageStorageService.Folder;
+
 @Service
 public class ProductService {
 
@@ -28,18 +25,12 @@ public class ProductService {
 	public static final int MAX_DESCRIPTION_LENGTH = 5000;
 	public static final int MAX_BULLET_POINTS_LENGTH = 8000;
 
-	private static final Set<String> ALLOWED_IMAGE_TYPES = Set.of(
-			"image/jpeg",
-			"image/png",
-			"image/webp",
-			"image/gif");
-	private static final String PRODUCT_WEB_PREFIX = "/uploads/products/";
-	private static final Path PRODUCT_STORAGE_DIR = Path.of("uploads", "products");
-
 	private final ProductRepository productRepository;
+	private final ImageStorageService imageStorageService;
 
-	public ProductService(ProductRepository productRepository) {
+	public ProductService(ProductRepository productRepository, ImageStorageService imageStorageService) {
 		this.productRepository = productRepository;
+		this.imageStorageService = imageStorageService;
 	}
 
 	@Transactional(readOnly = true)
@@ -144,7 +135,7 @@ public class ProductService {
 				if (file == null || file.isEmpty()) {
 					continue;
 				}
-				added.add(storeImage(file));
+				added.add(imageStorageService.upload(file, Folder.PRODUCTS, MAX_IMAGE_BYTES));
 			}
 			base.addAll(added);
 		}
@@ -286,71 +277,17 @@ public class ProductService {
 			if (file == null || file.isEmpty()) {
 				continue;
 			}
-			paths.add(storeImage(file));
+			paths.add(imageStorageService.upload(file, Folder.PRODUCTS, MAX_IMAGE_BYTES));
 		}
 		return paths;
 	}
 
-	private static String storeImage(MultipartFile file) {
-		if (file.getSize() > MAX_IMAGE_BYTES) {
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Each image must be 5 MB or smaller");
-		}
-		String contentType = file.getContentType();
-		if (contentType == null || !ALLOWED_IMAGE_TYPES.contains(contentType.toLowerCase(Locale.ROOT))) {
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Use JPEG, PNG, WebP, or GIF");
-		}
-		String ext = extensionFor(contentType.toLowerCase(Locale.ROOT));
-		String fileName = UUID.randomUUID() + ext;
-		Path destination = PRODUCT_STORAGE_DIR.resolve(fileName);
-		try {
-			Files.createDirectories(PRODUCT_STORAGE_DIR);
-			try (InputStream in = file.getInputStream()) {
-				Files.copy(in, destination, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-			}
-		} catch (IOException e) {
-			throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Could not store file");
-		}
-		return PRODUCT_WEB_PREFIX + fileName;
-	}
-
-	private static String extensionFor(String contentType) {
-		return switch (contentType) {
-			case "image/jpeg" -> ".jpg";
-			case "image/png" -> ".png";
-			case "image/webp" -> ".webp";
-			case "image/gif" -> ".gif";
-			default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Use JPEG, PNG, WebP, or GIF");
-		};
-	}
-
-	private static void deleteStoredPaths(List<String> webPaths) {
+	private void deleteStoredPaths(List<String> webPaths) {
 		if (webPaths == null) {
 			return;
 		}
 		for (String webPath : webPaths) {
-			deleteStoredFileIfAny(webPath);
-		}
-	}
-
-	private static void deleteStoredFileIfAny(String webPath) {
-		if (!StringUtils.hasText(webPath)) {
-			return;
-		}
-		if (!webPath.startsWith(PRODUCT_WEB_PREFIX)) {
-			return;
-		}
-		String fileName = webPath.substring(PRODUCT_WEB_PREFIX.length());
-		if (fileName.isBlank() || fileName.contains("/") || fileName.contains("\\")) {
-			return;
-		}
-		Path filePath = PRODUCT_STORAGE_DIR.resolve(fileName).normalize();
-		if (!filePath.startsWith(PRODUCT_STORAGE_DIR.normalize())) {
-			return;
-		}
-		try {
-			Files.deleteIfExists(filePath);
-		} catch (IOException ignored) {
-			// Non-fatal cleanup failure.
+			imageStorageService.deleteIfStored(webPath);
 		}
 	}
 }

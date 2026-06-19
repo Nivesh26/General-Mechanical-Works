@@ -384,6 +384,9 @@ public class SchemaMigrationConfig {
 					SET `status` = 'CANCELLED', `cancelled_at` = NOW(), `pending_cart_line_ids` = NULL
 					WHERE `payment_method` = 'KHALTI' AND `paid` = 0 AND `status` = 'PENDING'
 					""");
+
+			jdbcTemplate.execute(
+					"ALTER TABLE `product` MODIFY COLUMN `image_paths` TEXT NOT NULL");
 		};
 	}
 }

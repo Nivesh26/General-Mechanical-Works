@@ -4,7 +4,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
-final class ProductJson {
+public final class ProductJson {
 
 	/** Unlikely in SKU, paths, or size labels — used instead of JSON (no Jackson on classpath). */
 	private static final String DELIM = "\u001E";
@@ -12,7 +12,7 @@ final class ProductJson {
 	private ProductJson() {
 	}
 
-	static List<String> readStringList(String raw) {
+	public static List<String> readStringList(String raw) {
 		if (raw == null || raw.isBlank()) {
 			return List.of();
 		}
@@ -25,7 +25,7 @@ final class ProductJson {
 				.toList();
 	}
 
-	static String writeStringList(List<String> values) {
+	public static String writeStringList(List<String> values) {
 		if (values == null || values.isEmpty()) {
 			return "";
 		}

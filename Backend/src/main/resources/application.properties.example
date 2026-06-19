@@ -44,3 +44,10 @@ app.esewa.status-url=https://rc.esewa.com.np/api/epay/transaction/status/
 # Example: app.khalti.secret-key=${KHALTI_SECRET_KEY:your_key_here}
 app.khalti.secret-key=${KHALTI_SECRET_KEY:}
 app.khalti.api-base-url=https://dev.khalti.com/api/v2
+
+# Cloudinary — image storage (replaces Backend/uploads). Get keys from cloudinary.com dashboard.
+app.cloudinary.cloud-name=
+app.cloudinary.api-key=
+app.cloudinary.api-secret=
+# On startup, upload any remaining /uploads/... paths to Cloudinary and update the database.
+app.cloudinary.migrate-local-uploads=true

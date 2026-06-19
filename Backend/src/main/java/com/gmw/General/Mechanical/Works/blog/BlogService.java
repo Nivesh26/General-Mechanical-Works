@@ -1,15 +1,7 @@
 package com.gmw.General.Mechanical.Works.blog;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Locale;
-import java.util.Set;
-import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -18,6 +10,8 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.gmw.General.Mechanical.Works.storage.ImageStorageService;
+import com.gmw.General.Mechanical.Works.storage.ImageStorageService.Folder;
 import com.gmw.General.Mechanical.Works.user.User;
 import com.gmw.General.Mechanical.Works.user.UserRepository;
 
@@ -26,25 +20,20 @@ public class BlogService {
 
 	public static final int MAX_IMAGE_BYTES = 4 * 1024 * 1024;
 
-	private static final Set<String> ALLOWED_IMAGE_TYPES = Set.of(
-			"image/jpeg",
-			"image/png",
-			"image/webp",
-			"image/gif");
-	private static final String BLOG_WEB_PREFIX = "/uploads/blogs/";
-	private static final Path BLOG_STORAGE_DIR = Path.of("uploads", "blogs");
-
 	private final BlogRepository blogRepository;
 	private final BlogLikeRepository blogLikeRepository;
 	private final UserRepository userRepository;
+	private final ImageStorageService imageStorageService;
 
 	public BlogService(
 			BlogRepository blogRepository,
 			BlogLikeRepository blogLikeRepository,
-			UserRepository userRepository) {
+			UserRepository userRepository,
+			ImageStorageService imageStorageService) {
 		this.blogRepository = blogRepository;
 		this.blogLikeRepository = blogLikeRepository;
 		this.userRepository = userRepository;
+		this.imageStorageService = imageStorageService;
 	}
 
 	@Transactional(readOnly = true)
@@ -78,7 +67,7 @@ public class BlogService {
 		blog.setTitle(title.trim());
 		blog.setDateLabel(dateLabel.trim());
 		blog.setBody(body.trim());
-		blog.setImagePath(storeImage(file, null));
+		blog.setImagePath(imageStorageService.upload(file, Folder.BLOGS, MAX_IMAGE_BYTES));
 		blog.setLikeCount(0);
 		blog.setCreatedAt(LocalDateTime.now());
 		return BlogMapper.toDto(blogRepository.save(blog));
@@ -93,7 +82,8 @@ public class BlogService {
 		blog.setDateLabel(dateLabel.trim());
 		blog.setBody(body.trim());
 		if (file != null && !file.isEmpty()) {
-			blog.setImagePath(storeImage(file, blog.getImagePath()));
+			imageStorageService.deleteIfStored(blog.getImagePath());
+			blog.setImagePath(imageStorageService.upload(file, Folder.BLOGS, MAX_IMAGE_BYTES));
 		}
 		return BlogMapper.toDto(blogRepository.save(blog));
 	}
@@ -102,7 +92,7 @@ public class BlogService {
 	public void delete(Long id) {
 		Blog blog = blogRepository.findById(id)
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Blog not found"));
-		deleteStoredFileIfAny(blog.getImagePath());
+		imageStorageService.deleteIfStored(blog.getImagePath());
 		blogRepository.delete(blog);
 	}
 
@@ -161,60 +151,5 @@ public class BlogService {
 		if (file == null || file.isEmpty()) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cover image is required");
 		}
-	}
-
-	private static String extensionFor(String contentType) {
-		return switch (contentType) {
-			case "image/jpeg" -> ".jpg";
-			case "image/png" -> ".png";
-			case "image/webp" -> ".webp";
-			case "image/gif" -> ".gif";
-			default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unsupported file type");
-		};
-	}
-
-	private static void deleteStoredFileIfAny(String webPath) {
-		if (!StringUtils.hasText(webPath)) {
-			return;
-		}
-		if (!webPath.startsWith(BLOG_WEB_PREFIX)) {
-			return;
-		}
-		String fileName = webPath.substring(BLOG_WEB_PREFIX.length());
-		if (fileName.isBlank() || fileName.contains("/") || fileName.contains("\\")) {
-			return;
-		}
-		Path filePath = BLOG_STORAGE_DIR.resolve(fileName).normalize();
-		if (!filePath.startsWith(BLOG_STORAGE_DIR.normalize())) {
-			return;
-		}
-		try {
-			Files.deleteIfExists(filePath);
-		} catch (IOException ignored) {
-			// Non-fatal cleanup failure.
-		}
-	}
-
-	private String storeImage(MultipartFile file, String currentWebPath) {
-		if (file.getSize() > MAX_IMAGE_BYTES) {
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Image must be 4 MB or smaller");
-		}
-		String contentType = file.getContentType();
-		if (contentType == null || !ALLOWED_IMAGE_TYPES.contains(contentType.toLowerCase(Locale.ROOT))) {
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Use JPEG, PNG, WebP, or GIF");
-		}
-		deleteStoredFileIfAny(currentWebPath);
-		String ext = extensionFor(contentType.toLowerCase(Locale.ROOT));
-		String fileName = UUID.randomUUID() + ext;
-		Path destination = BLOG_STORAGE_DIR.resolve(fileName);
-		try {
-			Files.createDirectories(BLOG_STORAGE_DIR);
-			try (InputStream in = file.getInputStream()) {
-				Files.copy(in, destination, StandardCopyOption.REPLACE_EXISTING);
-			}
-		} catch (IOException e) {
-			throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Could not store file");
-		}
-		return BLOG_WEB_PREFIX + fileName;
 	}
 }

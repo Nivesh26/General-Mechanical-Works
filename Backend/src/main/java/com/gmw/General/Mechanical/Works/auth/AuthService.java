@@ -1,10 +1,5 @@
 package com.gmw.General.Mechanical.Works.auth;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -25,6 +20,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import com.gmw.General.Mechanical.Works.config.JwtService;
+import com.gmw.General.Mechanical.Works.storage.ImageStorageService;
+import com.gmw.General.Mechanical.Works.storage.ImageStorageService.Folder;
 import com.gmw.General.Mechanical.Works.user.Role;
 import com.gmw.General.Mechanical.Works.user.User;
 import com.gmw.General.Mechanical.Works.user.UserRepository;
@@ -40,10 +37,6 @@ public class AuthService {
 			"image/png",
 			"image/webp",
 			"image/gif");
-	private static final String AVATAR_WEB_PREFIX = "/uploads/profiles/";
-	private static final Path AVATAR_STORAGE_DIR = Path.of("uploads", "profiles");
-	private static final String COVER_WEB_PREFIX = "/uploads/covers/";
-	private static final Path COVER_STORAGE_DIR = Path.of("uploads", "covers");
 
 	private final UserRepository userRepository;
 	private final PasswordEncoder passwordEncoder;
@@ -52,6 +45,7 @@ public class AuthService {
 	private final LoginOtpService loginOtpService;
 	private final EmailService emailService;
 	private final TransactionTemplate transactionTemplate;
+	private final ImageStorageService imageStorageService;
 
 	public AuthService(
 			UserRepository userRepository,
@@ -60,7 +54,8 @@ public class AuthService {
 			GoogleTokenVerifier googleTokenVerifier,
 			LoginOtpService loginOtpService,
 			EmailService emailService,
-			TransactionTemplate transactionTemplate) {
+			TransactionTemplate transactionTemplate,
+			ImageStorageService imageStorageService) {
 		this.userRepository = userRepository;
 		this.passwordEncoder = passwordEncoder;
 		this.jwtService = jwtService;
@@ -68,6 +63,7 @@ public class AuthService {
 		this.loginOtpService = loginOtpService;
 		this.emailService = emailService;
 		this.transactionTemplate = transactionTemplate;
+		this.imageStorageService = imageStorageService;
 	}
 
 	public AuthResponse signup(SignupRequest request) {
@@ -251,8 +247,9 @@ public class AuthService {
 			return;
 		}
 		String current = user.getProfilePicture();
-		if (StringUtils.hasText(current) && current.startsWith(AVATAR_WEB_PREFIX)) {
-			deleteStoredFileIfAny(current, AVATAR_WEB_PREFIX, AVATAR_STORAGE_DIR);
+		if (StringUtils.hasText(current)
+				&& (imageStorageService.isLocalUploadPath(current) || imageStorageService.isCloudinaryUrl(current))) {
+			imageStorageService.deleteIfStored(current);
 		}
 		user.setProfilePicture(picture);
 	}
@@ -388,7 +385,8 @@ public class AuthService {
 		}
 		User user = userRepository.findByEmailIgnoreCase(email.trim().toLowerCase())
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
-		String webPath = storeImage(file, user.getProfilePicture(), MAX_AVATAR_BYTES, AVATAR_STORAGE_DIR, AVATAR_WEB_PREFIX);
+		imageStorageService.deleteIfStored(user.getProfilePicture());
+		String webPath = imageStorageService.upload(file, Folder.PROFILES, MAX_AVATAR_BYTES, ALLOWED_AVATAR_CONTENT_TYPES);
 		user.setProfilePicture(webPath);
 		return toProfileDto(userRepository.save(user));
 	}
@@ -400,7 +398,8 @@ public class AuthService {
 		}
 		User user = userRepository.findByEmailIgnoreCase(email.trim().toLowerCase())
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
-		String webPath = storeImage(file, user.getCoverPhoto(), MAX_COVER_BYTES, COVER_STORAGE_DIR, COVER_WEB_PREFIX);
+		imageStorageService.deleteIfStored(user.getCoverPhoto());
+		String webPath = imageStorageService.upload(file, Folder.COVERS, MAX_COVER_BYTES, ALLOWED_AVATAR_CONTENT_TYPES);
 		user.setCoverPhoto(webPath);
 		return toProfileDto(userRepository.save(user));
 	}
@@ -409,7 +408,7 @@ public class AuthService {
 	public UserProfileDto clearAvatar(String email) {
 		User user = userRepository.findByEmailIgnoreCase(email.trim().toLowerCase())
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
-		deleteStoredFileIfAny(user.getProfilePicture(), AVATAR_WEB_PREFIX, AVATAR_STORAGE_DIR);
+		imageStorageService.deleteIfStored(user.getProfilePicture());
 		user.setProfilePicture(null);
 		return toProfileDto(userRepository.save(user));
 	}
@@ -418,7 +417,7 @@ public class AuthService {
 	public UserProfileDto clearCoverPhoto(String email) {
 		User user = userRepository.findByEmailIgnoreCase(email.trim().toLowerCase())
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
-		deleteStoredFileIfAny(user.getCoverPhoto(), COVER_WEB_PREFIX, COVER_STORAGE_DIR);
+		imageStorageService.deleteIfStored(user.getCoverPhoto());
 		user.setCoverPhoto(null);
 		return toProfileDto(userRepository.save(user));
 	}
@@ -458,57 +457,5 @@ public class AuthService {
 
 	private static boolean hasAvatar(User user) {
 		return StringUtils.hasText(user.getProfilePicture());
-	}
-
-	private static String extensionFor(String contentType) {
-		return switch (contentType) {
-			case "image/jpeg" -> ".jpg";
-			case "image/png" -> ".png";
-			case "image/webp" -> ".webp";
-			case "image/gif" -> ".gif";
-			default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unsupported file type");
-		};
-	}
-
-	private static void deleteStoredFileIfAny(String webPath, String prefix, Path storageDir) {
-		if (!StringUtils.hasText(webPath)) return;
-		if (!webPath.startsWith(prefix)) return;
-		String fileName = webPath.substring(prefix.length());
-		if (fileName.isBlank() || fileName.contains("/") || fileName.contains("\\")) return;
-		Path filePath = storageDir.resolve(fileName).normalize();
-		if (!filePath.startsWith(storageDir.normalize())) return;
-		try {
-			Files.deleteIfExists(filePath);
-		} catch (IOException ignored) {
-			// Non-fatal: keep DB update path stable even if filesystem cleanup fails.
-		}
-	}
-
-	private String storeImage(
-			MultipartFile file,
-			String currentWebPath,
-			int maxBytes,
-			Path storageDir,
-			String webPrefix) {
-		if (file.getSize() > maxBytes) {
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Image must be " + (maxBytes / (1024 * 1024)) + " MB or smaller");
-		}
-		String contentType = file.getContentType();
-		if (contentType == null || !ALLOWED_AVATAR_CONTENT_TYPES.contains(contentType.toLowerCase(Locale.ROOT))) {
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Use JPEG, PNG, WebP, or GIF");
-		}
-		deleteStoredFileIfAny(currentWebPath, webPrefix, storageDir);
-		String ext = extensionFor(contentType.toLowerCase(Locale.ROOT));
-		String fileName = UUID.randomUUID() + ext;
-		Path destination = storageDir.resolve(fileName);
-		try {
-			Files.createDirectories(storageDir);
-			try (InputStream in = file.getInputStream()) {
-				Files.copy(in, destination, StandardCopyOption.REPLACE_EXISTING);
-			}
-		} catch (IOException e) {
-			throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Could not store file");
-		}
-		return webPrefix + fileName;
 	}
 }

@@ -44,7 +44,7 @@ public class Product {
 	@Column(nullable = false)
 	private int stock;
 
-	@Column(name = "image_paths", nullable = false, length = 12000)
+	@Column(name = "image_paths", nullable = false, columnDefinition = "TEXT")
 	private String imagePathsJson = "[]";
 
 	@Column(nullable = false)
