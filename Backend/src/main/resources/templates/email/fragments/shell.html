@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<body>
+  <!-- Header -->
+  <table th:fragment="header" role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+    <tr>
+      <td style="padding:28px 32px;text-align:center;background-color:#1e1e1f;border-radius:12px 12px 0 0;">
+        <img src="cid:gmw-logo" alt="General Mechanical Works" width="132" style="display:block;margin:0 auto;border:0;outline:none;" />
+      </td>
+    </tr>
+  </table>
+
+  <!-- Footer -->
+  <table th:fragment="footer" role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+    <tr>
+      <td style="padding:22px 32px 28px;background-color:#f8fafc;border-top:1px solid #e2e8f0;border-radius:0 0 12px 12px;text-align:center;">
+        <p style="margin:0 0 6px;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:700;color:#1e293b;"
+           th:text="${brandName}">General Mechanical Works</p>
+        <p style="margin:0 0 4px;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#64748b;"
+           th:text="${brandAddress}">Pulchowk, Lalitpur</p>
+        <p style="margin:0 0 12px;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#64748b;"
+           th:text="${brandPhone}">+977 9851050445</p>
+        <a th:href="${websiteUrl}"
+           style="font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#bd162c;text-decoration:none;font-weight:600;"
+           th:text="${websiteLabel}">Visit our website</a>
+        <p style="margin:14px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#94a3b8;">
+          &copy; <span th:text="${year}">2026</span> <span th:text="${brandName}">General Mechanical Works</span>. All rights reserved.
+        </p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
