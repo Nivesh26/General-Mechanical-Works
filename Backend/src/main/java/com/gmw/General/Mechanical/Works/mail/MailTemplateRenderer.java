@@ -71,6 +71,49 @@ public class MailTemplateRenderer {
 				plainContactMessage(name, phone, senderEmail, message));
 	}
 
+	public RenderedMail renderOrderConfirmation(OrderConfirmationMailMapper.OrderConfirmationView order) {
+		String subject = "Order confirmed — " + order.orderNumber();
+		Context context = baseContext(
+				subject,
+				"Your order " + order.orderNumber() + " is confirmed. Delivery within 3 business days.");
+		populateOrderContext(context, order);
+		context.setVariable("orderTrackingUrl", frontendUrl() + "/ordertracking");
+		context.setVariable("helpCenterUrl", frontendUrl() + "/contactus");
+		return new RenderedMail(
+				subject,
+				templateEngine.process("email/order-confirmation", context),
+				plainOrderConfirmation(order));
+	}
+
+	public RenderedMail renderOrderAdminNotification(OrderConfirmationMailMapper.OrderConfirmationView order) {
+		String subject = "New order " + order.orderNumber() + " from " + order.customerName();
+		Context context = baseContext(
+				subject,
+				order.customerName() + " placed order " + order.orderNumber() + " via " + order.paymentMethodLabel());
+		populateOrderContext(context, order);
+		return new RenderedMail(
+				subject,
+				templateEngine.process("email/order-admin-notification", context),
+				plainOrderAdminNotification(order));
+	}
+
+	private void populateOrderContext(Context context, OrderConfirmationMailMapper.OrderConfirmationView order) {
+		context.setVariable("orderNumber", order.orderNumber());
+		context.setVariable("customerName", order.customerName());
+		context.setVariable("customerEmail", order.customerEmail());
+		context.setVariable("phone", order.phone());
+		context.setVariable("address", order.address());
+		context.setVariable("paymentMethodLabel", order.paymentMethodLabel());
+		context.setVariable("subtotal", order.subtotal());
+		context.setVariable("taxAmount", order.taxAmount());
+		context.setVariable("total", order.total());
+		context.setVariable("lines", order.lines());
+	}
+
+	private String frontendUrl() {
+		return trimTrailingSlash(appUrlProperties.getFrontendUrl());
+	}
+
 	private Context baseContext(String subject, String preheader) {
 		Context context = new Context();
 		context.setVariables(baseVariables(subject, preheader));
@@ -127,6 +170,69 @@ public class MailTemplateRenderer {
 				Message:
 				%s
 				""".formatted(name, phone, senderEmail, message);
+	}
+
+	private static String plainOrderConfirmation(OrderConfirmationMailMapper.OrderConfirmationView order) {
+		StringBuilder items = new StringBuilder();
+		for (OrderConfirmationMailMapper.OrderLineView line : order.lines()) {
+			items.append("- ")
+					.append(line.productName())
+					.append(" (Qty ")
+					.append(line.quantity())
+					.append(") — ")
+					.append(line.lineTotal())
+					.append('\n');
+		}
+		return """
+				Thank you for your order, %s!
+
+				Order: %s
+				Payment: %s
+				Total: %s
+
+				Your product(s) will be delivered within 3 business days.
+
+				Items:
+				%s
+				Delivery Details
+				Name: %s
+				Email: %s
+				Phone: %s
+				Address: %s
+
+				Track your order: %s
+				Help Center: %s
+				""".formatted(
+				order.customerName(),
+				order.orderNumber(),
+				order.paymentMethodLabel(),
+				order.total(),
+				items.toString().trim(),
+				order.customerName(),
+				order.customerEmail(),
+				order.phone(),
+				order.address(),
+				"order tracking on website",
+				"contact us on website");
+	}
+
+	private static String plainOrderAdminNotification(OrderConfirmationMailMapper.OrderConfirmationView order) {
+		return """
+				New order from %s (%s)
+
+				Order: %s
+				Payment: %s
+				Total: %s
+				Phone: %s
+				Address: %s
+				""".formatted(
+				order.customerName(),
+				order.customerEmail(),
+				order.orderNumber(),
+				order.paymentMethodLabel(),
+				order.total(),
+				order.phone(),
+				order.address());
 	}
 
 	private static String trimTrailingSlash(String url) {

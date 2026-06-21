@@ -10,6 +10,25 @@
     </tr>
   </table>
 
+  <!-- Centered CTA button -->
+  <table th:fragment="ctaButton(href, label)" role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:8px 0 24px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            <td align="center" style="border-radius:8px;background-color:#bd162c;">
+              <a th:href="${href}"
+                 th:text="${label}"
+                 style="display:inline-block;padding:12px 24px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;color:#ffffff;text-decoration:none;">
+                Button
+              </a>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+
   <!-- Footer -->
   <table th:fragment="footer" role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
     <tr>

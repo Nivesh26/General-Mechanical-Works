@@ -13,9 +13,14 @@ import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.StringUtils;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.gmw.General.Mechanical.Works.auth.EmailService;
+
+import com.gmw.General.Mechanical.Works.mail.OrderConfirmationMailMapper;
 import com.gmw.General.Mechanical.Works.payment.EsewaCallbackPayload;
 import com.gmw.General.Mechanical.Works.cart.Cart;
 import com.gmw.General.Mechanical.Works.cart.CartRepository;
@@ -44,6 +49,8 @@ public class OrderService {
 	private final ProductRepository productRepository;
 	private final EsewaService esewaService;
 	private final KhaltiService khaltiService;
+	private final EmailService emailService;
+	private final OrderConfirmationMailMapper orderConfirmationMailMapper;
 
 	public OrderService(
 			ShopOrderRepository shopOrderRepository,
@@ -51,13 +58,17 @@ public class OrderService {
 			UserRepository userRepository,
 			ProductRepository productRepository,
 			EsewaService esewaService,
-			KhaltiService khaltiService) {
+			KhaltiService khaltiService,
+			EmailService emailService,
+			OrderConfirmationMailMapper orderConfirmationMailMapper) {
 		this.shopOrderRepository = shopOrderRepository;
 		this.cartRepository = cartRepository;
 		this.userRepository = userRepository;
 		this.productRepository = productRepository;
 		this.esewaService = esewaService;
 		this.khaltiService = khaltiService;
+		this.emailService = emailService;
+		this.orderConfirmationMailMapper = orderConfirmationMailMapper;
 	}
 
 	@Transactional
@@ -160,6 +171,7 @@ public class OrderService {
 		applyStockDeduction(prepared.cartLines());
 		ShopOrder saved = shopOrderRepository.save(order);
 		cartRepository.deleteAll(prepared.cartLines());
+		notifyOrderPlaced(saved);
 		return OrderMapper.toDto(saved);
 	}
 
@@ -253,7 +265,9 @@ public class OrderService {
 		order.setPendingCartLineIds(null);
 		cartRepository.deleteAll(cartLines);
 
-		return OrderMapper.toDto(shopOrderRepository.save(order));
+		ShopOrder saved = shopOrderRepository.save(order);
+		notifyOrderPlaced(saved);
+		return OrderMapper.toDto(saved);
 	}
 
 	@Transactional
@@ -300,7 +314,9 @@ public class OrderService {
 		order.setPendingCartLineIds(null);
 		cartRepository.deleteAll(cartLines);
 
-		return OrderMapper.toDto(shopOrderRepository.save(order));
+		ShopOrder saved = shopOrderRepository.save(order);
+		notifyOrderPlaced(saved);
+		return OrderMapper.toDto(saved);
 	}
 
 	@Transactional
@@ -503,6 +519,24 @@ public class OrderService {
 	private User requireUser(String email) {
 		return userRepository.findByEmailIgnoreCase(email.trim().toLowerCase())
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+	}
+
+	private void notifyOrderPlaced(ShopOrder order) {
+		var mailData = orderConfirmationMailMapper.toView(order);
+		runAfterCommit(() -> emailService.sendOrderConfirmation(mailData));
+	}
+
+	private static void runAfterCommit(Runnable action) {
+		if (TransactionSynchronizationManager.isSynchronizationActive()) {
+			TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+				@Override
+				public void afterCommit() {
+					action.run();
+				}
+			});
+		} else {
+			action.run();
+		}
 	}
 
 	private record PreparedOrder(ShopOrder order, List<Cart> cartLines) {

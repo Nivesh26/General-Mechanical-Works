@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import com.gmw.General.Mechanical.Works.config.EmailProperties;
 import com.gmw.General.Mechanical.Works.mail.HtmlMailSender;
 import com.gmw.General.Mechanical.Works.mail.MailTemplateRenderer;
+import com.gmw.General.Mechanical.Works.mail.OrderConfirmationMailMapper.OrderConfirmationView;
 
 @Service
 public class EmailService {
@@ -48,6 +49,12 @@ public class EmailService {
 				emailProperties.getFrom(),
 				senderEmail,
 				mailTemplateRenderer.renderContactMessage(name, phone, senderEmail, message));
+	}
+
+	@Async("mailTaskExecutor")
+	public void sendOrderConfirmation(OrderConfirmationView order) {
+		sendRendered(order.customerEmail(), null, mailTemplateRenderer.renderOrderConfirmation(order));
+		sendRendered(emailProperties.getFrom(), order.customerEmail(), mailTemplateRenderer.renderOrderAdminNotification(order));
 	}
 
 	private void sendRendered(String to, String replyTo, MailTemplateRenderer.RenderedMail mail) {
