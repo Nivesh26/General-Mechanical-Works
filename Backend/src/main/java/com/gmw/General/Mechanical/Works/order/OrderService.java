@@ -332,7 +332,7 @@ public class OrderService {
 
 	@Transactional
 	public OrderDto updateStatusForAdmin(Long orderId, UpdateOrderStatusRequest request) {
-		ShopOrder order = shopOrderRepository.findById(orderId)
+		ShopOrder order = shopOrderRepository.findByIdWithLines(orderId)
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
 		OrderStatus current = order.getStatus();
 		OrderStatus next = request.getStatus();
@@ -347,8 +347,27 @@ public class OrderService {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Status cannot move backwards");
 		}
 
+		if (next == current) {
+			return OrderMapper.toDto(order);
+		}
+
 		order.setStatus(next);
-		return OrderMapper.toDto(shopOrderRepository.save(order));
+		ShopOrder saved = shopOrderRepository.save(order);
+		if (isStatusEmailStatus(next)) {
+			notifyOrderStatusUpdated(saved, next);
+		}
+		return OrderMapper.toDto(saved);
+	}
+
+	private static boolean isStatusEmailStatus(OrderStatus status) {
+		return status == OrderStatus.CONFIRMED
+				|| status == OrderStatus.SHIPPED
+				|| status == OrderStatus.DELIVERED;
+	}
+
+	private void notifyOrderStatusUpdated(ShopOrder order, OrderStatus status) {
+		var mailData = orderConfirmationMailMapper.toView(order);
+		runAfterCommit(() -> emailService.sendOrderStatusUpdate(mailData, status));
 	}
 
 	@Transactional

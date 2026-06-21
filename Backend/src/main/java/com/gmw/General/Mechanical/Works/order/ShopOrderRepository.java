@@ -41,6 +41,9 @@ public interface ShopOrderRepository extends JpaRepository<ShopOrder, Long> {
 
 	Optional<ShopOrder> findByKhaltiPidx(String khaltiPidx);
 
+	@Query("SELECT o FROM ShopOrder o LEFT JOIN FETCH o.lines WHERE o.id = :id")
+	Optional<ShopOrder> findByIdWithLines(@Param("id") Long id);
+
 	@Query("""
 			SELECT o FROM ShopOrder o
 			LEFT JOIN FETCH o.lines

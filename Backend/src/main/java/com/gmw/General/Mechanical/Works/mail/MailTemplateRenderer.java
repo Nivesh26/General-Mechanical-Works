@@ -9,6 +9,7 @@ import org.thymeleaf.context.Context;
 import org.thymeleaf.spring6.SpringTemplateEngine;
 
 import com.gmw.General.Mechanical.Works.config.EmailProperties;
+import com.gmw.General.Mechanical.Works.order.OrderStatus;
 import com.gmw.General.Mechanical.Works.payment.AppUrlProperties;
 
 @Component
@@ -95,6 +96,57 @@ public class MailTemplateRenderer {
 				subject,
 				templateEngine.process("email/order-admin-notification", context),
 				plainOrderAdminNotification(order));
+	}
+
+	public RenderedMail renderOrderStatusUpdate(
+			OrderConfirmationMailMapper.OrderConfirmationView order,
+			OrderStatus status) {
+		StatusCopy copy = statusCopy(status);
+		String subject = copy.statusTag() + " — " + order.orderNumber();
+		Context context = baseContext(subject, copy.preheader() + " " + order.orderNumber());
+		populateOrderContext(context, order);
+		context.setVariable("statusTag", copy.statusTag());
+		context.setVariable("headline", copy.headline());
+		context.setVariable("statusLabel", copy.statusLabel());
+		context.setVariable("statusMessage", copy.statusMessage());
+		context.setVariable("orderTrackingUrl", frontendUrl() + "/ordertracking");
+		context.setVariable("helpCenterUrl", frontendUrl() + "/contactus");
+		return new RenderedMail(
+				subject,
+				templateEngine.process("email/order-status-update", context),
+				plainOrderStatusUpdate(order, copy));
+	}
+
+	private static StatusCopy statusCopy(OrderStatus status) {
+		return switch (status) {
+			case CONFIRMED -> new StatusCopy(
+					"Order confirmed",
+					"Your order has been confirmed",
+					"Confirmed",
+					"We have confirmed your order and are preparing your items for shipment. Expected delivery within 3 business days.",
+					"Your order has been confirmed and is being prepared.");
+			case SHIPPED -> new StatusCopy(
+					"Order shipped",
+					"Your order is on the way",
+					"Shipped",
+					"Great news! Your order has been shipped and is on its way to your delivery address.",
+					"Your order has been shipped and is on the way.");
+			case DELIVERED -> new StatusCopy(
+					"Order delivered",
+					"Your order has been delivered",
+					"Delivered",
+					"Your order has been delivered. We hope you enjoy your purchase! Thank you for shopping with us.",
+					"Your order has been delivered.");
+			case PENDING, CANCELLED -> throw new IllegalArgumentException("Unsupported order status email: " + status);
+		};
+	}
+
+	private record StatusCopy(
+			String statusTag,
+			String headline,
+			String statusLabel,
+			String statusMessage,
+			String preheader) {
 	}
 
 	private void populateOrderContext(Context context, OrderConfirmationMailMapper.OrderConfirmationView order) {
@@ -231,6 +283,39 @@ public class MailTemplateRenderer {
 				order.orderNumber(),
 				order.paymentMethodLabel(),
 				order.total(),
+				order.phone(),
+				order.address());
+	}
+
+	private static String plainOrderStatusUpdate(
+			OrderConfirmationMailMapper.OrderConfirmationView order,
+			StatusCopy copy) {
+		return """
+				Hi %s,
+
+				%s
+				Order: %s
+				Status: %s
+				Payment: %s
+				Total: %s
+
+				%s
+
+				Delivery Details
+				Name: %s
+				Email: %s
+				Phone: %s
+				Address: %s
+				""".formatted(
+				order.customerName(),
+				copy.headline(),
+				order.orderNumber(),
+				copy.statusLabel(),
+				order.paymentMethodLabel(),
+				order.total(),
+				copy.statusMessage(),
+				order.customerName(),
+				order.customerEmail(),
 				order.phone(),
 				order.address());
 	}

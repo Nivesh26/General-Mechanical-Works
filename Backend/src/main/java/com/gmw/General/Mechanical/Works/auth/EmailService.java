@@ -9,6 +9,7 @@ import com.gmw.General.Mechanical.Works.config.EmailProperties;
 import com.gmw.General.Mechanical.Works.mail.HtmlMailSender;
 import com.gmw.General.Mechanical.Works.mail.MailTemplateRenderer;
 import com.gmw.General.Mechanical.Works.mail.OrderConfirmationMailMapper.OrderConfirmationView;
+import com.gmw.General.Mechanical.Works.order.OrderStatus;
 
 @Service
 public class EmailService {
@@ -55,6 +56,11 @@ public class EmailService {
 	public void sendOrderConfirmation(OrderConfirmationView order) {
 		sendRendered(order.customerEmail(), null, mailTemplateRenderer.renderOrderConfirmation(order));
 		sendRendered(emailProperties.getFrom(), order.customerEmail(), mailTemplateRenderer.renderOrderAdminNotification(order));
+	}
+
+	@Async("mailTaskExecutor")
+	public void sendOrderStatusUpdate(OrderConfirmationView order, OrderStatus status) {
+		sendRendered(order.customerEmail(), null, mailTemplateRenderer.renderOrderStatusUpdate(order, status));
 	}
 
 	private void sendRendered(String to, String replyTo, MailTemplateRenderer.RenderedMail mail) {
