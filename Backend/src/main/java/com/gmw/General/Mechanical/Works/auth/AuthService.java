@@ -13,7 +13,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
-import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
@@ -44,7 +43,6 @@ public class AuthService {
 	private final GoogleTokenVerifier googleTokenVerifier;
 	private final LoginOtpService loginOtpService;
 	private final EmailService emailService;
-	private final TransactionTemplate transactionTemplate;
 	private final ImageStorageService imageStorageService;
 
 	public AuthService(
@@ -54,7 +52,6 @@ public class AuthService {
 			GoogleTokenVerifier googleTokenVerifier,
 			LoginOtpService loginOtpService,
 			EmailService emailService,
-			TransactionTemplate transactionTemplate,
 			ImageStorageService imageStorageService) {
 		this.userRepository = userRepository;
 		this.passwordEncoder = passwordEncoder;
@@ -62,10 +59,10 @@ public class AuthService {
 		this.googleTokenVerifier = googleTokenVerifier;
 		this.loginOtpService = loginOtpService;
 		this.emailService = emailService;
-		this.transactionTemplate = transactionTemplate;
 		this.imageStorageService = imageStorageService;
 	}
 
+	@Transactional
 	public AuthResponse signup(SignupRequest request) {
 		String normalizedEmail = request.getEmail().trim().toLowerCase();
 		String passwordHash = passwordEncoder.encode(request.getPassword());
@@ -86,7 +83,7 @@ public class AuthService {
 		}
 		user.setRole(Role.USER);
 		try {
-			User saved = transactionTemplate.execute(status -> userRepository.save(user));
+			User saved = userRepository.save(user);
 			runAfterCommit(() -> emailService.sendWelcomeEmail(saved.getEmail(), saved.getName()));
 			return buildAuthResponse(saved);
 		} catch (DataIntegrityViolationException ex) {
