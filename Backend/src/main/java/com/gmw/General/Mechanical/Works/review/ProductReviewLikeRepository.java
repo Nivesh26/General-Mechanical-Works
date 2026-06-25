@@ -17,4 +17,19 @@ public interface ProductReviewLikeRepository extends JpaRepository<ProductReview
 	List<Long> findReviewIdsByUserIdAndReviewIdIn(
 			@Param("userId") Long userId,
 			@Param("reviewIds") Collection<Long> reviewIds);
+
+	@Query("""
+			SELECT DISTINCT l.reviewId FROM ProductReviewLike l
+			WHERE l.reviewId IN :reviewIds
+			AND l.userId IN (SELECT u.id FROM AppUser u WHERE u.role = com.gmw.General.Mechanical.Works.user.Role.ADMIN)
+			""")
+	List<Long> findReviewIdsLikedByAdminIn(@Param("reviewIds") Collection<Long> reviewIds);
+
+	@Query("""
+			SELECT CASE WHEN COUNT(l) > 0 THEN true ELSE false END
+			FROM ProductReviewLike l
+			WHERE l.reviewId = :reviewId
+			AND l.userId IN (SELECT u.id FROM AppUser u WHERE u.role = com.gmw.General.Mechanical.Works.user.Role.ADMIN)
+			""")
+	boolean existsAdminLikeByReviewId(@Param("reviewId") Long reviewId);
 }

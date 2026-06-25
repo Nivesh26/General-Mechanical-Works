@@ -16,5 +16,6 @@ public record ProductReviewDto(
 		String adminReply,
 		String createdAt,
 		int likeCount,
-		boolean likedByCurrentUser) {
+		boolean likedByCurrentUser,
+		boolean likedByGmw) {
 }

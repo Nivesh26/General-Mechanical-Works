@@ -618,7 +618,7 @@ const Productdetail = () => {
                           })}
                         </div>
                       )}
-                      <div className="mb-3">
+                      <div className="mb-3 flex flex-col gap-3">
                         <button
                           type="button"
                           onClick={() => void handleToggleReviewLike(review)}
@@ -645,6 +645,20 @@ const Productdetail = () => {
                             {reviewLikeCount}
                           </span>
                         </button>
+                        {review.likedByGmw ? (
+                          <div className="inline-flex w-fit items-center gap-2 rounded-lg border border-primary/15 bg-white px-2.5 py-1.5">
+                            <div className="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full border border-gray-200 bg-white p-1">
+                              <img
+                                src={GMWlogo}
+                                alt=""
+                                className="h-full w-full object-contain object-center"
+                              />
+                            </div>
+                            <span className="text-xs font-medium text-gray-700">
+                              Liked by General Mechanical Works
+                            </span>
+                          </div>
+                        ) : null}
                       </div>
                       {adminReply ? (
                         <div className="rounded-lg border border-primary/20 bg-white px-3 py-2.5">

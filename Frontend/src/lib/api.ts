@@ -880,6 +880,7 @@ export interface ProductReviewItem {
   createdAt: string
   likeCount: number
   likedByCurrentUser: boolean
+  likedByGmw: boolean
 }
 
 export interface ReviewEligibility {

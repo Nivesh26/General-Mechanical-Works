@@ -52,20 +52,14 @@ public class ProductReviewService {
 		requireActiveProduct(productId);
 		Long userId = resolveUserId(userEmail);
 		List<ProductReview> reviews = productReviewRepository.findByProductIdWithUserOrderByCreatedAtDesc(productId);
-		Set<Long> likedReviewIds = likedReviewIdsForUser(userId, reviews);
-		return reviews.stream()
-				.map(review -> ProductReviewMapper.toDto(review, likedReviewIds.contains(review.getId())))
-				.toList();
+		return toDtoList(reviews, userId);
 	}
 
 	@Transactional(readOnly = true)
 	public List<ProductReviewDto> listAllForAdmin(String userEmail) {
 		Long userId = resolveUserId(userEmail);
 		List<ProductReview> reviews = productReviewRepository.findAllWithUserAndProductOrderByCreatedAtDesc();
-		Set<Long> likedReviewIds = likedReviewIdsForUser(userId, reviews);
-		return reviews.stream()
-				.map(review -> ProductReviewMapper.toDto(review, likedReviewIds.contains(review.getId())))
-				.toList();
+		return toDtoList(reviews, userId);
 	}
 
 	@Transactional(readOnly = true)
@@ -109,7 +103,7 @@ public class ProductReviewService {
 		review.setLikeCount(0);
 
 		ProductReview saved = productReviewRepository.save(review);
-		return ProductReviewMapper.toDto(saved, false);
+		return toDto(saved, user.getId());
 	}
 
 	@Transactional
@@ -121,7 +115,7 @@ public class ProductReviewService {
 		ProductReview review = productReviewRepository.findByIdWithDetails(reviewId)
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Review not found"));
 		if (productReviewLikeRepository.existsByReviewIdAndUserId(reviewId, userId)) {
-			return ProductReviewMapper.toDto(review, true);
+			return toDto(review, userId);
 		}
 		ProductReviewLike like = new ProductReviewLike();
 		like.setReviewId(reviewId);
@@ -129,7 +123,7 @@ public class ProductReviewService {
 		like.setCreatedAt(LocalDateTime.now());
 		productReviewLikeRepository.save(like);
 		review.setLikeCount(review.getLikeCount() + 1);
-		return ProductReviewMapper.toDto(productReviewRepository.save(review), true);
+		return toDto(productReviewRepository.save(review), userId);
 	}
 
 	@Transactional
@@ -141,11 +135,11 @@ public class ProductReviewService {
 		ProductReview review = productReviewRepository.findByIdWithDetails(reviewId)
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Review not found"));
 		if (!productReviewLikeRepository.existsByReviewIdAndUserId(reviewId, userId)) {
-			return ProductReviewMapper.toDto(review, false);
+			return toDto(review, userId);
 		}
 		productReviewLikeRepository.deleteByReviewIdAndUserId(reviewId, userId);
 		review.setLikeCount(Math.max(0, review.getLikeCount() - 1));
-		return ProductReviewMapper.toDto(productReviewRepository.save(review), false);
+		return toDto(productReviewRepository.save(review), userId);
 	}
 
 	@Transactional
@@ -155,10 +149,7 @@ public class ProductReviewService {
 		String trimmed = reply != null ? reply.trim() : "";
 		review.setAdminReply(StringUtils.hasText(trimmed) ? trimmed : null);
 		ProductReview saved = productReviewRepository.save(review);
-		Long userId = resolveUserId(userEmail);
-		boolean liked = userId != null
-				&& productReviewLikeRepository.existsByReviewIdAndUserId(reviewId, userId);
-		return ProductReviewMapper.toDto(saved, liked);
+		return toDto(saved, resolveUserId(userEmail));
 	}
 
 	@Transactional
@@ -224,12 +215,38 @@ public class ProductReviewService {
 		return new HashSet<>(productReviewLikeRepository.findReviewIdsByUserIdAndReviewIdIn(userId, reviewIds));
 	}
 
+	private Set<Long> adminLikedReviewIds(List<ProductReview> reviews) {
+		if (reviews.isEmpty()) {
+			return Set.of();
+		}
+		List<Long> reviewIds = reviews.stream().map(ProductReview::getId).toList();
+		return new HashSet<>(productReviewLikeRepository.findReviewIdsLikedByAdminIn(reviewIds));
+	}
+
+	private List<ProductReviewDto> toDtoList(List<ProductReview> reviews, Long userId) {
+		Set<Long> likedReviewIds = likedReviewIdsForUser(userId, reviews);
+		Set<Long> gmwLikedReviewIds = adminLikedReviewIds(reviews);
+		return reviews.stream()
+				.map(review -> ProductReviewMapper.toDto(
+						review,
+						likedReviewIds.contains(review.getId()),
+						gmwLikedReviewIds.contains(review.getId())))
+				.toList();
+	}
+
+	private ProductReviewDto toDto(ProductReview review, Long userId) {
+		boolean likedByCurrentUser = userId != null
+				&& productReviewLikeRepository.existsByReviewIdAndUserId(review.getId(), userId);
+		boolean likedByGmw = productReviewLikeRepository.existsAdminLikeByReviewId(review.getId());
+		return ProductReviewMapper.toDto(review, likedByCurrentUser, likedByGmw);
+	}
+
 	static final class ProductReviewMapper {
 
 		private ProductReviewMapper() {
 		}
 
-		static ProductReviewDto toDto(ProductReview review, boolean likedByCurrentUser) {
+		static ProductReviewDto toDto(ProductReview review, boolean likedByCurrentUser, boolean likedByGmw) {
 			Product product = review.getProduct();
 			User user = review.getUser();
 			List<String> productImages = product.getImagePathsList();
@@ -248,7 +265,8 @@ public class ProductReviewService {
 					review.getCreatedAt().toLocalDate().format(
 							java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy", Locale.ENGLISH)),
 					review.getLikeCount(),
-					likedByCurrentUser);
+					likedByCurrentUser,
+					likedByGmw);
 		}
 	}
 }
