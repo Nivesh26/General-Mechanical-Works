@@ -58,6 +58,12 @@ public class ShopOrder {
 	@Column(name = "delivered_at")
 	private LocalDateTime deliveredAt;
 
+	@Column(name = "confirmed_at")
+	private LocalDateTime confirmedAt;
+
+	@Column(name = "shipped_at")
+	private LocalDateTime shippedAt;
+
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false, length = 32)
 	private OrderStatus status = OrderStatus.PENDING;
@@ -167,6 +173,22 @@ public class ShopOrder {
 
 	public void setDeliveredAt(LocalDateTime deliveredAt) {
 		this.deliveredAt = deliveredAt;
+	}
+
+	public LocalDateTime getConfirmedAt() {
+		return confirmedAt;
+	}
+
+	public void setConfirmedAt(LocalDateTime confirmedAt) {
+		this.confirmedAt = confirmedAt;
+	}
+
+	public LocalDateTime getShippedAt() {
+		return shippedAt;
+	}
+
+	public void setShippedAt(LocalDateTime shippedAt) {
+		this.shippedAt = shippedAt;
 	}
 
 	public OrderStatus getStatus() {

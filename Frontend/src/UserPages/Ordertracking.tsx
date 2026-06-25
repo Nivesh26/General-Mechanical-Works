@@ -121,6 +121,11 @@ function mapOrdersToLines(orders: ApiOrder[]): TrackedProductLine[] {
         paymentMethod,
         canCancel: orderCanCancel && !item.cancelled,
         cancelledOn: item.cancelledAt ?? undefined,
+        confirmedOn:
+          status === 'confirmed' || status === 'shipped'
+            ? (order.confirmedAt ?? undefined)
+            : undefined,
+        shippedOn: status === 'shipped' ? (order.shippedAt ?? undefined) : undefined,
         deliveredOn: status === 'delivered' ? (order.deliveredAt ?? undefined) : undefined,
         estimatedDelivery:
           status === 'pending' || status === 'confirmed' || status === 'shipped'

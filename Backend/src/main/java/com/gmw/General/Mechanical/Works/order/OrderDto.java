@@ -11,6 +11,8 @@ public record OrderDto(
 		String phone,
 		String address,
 		String placedAt,
+		String confirmedAt,
+		String shippedAt,
 		String deliveredAt,
 		OrderStatus status,
 		PaymentMethod paymentMethod,

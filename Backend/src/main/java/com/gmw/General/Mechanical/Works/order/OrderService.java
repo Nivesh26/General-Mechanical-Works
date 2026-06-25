@@ -44,6 +44,7 @@ public class OrderService {
 			DateTimeFormatter.ofPattern("d MMM yyyy", Locale.ENGLISH);
 	private static final DateTimeFormatter DELIVERED_AT_FORMAT =
 			DateTimeFormatter.ofPattern("d MMM yyyy", Locale.ENGLISH);
+	private static final DateTimeFormatter STATUS_DATE_FORMAT = DELIVERED_AT_FORMAT;
 
 	private final ShopOrderRepository shopOrderRepository;
 	private final CartRepository cartRepository;
@@ -354,6 +355,12 @@ public class OrderService {
 		}
 
 		order.setStatus(next);
+		if (next == OrderStatus.CONFIRMED) {
+			order.setConfirmedAt(LocalDateTime.now());
+		}
+		if (next == OrderStatus.SHIPPED) {
+			order.setShippedAt(LocalDateTime.now());
+		}
 		if (next == OrderStatus.DELIVERED) {
 			order.setDeliveredAt(LocalDateTime.now());
 		}
@@ -580,6 +587,8 @@ public class OrderService {
 					order.getPhone(),
 					order.getAddress(),
 					order.getPlacedAt().toLocalDate().format(PLACED_AT_FORMAT),
+					resolveConfirmedAt(order),
+					resolveShippedAt(order),
 					resolveDeliveredAt(order),
 					order.getStatus(),
 					order.getPaymentMethod(),
@@ -608,11 +617,27 @@ public class OrderService {
 			return cancelledAt.format(CANCELLED_AT_FORMAT);
 		}
 
-		private static String formatDeliveredAt(LocalDateTime deliveredAt) {
-			if (deliveredAt == null) {
+		private static String formatStatusDate(LocalDateTime value) {
+			if (value == null) {
 				return null;
 			}
-			return deliveredAt.format(DELIVERED_AT_FORMAT);
+			return value.format(STATUS_DATE_FORMAT);
+		}
+
+		private static String resolveConfirmedAt(ShopOrder order) {
+			LocalDateTime confirmedAt = order.getConfirmedAt();
+			if (confirmedAt == null && rank(order.getStatus()) >= rank(OrderStatus.CONFIRMED)) {
+				confirmedAt = order.getPlacedAt();
+			}
+			return formatStatusDate(confirmedAt);
+		}
+
+		private static String resolveShippedAt(ShopOrder order) {
+			LocalDateTime shippedAt = order.getShippedAt();
+			if (shippedAt == null && rank(order.getStatus()) >= rank(OrderStatus.SHIPPED)) {
+				shippedAt = order.getPlacedAt();
+			}
+			return formatStatusDate(shippedAt);
 		}
 
 		private static String resolveDeliveredAt(ShopOrder order) {
@@ -620,7 +645,7 @@ public class OrderService {
 			if (deliveredAt == null && order.getStatus() == OrderStatus.DELIVERED) {
 				deliveredAt = order.getPlacedAt();
 			}
-			return formatDeliveredAt(deliveredAt);
+			return formatStatusDate(deliveredAt);
 		}
 	}
 }

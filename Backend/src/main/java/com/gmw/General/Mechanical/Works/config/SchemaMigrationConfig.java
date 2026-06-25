@@ -402,6 +402,39 @@ public class SchemaMigrationConfig {
 					WHERE `status` = 'DELIVERED' AND `delivered_at` IS NULL
 					""");
 
+			Integer confirmedAtColumnExists = jdbcTemplate.queryForObject(
+					"""
+					SELECT COUNT(*) FROM information_schema.COLUMNS
+					WHERE TABLE_SCHEMA = DATABASE()
+					  AND TABLE_NAME = 'shop_order'
+					  AND COLUMN_NAME = 'confirmed_at'
+					""",
+					Integer.class);
+			if (confirmedAtColumnExists == null || confirmedAtColumnExists == 0) {
+				jdbcTemplate.execute("ALTER TABLE `shop_order` ADD COLUMN `confirmed_at` DATETIME NULL");
+			}
+			Integer shippedAtColumnExists = jdbcTemplate.queryForObject(
+					"""
+					SELECT COUNT(*) FROM information_schema.COLUMNS
+					WHERE TABLE_SCHEMA = DATABASE()
+					  AND TABLE_NAME = 'shop_order'
+					  AND COLUMN_NAME = 'shipped_at'
+					""",
+					Integer.class);
+			if (shippedAtColumnExists == null || shippedAtColumnExists == 0) {
+				jdbcTemplate.execute("ALTER TABLE `shop_order` ADD COLUMN `shipped_at` DATETIME NULL");
+			}
+			jdbcTemplate.update("""
+					UPDATE `shop_order`
+					SET `confirmed_at` = `placed_at`
+					WHERE `status` IN ('CONFIRMED', 'SHIPPED', 'DELIVERED') AND `confirmed_at` IS NULL
+					""");
+			jdbcTemplate.update("""
+					UPDATE `shop_order`
+					SET `shipped_at` = `placed_at`
+					WHERE `status` IN ('SHIPPED', 'DELIVERED') AND `shipped_at` IS NULL
+					""");
+
 			jdbcTemplate.execute(
 					"ALTER TABLE `product` MODIFY COLUMN `image_paths` TEXT NOT NULL");
 
