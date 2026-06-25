@@ -864,3 +864,97 @@ export async function updateAdminOrderStatus(
   if (!res.ok) throw new Error(await parseErrorMessage(res))
   return res.json() as Promise<AdminOrder>
 }
+
+export interface ProductReviewItem {
+  id: number
+  productId: number
+  productName: string
+  productDetail: string
+  productImage: string | null
+  userPhoto: string | null
+  userName: string
+  rating: number
+  comment: string
+  reviewImages: string[]
+  adminReply: string | null
+  createdAt: string
+}
+
+export interface ReviewEligibility {
+  canReview: boolean
+  alreadyReviewed: boolean
+  hasDeliveredPurchase: boolean
+}
+
+export async function fetchProductReviews(productId: number): Promise<ProductReviewItem[]> {
+  const res = await fetch(`${getApiBase()}/api/products/${productId}/reviews`, {
+    headers: { Accept: 'application/json' },
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<ProductReviewItem[]>
+}
+
+export async function fetchReviewEligibility(
+  token: string,
+  productId: number,
+): Promise<ReviewEligibility> {
+  const res = await fetch(`${getApiBase()}/api/products/${productId}/reviews/eligibility`, {
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<ReviewEligibility>
+}
+
+export async function submitProductReview(
+  token: string,
+  productId: number,
+  payload: { rating: number; comment: string; images: File[] },
+): Promise<ProductReviewItem> {
+  const body = new FormData()
+  body.append('rating', String(payload.rating))
+  body.append('comment', payload.comment)
+  for (const file of payload.images) {
+    body.append('images', file)
+  }
+  const res = await fetch(`${getApiBase()}/api/products/${productId}/reviews`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body,
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<ProductReviewItem>
+}
+
+export async function fetchAdminReviews(token: string): Promise<ProductReviewItem[]> {
+  const res = await fetch(`${getApiBase()}/api/admin/reviews`, {
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<ProductReviewItem[]>
+}
+
+export async function setAdminReviewReply(
+  token: string,
+  reviewId: number,
+  reply: string,
+): Promise<ProductReviewItem> {
+  const res = await fetch(`${getApiBase()}/api/admin/reviews/${reviewId}/reply`, {
+    method: 'PUT',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({ reply }),
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<ProductReviewItem>
+}
+
+export async function deleteAdminReview(token: string, reviewId: number): Promise<void> {
+  const res = await fetch(`${getApiBase()}/api/admin/reviews/${reviewId}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+}

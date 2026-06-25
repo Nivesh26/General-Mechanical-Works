@@ -26,7 +26,8 @@ public class ImageStorageService {
 		BLOGS("gmw/blogs", "/uploads/blogs/"),
 		OFFERS("gmw/offers", "/uploads/offers/"),
 		PROFILES("gmw/profiles", "/uploads/profiles/"),
-		COVERS("gmw/covers", "/uploads/covers/");
+		COVERS("gmw/covers", "/uploads/covers/"),
+		REVIEWS("gmw/reviews", "/uploads/reviews/");
 
 		private final String cloudFolder;
 		private final String localPrefix;

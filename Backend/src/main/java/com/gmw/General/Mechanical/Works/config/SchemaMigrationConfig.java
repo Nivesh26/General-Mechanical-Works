@@ -387,6 +387,32 @@ public class SchemaMigrationConfig {
 
 			jdbcTemplate.execute(
 					"ALTER TABLE `product` MODIFY COLUMN `image_paths` TEXT NOT NULL");
+
+			Integer reviewsTableExists = jdbcTemplate.queryForObject(
+					"""
+					SELECT COUNT(*) FROM information_schema.TABLES
+					WHERE TABLE_SCHEMA = DATABASE()
+					  AND TABLE_NAME = 'reviews'
+					""",
+					Integer.class);
+			if (reviewsTableExists == null || reviewsTableExists == 0) {
+				jdbcTemplate.execute("""
+						CREATE TABLE `reviews` (
+						  `id` BIGINT NOT NULL AUTO_INCREMENT,
+						  `user_id` BIGINT NOT NULL,
+						  `product_id` BIGINT NOT NULL,
+						  `rating` INT NOT NULL,
+						  `comment` TEXT NOT NULL,
+						  `image_paths` TEXT NULL,
+						  `admin_reply` TEXT NULL,
+						  `created_at` DATETIME(6) NOT NULL,
+						  PRIMARY KEY (`id`),
+						  UNIQUE KEY `uk_reviews_user_product` (`user_id`, `product_id`),
+						  CONSTRAINT `fk_reviews_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON DELETE CASCADE,
+						  CONSTRAINT `fk_reviews_product` FOREIGN KEY (`product_id`) REFERENCES `product` (`id`) ON DELETE CASCADE
+						)
+						""");
+			}
 		};
 	}
 }

@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import AdminNavbar from '../AdminComponent/AdminNavbar'
 import { ADMIN_MAIN_SCROLL_CLASS, ADMIN_PAGE_HEADER_SPACING, ADMIN_PAGE_SUBTITLE, ADMIN_PAGE_TITLE } from '../AdminComponent/adminMainStyles'
 import {
@@ -10,6 +10,14 @@ import {
   HiOutlineTrash,
   HiChevronDown,
 } from 'react-icons/hi2'
+import { useAuth } from '../context/AuthContext'
+import {
+  deleteAdminReview,
+  fetchAdminReviews,
+  setAdminReviewReply,
+  toAbsoluteApiUrl,
+  type ProductReviewItem,
+} from '../lib/api'
 import { useProductReviewsState } from '../lib/useProductReviewsState'
 
 const pageHeader: CSSProperties = {
@@ -29,30 +37,60 @@ const cardShell: CSSProperties = {
 }
 
 const AdminReviews = () => {
+  const { token } = useAuth()
   const {
-    reviews,
     adminLikedReviewIds,
     reviewLikeCountById,
     adminReplyLikeCountById,
-    adminReplyByReviewId,
     toggleAdminLike,
-    setAdminReply,
-    clearAdminReply,
-    removeReview,
   } = useProductReviewsState()
 
+  const [reviews, setReviews] = useState<ProductReviewItem[]>([])
+  const [loading, setLoading] = useState(true)
   const [drafts, setDrafts] = useState<Record<string, string>>({})
   const [replyOpenId, setReplyOpenId] = useState<string | null>(null)
   /** Collapsed by default: header shows “Linked product” + chevron only. */
   const [linkedProductOpen, setLinkedProductOpen] = useState<Record<string, boolean>>({})
 
-  const replyValue = (reviewId: string) =>
-    drafts[reviewId] !== undefined ? drafts[reviewId] : (adminReplyByReviewId[reviewId] ?? '')
+  useEffect(() => {
+    if (!token) {
+      setReviews([])
+      setLoading(false)
+      return
+    }
+    let cancelled = false
+    const load = async () => {
+      setLoading(true)
+      try {
+        const data = await fetchAdminReviews(token)
+        if (!cancelled) setReviews(data)
+      } catch {
+        if (!cancelled) setReviews([])
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    void load()
+    return () => {
+      cancelled = true
+    }
+  }, [token])
 
-  const commitReply = (reviewId: string) => {
+  const replyValue = (reviewId: string) =>
+    drafts[reviewId] !== undefined
+      ? drafts[reviewId]
+      : (reviews.find((r) => String(r.id) === reviewId)?.adminReply ?? '')
+
+  const commitReply = async (reviewId: string) => {
+    if (!token) return
     const text = replyValue(reviewId).trim()
-    if (text) setAdminReply(reviewId, text)
-    else clearAdminReply(reviewId)
+    try {
+      const updated = await setAdminReviewReply(token, Number(reviewId), text)
+      setReviews((prev) => prev.map((r) => (r.id === updated.id ? updated : r)))
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : 'Could not save reply.')
+      return
+    }
     setDrafts((d) => {
       const next = { ...d }
       delete next[reviewId]
@@ -63,33 +101,45 @@ const AdminReviews = () => {
   const handleReplyIconClick = (reviewId: string) => {
     setReplyOpenId((prev) => {
       if (prev === reviewId) {
-        commitReply(reviewId)
+        void commitReply(reviewId)
         return null
       }
-      if (prev) commitReply(prev)
+      if (prev) void commitReply(prev)
       return reviewId
     })
   }
 
-  const handleRemoveReview = (reviewId: string) => {
-    if (!window.confirm('Remove this review from the list? It will disappear here and on the product page until you reload.')) {
+  const handleRemoveReview = async (reviewId: string) => {
+    if (!token) return
+    if (!window.confirm('Remove this review? It will be deleted permanently.')) {
       return
     }
-    if (replyOpenId === reviewId) setReplyOpenId(null)
-    removeReview(reviewId)
+    try {
+      await deleteAdminReview(token, Number(reviewId))
+      setReviews((prev) => prev.filter((r) => String(r.id) !== reviewId))
+      if (replyOpenId === reviewId) setReplyOpenId(null)
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : 'Could not delete review.')
+    }
   }
 
-  const handleDeleteYourReply = (reviewId: string) => {
-    if (!window.confirm('Delete your reply? It will be removed here and on the product page until you post again.')) {
+  const handleDeleteYourReply = async (reviewId: string) => {
+    if (!token) return
+    if (!window.confirm('Delete your reply? It will be removed from the product page.')) {
       return
     }
-    clearAdminReply(reviewId)
-    setDrafts((d) => {
-      const next = { ...d }
-      delete next[reviewId]
-      return next
-    })
-    if (replyOpenId === reviewId) setReplyOpenId(null)
+    try {
+      const updated = await setAdminReviewReply(token, Number(reviewId), '')
+      setReviews((prev) => prev.map((r) => (r.id === updated.id ? updated : r)))
+      setDrafts((d) => {
+        const next = { ...d }
+        delete next[reviewId]
+        return next
+      })
+      if (replyOpenId === reviewId) setReplyOpenId(null)
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : 'Could not delete reply.')
+    }
   }
 
   return (
@@ -119,17 +169,22 @@ const AdminReviews = () => {
             <p style={{ ...ADMIN_PAGE_SUBTITLE, margin: '6px 0 0', lineHeight: 1.5 }}>View reviews</p>
           </header>
 
-          {reviews.length === 0 ? (
+          {loading ? (
+            <p style={{ fontSize: '14px', color: '#64748b' }}>Loading reviews…</p>
+          ) : reviews.length === 0 ? (
             <p style={{ fontSize: '14px', color: '#64748b' }}>No product reviews yet.</p>
           ) : (
             reviews.map((review, index) => {
-              const adminLiked = adminLikedReviewIds.includes(review.id)
-              const savedAdminReply = (adminReplyByReviewId[review.id] ?? '').trim()
-              const linkedExpanded = linkedProductOpen[review.id] === true
-              const reviewLikeCount = reviewLikeCountById[review.id] ?? 0
-              const replyLikeCount = adminReplyLikeCountById[review.id] ?? 0
+              const reviewId = String(review.id)
+              const userPhoto = review.userPhoto ? toAbsoluteApiUrl(review.userPhoto) ?? '' : ''
+              const productImage = review.productImage ? toAbsoluteApiUrl(review.productImage) ?? '' : ''
+              const adminLiked = adminLikedReviewIds.includes(reviewId)
+              const savedAdminReply = (review.adminReply ?? '').trim()
+              const linkedExpanded = linkedProductOpen[reviewId] === true
+              const reviewLikeCount = reviewLikeCountById[reviewId] ?? 0
+              const replyLikeCount = adminReplyLikeCountById[reviewId] ?? 0
               return (
-                <article key={review.id} style={cardShell}>
+                <article key={reviewId} style={cardShell}>
                   <div
                     style={{
                       display: 'flex',
@@ -152,8 +207,8 @@ const AdminReviews = () => {
                       }}
                     >
                       <img
-                        src={review.userPhoto}
-                        alt={`${review.name} profile`}
+                        src={userPhoto}
+                        alt={`${review.userName} profile`}
                         style={{
                           width: '52px',
                           height: '52px',
@@ -187,7 +242,7 @@ const AdminReviews = () => {
                             lineHeight: 1.25,
                           }}
                         >
-                          {review.name}
+                          {review.userName}
                         </h2>
                         <p
                           style={{
@@ -216,7 +271,7 @@ const AdminReviews = () => {
                     >
                       <button
                         type="button"
-                        onClick={() => toggleAdminLike(review.id)}
+                        onClick={() => toggleAdminLike(reviewId)}
                         style={{
                           display: 'inline-flex',
                           alignItems: 'center',
@@ -241,9 +296,9 @@ const AdminReviews = () => {
                       <div style={{ width: '1px', height: '22px', backgroundColor: '#e8ecf0' }} aria-hidden />
                       <button
                         type="button"
-                        onClick={() => handleReplyIconClick(review.id)}
-                        aria-label={replyOpenId === review.id ? 'Close reply editor' : 'Write your reply'}
-                        title={replyOpenId === review.id ? 'Close' : 'Reply'}
+                        onClick={() => handleReplyIconClick(reviewId)}
+                        aria-label={replyOpenId === reviewId ? 'Close reply editor' : 'Write your reply'}
+                        title={replyOpenId === reviewId ? 'Close' : 'Reply'}
                         style={{
                           display: 'inline-flex',
                           alignItems: 'center',
@@ -252,12 +307,12 @@ const AdminReviews = () => {
                           height: '40px',
                           borderRadius: '9px',
                           border: 'none',
-                          backgroundColor: replyOpenId === review.id ? '#fef2f2' : 'transparent',
-                          color: replyOpenId === review.id ? '#bd162c' : '#64748b',
+                          backgroundColor: replyOpenId === reviewId ? '#fef2f2' : 'transparent',
+                          color: replyOpenId === reviewId ? '#bd162c' : '#64748b',
                           cursor: 'pointer',
                         }}
                       >
-                        {replyOpenId === review.id ? (
+                        {replyOpenId === reviewId ? (
                           <HiChatBubbleLeft style={{ width: 20, height: 20 }} />
                         ) : (
                           <HiOutlineChatBubbleLeft style={{ width: 20, height: 20 }} />
@@ -266,7 +321,7 @@ const AdminReviews = () => {
                       <div style={{ width: '1px', height: '22px', backgroundColor: '#e8ecf0' }} aria-hidden />
                       <button
                         type="button"
-                        onClick={() => handleRemoveReview(review.id)}
+                        onClick={() => handleRemoveReview(reviewId)}
                         aria-label="Remove review"
                         title="Remove review from list"
                         style={{
@@ -322,7 +377,7 @@ const AdminReviews = () => {
                           />
                         ))}
                       </div>
-                      <span style={{ fontSize: '12px', color: '#94a3b8' }}>{review.date}</span>
+                      <span style={{ fontSize: '12px', color: '#94a3b8' }}>{review.createdAt}</span>
                     </div>
                     <blockquote
                       style={{
@@ -351,7 +406,7 @@ const AdminReviews = () => {
                     </p>
                   </div>
 
-                  {savedAdminReply && replyOpenId !== review.id ? (
+                  {savedAdminReply && replyOpenId !== reviewId ? (
                     <div style={{ padding: '20px 26px 22px' }}>
                       <p
                         style={{
@@ -381,7 +436,7 @@ const AdminReviews = () => {
                         >
                           <button
                             type="button"
-                            onClick={() => handleDeleteYourReply(review.id)}
+                            onClick={() => handleDeleteYourReply(reviewId)}
                             aria-label="Delete your reply"
                             title="Delete your reply"
                             style={{
@@ -433,7 +488,7 @@ const AdminReviews = () => {
                     </div>
                   ) : null}
 
-                  {replyOpenId === review.id ? (
+                  {replyOpenId === reviewId ? (
                     <div style={{ padding: '20px 26px 22px' }}>
                       <p
                         style={{
@@ -458,7 +513,7 @@ const AdminReviews = () => {
                         <button
                           type="button"
                           onMouseDown={(e) => e.preventDefault()}
-                          onClick={() => handleDeleteYourReply(review.id)}
+                          onClick={() => handleDeleteYourReply(reviewId)}
                           aria-label="Delete your reply"
                           title="Delete your reply"
                           style={{
@@ -482,9 +537,9 @@ const AdminReviews = () => {
                           <HiOutlineTrash style={{ width: 17, height: 17 }} />
                         </button>
                         <textarea
-                          id={`admin-reply-${review.id}`}
-                          value={replyValue(review.id)}
-                          onChange={(e) => setDrafts((d) => ({ ...d, [review.id]: e.target.value }))}
+                          id={`admin-reply-${reviewId}`}
+                          value={replyValue(reviewId)}
+                          onChange={(e) => setDrafts((d) => ({ ...d, [reviewId]: e.target.value }))}
                           rows={4}
                           placeholder="What you write here appears on the product page as the General Mechanical Works reply."
                           aria-label="Your reply, shown on the product page"
@@ -504,14 +559,14 @@ const AdminReviews = () => {
                             backgroundColor: 'transparent',
                             outline: 'none',
                           }}
-                          onBlur={() => commitReply(review.id)}
+                          onBlur={() => commitReply(reviewId)}
                         />
                       </div>
                       <button
                         type="button"
                         onMouseDown={(e) => e.preventDefault()}
                         onClick={() => {
-                          commitReply(review.id)
+                          commitReply(reviewId)
                           setReplyOpenId(null)
                         }}
                         style={{
@@ -547,7 +602,7 @@ const AdminReviews = () => {
                   {/* Linked product — collapsible */}
                   <div
                     style={{
-                      marginTop: replyOpenId === review.id ? 0 : '4px',
+                      marginTop: replyOpenId === reviewId ? 0 : '4px',
                       background: 'linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%)',
                       borderTop: '1px solid #e8ecf0',
                     }}
@@ -555,11 +610,11 @@ const AdminReviews = () => {
                     <button
                       type="button"
                       onClick={() =>
-                        setLinkedProductOpen((prev) => ({ ...prev, [review.id]: !prev[review.id] }))
+                        setLinkedProductOpen((prev) => ({ ...prev, [reviewId]: !prev[reviewId] }))
                       }
                       aria-expanded={linkedExpanded}
-                      aria-controls={`linked-product-${review.id}`}
-                      id={`linked-product-toggle-${review.id}`}
+                      aria-controls={`linked-product-${reviewId}`}
+                      id={`linked-product-toggle-${reviewId}`}
                       style={{
                         width: '100%',
                         display: 'flex',
@@ -600,9 +655,9 @@ const AdminReviews = () => {
                     </button>
                     {linkedExpanded ? (
                       <div
-                        id={`linked-product-${review.id}`}
+                        id={`linked-product-${reviewId}`}
                         role="region"
-                        aria-labelledby={`linked-product-toggle-${review.id}`}
+                        aria-labelledby={`linked-product-toggle-${reviewId}`}
                         style={{ padding: '0 26px 26px' }}
                       >
                         <div
@@ -629,7 +684,7 @@ const AdminReviews = () => {
                             }}
                           >
                             <img
-                              src={review.productImage}
+                              src={productImage}
                               alt={review.productName}
                               style={{
                                 maxWidth: '100%',

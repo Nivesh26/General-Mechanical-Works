@@ -9,8 +9,18 @@ import Productsuggestion from '../UserComponent/Productsuggestion'
 import { PAGE_GUTTER } from '../lib/layoutClasses'
 import GMWlogo from '../assets/GMWlogo.png'
 import { HiOutlineCheck, HiStar, HiOutlineHandThumbUp, HiHandThumbUp, HiPhoto, HiXMark } from 'react-icons/hi2'
-import { DEMO_PRODUCT_ID, useProductReviewsState } from '../lib/useProductReviewsState'
-import { addToCart, fetchProduct, toAbsoluteApiUrl, type ProductItem } from '../lib/api'
+import { useProductReviewsState } from '../lib/useProductReviewsState'
+import {
+  addToCart,
+  fetchProduct,
+  fetchProductReviews,
+  fetchReviewEligibility,
+  submitProductReview,
+  toAbsoluteApiUrl,
+  type ProductItem,
+  type ProductReviewItem,
+  type ReviewEligibility,
+} from '../lib/api'
 import { mapProductImages } from '../lib/products'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
@@ -23,7 +33,7 @@ const Productdetail = () => {
   const { id: idParam } = useParams()
   const productId = Number(idParam)
   const navigate = useNavigate()
-  const { token, user } = useAuth()
+  const { token } = useAuth()
   const { refreshCart } = useCart()
 
   const [product, setProduct] = useState<ProductItem | null>(null)
@@ -35,22 +45,28 @@ const Productdetail = () => {
   const [selectedSize, setSelectedSize] = useState<string | null>(null)
   const [reviewText, setReviewText] = useState('')
   const [rating, setRating] = useState(0)
-  const [reviewImages, setReviewImages] = useState<string[]>([])
+  const [reviewImageFiles, setReviewImageFiles] = useState<File[]>([])
   const [reviewImageLightbox, setReviewImageLightbox] = useState<string | null>(null)
+  const [productReviews, setProductReviews] = useState<ProductReviewItem[]>([])
+  const [reviewsLoading, setReviewsLoading] = useState(false)
+  const [reviewEligibility, setReviewEligibility] = useState<ReviewEligibility | null>(null)
+  const [submittingReview, setSubmittingReview] = useState(false)
   const reviewImageInputRef = useRef<HTMLInputElement>(null)
   const {
-    reviews,
     userLikedReviewIds,
     userLikedAdminReplyReviewIds,
     reviewLikeCountById,
     adminReplyLikeCountById,
-    adminReplyByReviewId,
     toggleUserLike,
     toggleUserLikeAdminReply,
-    addUserReview,
   } = useProductReviewsState()
 
-  const productReviews = reviews.filter((r) => r.productId === DEMO_PRODUCT_ID)
+  const reviewImagePreviews = useMemo(
+    () => reviewImageFiles.map((file) => URL.createObjectURL(file)),
+    [reviewImageFiles],
+  )
+
+  const canShowReviewForm = reviewEligibility?.canReview === true
 
   const images = useMemo(
     () => (product ? mapProductImages(product) : []),
@@ -69,26 +85,20 @@ const Productdetail = () => {
       toast.error('Each image must be 2 MB or smaller.')
       return
     }
-    if (reviewImages.length >= MAX_REVIEW_IMAGES) {
+    if (reviewImageFiles.length >= MAX_REVIEW_IMAGES) {
       toast.error(`You can add up to ${MAX_REVIEW_IMAGES} photos.`)
       return
     }
-    const reader = new FileReader()
-    reader.onload = () => {
-      if (typeof reader.result === 'string') {
-        setReviewImages((prev) =>
-          prev.length >= MAX_REVIEW_IMAGES ? prev : [...prev, reader.result as string],
-        )
-      }
-    }
-    reader.readAsDataURL(file)
+    setReviewImageFiles((prev) =>
+      prev.length >= MAX_REVIEW_IMAGES ? prev : [...prev, file],
+    )
   }
 
   const removeReviewImage = (index: number) => {
-    setReviewImages((prev) => prev.filter((_, i) => i !== index))
+    setReviewImageFiles((prev) => prev.filter((_, i) => i !== index))
   }
 
-  const handlePostReview = () => {
+  const handlePostReview = async () => {
     const comment = reviewText.trim()
     if (rating < 1) {
       toast.error('Please select a star rating.')
@@ -98,25 +108,29 @@ const Productdetail = () => {
       toast.error('Please write your review.')
       return
     }
-    const reviewerName = user?.name?.trim() || 'Guest'
-    const reviewerPhoto = user?.profilePicture
-      ? toAbsoluteApiUrl(user.profilePicture) ?? ''
-      : ''
-    addUserReview({
-      productId: DEMO_PRODUCT_ID,
-      productName: product?.name ?? 'Product',
-      productDetail: product?.description ?? '',
-      productImage: images[0] ?? '',
-      userPhoto: reviewerPhoto,
-      name: reviewerName,
-      rating,
-      comment,
-      reviewImages: reviewImages.length > 0 ? [...reviewImages] : undefined,
-    })
-    setReviewText('')
-    setRating(0)
-    setReviewImages([])
-    toast.success('Review posted.')
+    if (!token) {
+      toast.info('Please sign in to post a review.')
+      navigate('/login', { state: { from: `/productdetail/${productId}` } })
+      return
+    }
+    setSubmittingReview(true)
+    try {
+      const created = await submitProductReview(token, productId, {
+        rating,
+        comment,
+        images: reviewImageFiles,
+      })
+      setProductReviews((prev) => [created, ...prev])
+      setReviewEligibility({ canReview: false, alreadyReviewed: true, hasDeliveredPurchase: true })
+      setReviewText('')
+      setRating(0)
+      setReviewImageFiles([])
+      toast.success('Review posted.')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not post review.')
+    } finally {
+      setSubmittingReview(false)
+    }
   }
 
   const sizes = product?.sizes ?? []
@@ -154,6 +168,55 @@ const Productdetail = () => {
       cancelled = true
     }
   }, [productId])
+
+  useEffect(() => {
+    if (!Number.isFinite(productId) || productId <= 0) {
+      setProductReviews([])
+      return
+    }
+    let cancelled = false
+    const loadReviews = async () => {
+      setReviewsLoading(true)
+      try {
+        const data = await fetchProductReviews(productId)
+        if (!cancelled) setProductReviews(data)
+      } catch {
+        if (!cancelled) setProductReviews([])
+      } finally {
+        if (!cancelled) setReviewsLoading(false)
+      }
+    }
+    void loadReviews()
+    return () => {
+      cancelled = true
+    }
+  }, [productId])
+
+  useEffect(() => {
+    if (!token || !Number.isFinite(productId) || productId <= 0) {
+      setReviewEligibility(null)
+      return
+    }
+    let cancelled = false
+    const loadEligibility = async () => {
+      try {
+        const data = await fetchReviewEligibility(token, productId)
+        if (!cancelled) setReviewEligibility(data)
+      } catch {
+        if (!cancelled) setReviewEligibility(null)
+      }
+    }
+    void loadEligibility()
+    return () => {
+      cancelled = true
+    }
+  }, [token, productId])
+
+  useEffect(() => {
+    return () => {
+      reviewImagePreviews.forEach((url) => URL.revokeObjectURL(url))
+    }
+  }, [reviewImagePreviews])
 
   useEffect(() => {
     if (!reviewImageLightbox) return
@@ -374,11 +437,12 @@ const Productdetail = () => {
               </div>
             )}
 
-            {/* Reviews — unchanged demo data */}
+            {/* Reviews */}
             {!loading && !loadError && product && (
             <section className="mt-16 pt-10 border-t border-gray-100">
               <h2 className="text-xl font-bold text-gray-900 mb-6">Reviews</h2>
 
+              {canShowReviewForm && (
               <div className="mb-10 p-6 rounded-xl bg-gray-50 border border-gray-100">
                 <div className="space-y-4">
                   <div>
@@ -422,9 +486,9 @@ const Productdetail = () => {
                       aria-hidden
                     />
                     <div className="flex flex-wrap items-center gap-3">
-                      {reviewImages.map((src, index) => (
+                      {reviewImagePreviews.map((src, index) => (
                         <div
-                          key={`${index}-${src.slice(0, 24)}`}
+                          key={`${index}-${reviewImageFiles[index]?.name ?? index}`}
                           className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-white"
                         >
                           <img
@@ -442,7 +506,7 @@ const Productdetail = () => {
                           </button>
                         </div>
                       ))}
-                      {reviewImages.length < MAX_REVIEW_IMAGES && (
+                      {reviewImagePreviews.length < MAX_REVIEW_IMAGES && (
                         <button
                           type="button"
                           onClick={() => reviewImageInputRef.current?.click()}
@@ -456,28 +520,37 @@ const Productdetail = () => {
                   </div>
                   <button
                     type="button"
-                    onClick={handlePostReview}
-                    className="inline-block px-5 py-2.5 rounded-lg bg-primary text-white text-sm font-semibold hover:opacity-90 transition-opacity cursor-pointer"
+                    onClick={() => void handlePostReview()}
+                    disabled={submittingReview}
+                    className="inline-block px-5 py-2.5 rounded-lg bg-primary text-white text-sm font-semibold hover:opacity-90 transition-opacity cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                 Post
+                    {submittingReview ? 'Posting…' : 'Post'}
                   </button>
                 </div>
               </div>
+              )}
 
+              {reviewsLoading ? (
+                <p className="text-sm text-gray-500">Loading reviews…</p>
+              ) : productReviews.length === 0 ? (
+                <p className="text-sm text-gray-500">No reviews yet.</p>
+              ) : (
               <div className="space-y-6">
                 {productReviews.map((review) => {
-                  const adminReply = (adminReplyByReviewId[review.id] ?? '').trim()
-                  const reviewLiked = userLikedReviewIds.includes(review.id)
-                  const replyLiked = userLikedAdminReplyReviewIds.includes(review.id)
-                  const reviewLikeCount = reviewLikeCountById[review.id] ?? 0
-                  const replyLikeCount = adminReplyLikeCountById[review.id] ?? 0
+                  const reviewId = String(review.id)
+                  const adminReply = (review.adminReply ?? '').trim()
+                  const reviewerPhoto = review.userPhoto ? toAbsoluteApiUrl(review.userPhoto) : null
+                  const reviewLiked = userLikedReviewIds.includes(reviewId)
+                  const replyLiked = userLikedAdminReplyReviewIds.includes(reviewId)
+                  const reviewLikeCount = reviewLikeCountById[reviewId] ?? 0
+                  const replyLikeCount = adminReplyLikeCountById[reviewId] ?? 0
                   return (
                     <div key={review.id} className="p-5 rounded-xl bg-gray-50 border border-gray-100">
                       <div className="flex items-start gap-3 mb-3">
-                        {review.userPhoto ? (
+                        {reviewerPhoto ? (
                           <img
-                            src={review.userPhoto}
-                            alt={`${review.name} profile`}
+                            src={reviewerPhoto}
+                            alt={`${review.userName} profile`}
                             className="w-10 h-10 shrink-0 rounded-full object-cover border border-gray-200"
                           />
                         ) : (
@@ -485,11 +558,11 @@ const Productdetail = () => {
                             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-gray-200 bg-gray-100 text-sm font-semibold text-gray-600"
                             aria-hidden
                           >
-                            {review.name.charAt(0).toUpperCase()}
+                            {review.userName.charAt(0).toUpperCase()}
                           </div>
                         )}
                         <div className="min-w-0 flex-1">
-                          <p className="font-semibold text-gray-900">{review.name}</p>
+                          <p className="font-semibold text-gray-900">{review.userName}</p>
                           <div className="flex items-center gap-1 mt-0.5">
                             {[1, 2, 3, 4, 5].map((i) => (
                               <HiStar
@@ -497,34 +570,37 @@ const Productdetail = () => {
                                 className={`w-4 h-4 ${i <= review.rating ? 'text-amber-400 fill-amber-400' : 'text-gray-200'}`}
                               />
                             ))}
-                            <span className="text-xs text-gray-500 ml-1">{review.date}</span>
+                            <span className="text-xs text-gray-500 ml-1">{review.createdAt}</span>
                           </div>
                         </div>
                       </div>
                       <p className="text-gray-600 text-sm leading-relaxed mb-3">{review.comment}</p>
-                      {review.reviewImages && review.reviewImages.length > 0 && (
+                      {review.reviewImages.length > 0 && (
                         <div className="mb-3 flex flex-wrap gap-2">
-                          {review.reviewImages.map((src, index) => (
+                          {review.reviewImages.map((path, index) => {
+                            const src = toAbsoluteApiUrl(path) ?? path
+                            return (
                             <button
                               key={`${review.id}-img-${index}`}
                               type="button"
                               onClick={() => setReviewImageLightbox(src)}
                               className="h-24 w-24 overflow-hidden rounded-lg border border-gray-200 bg-white cursor-pointer transition hover:border-primary hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary/40"
-                              aria-label={`View ${review.name} review photo ${index + 1} larger`}
+                              aria-label={`View ${review.userName} review photo ${index + 1} larger`}
                             >
                               <img
                                 src={src}
-                                alt={`${review.name} review photo ${index + 1}`}
+                                alt={`${review.userName} review photo ${index + 1}`}
                                 className="h-full w-full object-cover"
                               />
                             </button>
-                          ))}
+                            )
+                          })}
                         </div>
                       )}
                       <div className="mb-3">
                         <button
                           type="button"
-                          onClick={() => toggleUserLike(review.id)}
+                          onClick={() => toggleUserLike(reviewId)}
                           aria-label={
                             reviewLiked
                               ? `Unlike this review, ${reviewLikeCount} total`
@@ -565,7 +641,7 @@ const Productdetail = () => {
                           <p className="text-sm text-gray-700 leading-relaxed mb-2">{adminReply}</p>
                           <button
                             type="button"
-                            onClick={() => toggleUserLikeAdminReply(review.id)}
+                            onClick={() => toggleUserLikeAdminReply(reviewId)}
                             aria-label={
                               replyLiked
                                 ? `Unlike reply from General Mechanical Works, ${replyLikeCount} total`
@@ -594,6 +670,7 @@ const Productdetail = () => {
                   )
                 })}
               </div>
+              )}
             </section>
             )}
           </div>
