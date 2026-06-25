@@ -727,6 +727,7 @@ export type ApiPaymentMethod = 'COD' | 'ESEWA' | 'KHALTI'
 
 export type AdminOrderLine = {
   id?: number
+  productId: number
   productName: string
   sku: string
   quantity: number

@@ -31,6 +31,29 @@ const formatPrice = (n: number) => `Rs. ${n.toLocaleString('en-IN')}`
 const MAX_REVIEW_IMAGES = 2
 const REVIEW_IMAGE_MAX_BYTES = 2 * 1024 * 1024
 
+function ProductStarRating({ value }: { value: number }) {
+  return (
+    <div className="flex items-center gap-0.5" aria-hidden>
+      {[1, 2, 3, 4, 5].map((star) => {
+        const fill = Math.min(1, Math.max(0, value - (star - 1)))
+        return (
+          <span key={star} className="relative inline-flex h-5 w-5 shrink-0">
+            <HiStar className="h-5 w-5 text-gray-200" />
+            {fill > 0 ? (
+              <span
+                className="absolute inset-0 overflow-hidden"
+                style={{ width: `${fill * 100}%` }}
+              >
+                <HiStar className="h-5 w-5 text-amber-400 fill-amber-400" />
+              </span>
+            ) : null}
+          </span>
+        )
+      })}
+    </div>
+  )
+}
+
 const Productdetail = () => {
   const { id: idParam } = useParams()
   const productId = Number(idParam)
@@ -67,6 +90,17 @@ const Productdetail = () => {
   )
 
   const canShowReviewForm = reviewEligibility?.canReview === true
+
+  const reviewSummary = useMemo(() => {
+    if (productReviews.length === 0) {
+      return { average: 0, count: 0 }
+    }
+    const total = productReviews.reduce((sum, review) => sum + review.rating, 0)
+    return {
+      average: total / productReviews.length,
+      count: productReviews.length,
+    }
+  }, [productReviews])
 
   const images = useMemo(
     () => (product ? mapProductImages(product) : []),
@@ -388,6 +422,28 @@ const Productdetail = () => {
                   <p className="text-primary text-2xl font-semibold mb-2">
                     {formatPrice(Number(product.price))}
                   </p>
+                  <div
+                    className="mb-3 flex flex-wrap items-center gap-2"
+                    aria-label={
+                      reviewSummary.count > 0
+                        ? `${reviewSummary.average.toFixed(1)} out of 5 stars from ${reviewSummary.count} review${reviewSummary.count === 1 ? '' : 's'}`
+                        : 'No reviews yet'
+                    }
+                  >
+                    <ProductStarRating value={reviewSummary.average} />
+                    {reviewSummary.count > 0 ? (
+                      <>
+                        <span className="text-sm font-semibold text-gray-900 tabular-nums">
+                          {reviewSummary.average.toFixed(1)}
+                        </span>
+                        <span className="text-sm text-gray-500">
+                          ({reviewSummary.count} review{reviewSummary.count === 1 ? '' : 's'})
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-sm text-gray-500">No reviews yet</span>
+                    )}
+                  </div>
                   <p className="text-sm font-normal text-gray-600 mb-4">
                     <span className="text-gray-800">Stock:</span>{' '}
                     <span className="text-gray-900 tabular-nums">{product.stock}</span>
@@ -459,7 +515,7 @@ const Productdetail = () => {
 
             {/* Reviews */}
             {!loading && !loadError && product && (
-            <section className="mt-16 pt-10 border-t border-gray-100">
+            <section id="reviews" className="mt-16 pt-10 border-t border-gray-100 scroll-mt-24">
               <h2 className="text-xl font-bold text-gray-900 mb-6">Reviews</h2>
 
               {canShowReviewForm && (

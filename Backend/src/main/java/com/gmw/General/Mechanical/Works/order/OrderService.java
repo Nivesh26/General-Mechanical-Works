@@ -583,6 +583,7 @@ public class OrderService {
 					order.getLines().stream()
 							.map(line -> new OrderLineDto(
 									line.getId(),
+									line.getProductId(),
 									line.getProductName(),
 									line.getSku(),
 									line.getQuantity(),

@@ -22,6 +22,7 @@ import {
   HiOutlineClock,
   HiOutlineNoSymbol,
   HiOutlineClipboardDocumentCheck,
+  HiOutlinePencilSquare,
 } from 'react-icons/hi2'
 
 type ProductLineStatus = 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled'
@@ -40,6 +41,7 @@ type TrackedProductLine = {
   id: string
   shopOrderId: number
   orderId: string
+  productId: number
   name: string
   image: string
   sku: string
@@ -64,6 +66,10 @@ type TrackedProductLine = {
 }
 
 const formatRs = (n: number) => `Rs. ${n.toLocaleString('en-IN')}`
+
+/** Shared sizing for detail grid cells (SKU, price, delivered, review, etc.). */
+const detailCellClass =
+  'rounded-lg px-3 py-2 min-h-[4.5rem] h-full flex flex-col justify-start'
 
 function formatOrderDate(isoDate: string) {
   const date = new Date(`${isoDate}T12:00:00`)
@@ -95,6 +101,7 @@ function mapOrdersToLines(orders: ApiOrder[]): TrackedProductLine[] {
         id: String(item.id ?? `${order.id}-${index}`),
         shopOrderId: order.id,
         orderId: order.orderNumber,
+        productId: item.productId,
         name: item.productName,
         image: toAbsoluteApiUrl(item.imagePath) ?? EngineOil,
         sku: item.sku,
@@ -271,27 +278,27 @@ function ProductLineCard({
             <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">About this product</p>
             <p className="text-sm text-gray-600 leading-relaxed">{line.description}</p>
           </div>
-          <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-            <div className="rounded-lg bg-gray-50 px-3 py-2">
+          <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm items-stretch">
+            <div className={`${detailCellClass} bg-gray-50`}>
               <dt className="text-xs text-gray-500">SKU</dt>
               <dd className="font-mono text-gray-900 mt-0.5">{line.sku}</dd>
             </div>
-            <div className="rounded-lg bg-gray-50 px-3 py-2">
+            <div className={`${detailCellClass} bg-gray-50`}>
               <dt className="text-xs text-gray-500">Unit price</dt>
               <dd className="font-medium text-gray-900 mt-0.5 tabular-nums">{formatRs(line.unitPrice)}</dd>
             </div>
-            <div className="rounded-lg bg-gray-50 px-3 py-2">
+            <div className={`${detailCellClass} bg-gray-50`}>
               <dt className="text-xs text-gray-500">Line total</dt>
               <dd className="font-semibold text-primary mt-0.5 tabular-nums">{formatRs(lineTotal)}</dd>
             </div>
-            <div className="rounded-lg bg-gray-50 px-3 py-2">
+            <div className={`${detailCellClass} bg-gray-50`}>
               <dt className="text-xs text-gray-500">Payment method</dt>
               <dd className="mt-1">
                 <PaymentMethodBadge method={line.paymentMethod} />
               </dd>
             </div>
             {line.status === 'pending' && (
-              <div className="rounded-lg bg-amber-50/80 px-3 py-2 ring-1 ring-amber-100">
+              <div className={`${detailCellClass} bg-amber-50/80 ring-1 ring-amber-100`}>
                 <dt className="text-xs text-amber-800/90 flex items-center gap-1">
                   <HiOutlineTruck className="h-3.5 w-3.5" />
                   Estimated delivery
@@ -300,7 +307,7 @@ function ProductLineCard({
               </div>
             )}
             {line.status === 'confirmed' && (
-              <div className="rounded-lg bg-sky-50/80 px-3 py-2 ring-1 ring-sky-100">
+              <div className={`${detailCellClass} bg-sky-50/80 ring-1 ring-sky-100`}>
                 <dt className="text-xs text-sky-800/90 flex items-center gap-1">
                   <HiOutlineClipboardDocumentCheck className="h-3.5 w-3.5" />
                   Confirmed on
@@ -312,7 +319,7 @@ function ProductLineCard({
               </div>
             )}
             {line.status === 'shipped' && (
-              <div className="rounded-lg bg-violet-50/80 px-3 py-2 ring-1 ring-violet-100">
+              <div className={`${detailCellClass} bg-violet-50/80 ring-1 ring-violet-100`}>
                 <dt className="text-xs text-violet-800/90 flex items-center gap-1">
                   <HiOutlineTruck className="h-3.5 w-3.5" />
                   Shipped on
@@ -324,16 +331,32 @@ function ProductLineCard({
               </div>
             )}
             {line.status === 'delivered' && (
-              <div className="rounded-lg bg-emerald-50/80 px-3 py-2 ring-1 ring-emerald-100">
-                <dt className="text-xs text-emerald-800/90 flex items-center gap-1">
-                  <HiOutlineCheckCircle className="h-3.5 w-3.5" />
-                  Delivered on
-                </dt>
-                <dd className="font-medium text-emerald-950 mt-0.5">{line.deliveredOn ?? '—'}</dd>
-              </div>
+              <>
+                <div className={`${detailCellClass} bg-emerald-50/80 ring-1 ring-emerald-100`}>
+                  <dt className="text-xs text-emerald-800/90 flex items-center gap-1">
+                    <HiOutlineCheckCircle className="h-3.5 w-3.5 shrink-0" />
+                    Delivered on
+                  </dt>
+                  <dd className="font-medium text-emerald-950 mt-0.5">{line.deliveredOn ?? '—'}</dd>
+                </div>
+                {Number.isFinite(line.productId) && line.productId > 0 ? (
+                  <Link
+                    to={`/productdetail/${line.productId}#reviews`}
+                    className={`${detailCellClass} bg-emerald-50/80 ring-1 ring-emerald-100 hover:bg-emerald-100/80 transition-colors`}
+                  >
+                    <span className="text-xs text-emerald-800/90 flex items-center gap-1">
+                      <HiOutlinePencilSquare className="h-3.5 w-3.5 shrink-0" />
+                      Review
+                    </span>
+                    <span className="mt-0.5 min-h-[1.25rem] block" aria-hidden />
+                  </Link>
+                ) : (
+                  <div className={`${detailCellClass} bg-emerald-50/40 ring-1 ring-emerald-100/60 hidden sm:flex`} aria-hidden />
+                )}
+              </>
             )}
             {line.status === 'cancelled' && (
-              <div className="rounded-lg bg-gray-100 px-3 py-2 ring-1 ring-gray-200">
+              <div className={`${detailCellClass} bg-gray-100 ring-1 ring-gray-200`}>
                 <dt className="text-xs text-gray-600 flex items-center gap-1">
                   <HiOutlineNoSymbol className="h-3.5 w-3.5" />
                   Cancelled on
