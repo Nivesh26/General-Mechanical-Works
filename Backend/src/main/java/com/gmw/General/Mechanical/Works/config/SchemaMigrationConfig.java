@@ -385,6 +385,23 @@ public class SchemaMigrationConfig {
 					WHERE `payment_method` = 'KHALTI' AND `paid` = 0 AND `status` = 'PENDING'
 					""");
 
+			Integer deliveredAtColumnExists = jdbcTemplate.queryForObject(
+					"""
+					SELECT COUNT(*) FROM information_schema.COLUMNS
+					WHERE TABLE_SCHEMA = DATABASE()
+					  AND TABLE_NAME = 'shop_order'
+					  AND COLUMN_NAME = 'delivered_at'
+					""",
+					Integer.class);
+			if (deliveredAtColumnExists == null || deliveredAtColumnExists == 0) {
+				jdbcTemplate.execute("ALTER TABLE `shop_order` ADD COLUMN `delivered_at` DATETIME NULL");
+			}
+			jdbcTemplate.update("""
+					UPDATE `shop_order`
+					SET `delivered_at` = `placed_at`
+					WHERE `status` = 'DELIVERED' AND `delivered_at` IS NULL
+					""");
+
 			jdbcTemplate.execute(
 					"ALTER TABLE `product` MODIFY COLUMN `image_paths` TEXT NOT NULL");
 

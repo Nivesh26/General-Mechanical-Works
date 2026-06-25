@@ -42,6 +42,8 @@ public class OrderService {
 			DateTimeFormatter.ofPattern("yyyy-MM-dd", Locale.ROOT);
 	private static final DateTimeFormatter CANCELLED_AT_FORMAT =
 			DateTimeFormatter.ofPattern("d MMM yyyy", Locale.ENGLISH);
+	private static final DateTimeFormatter DELIVERED_AT_FORMAT =
+			DateTimeFormatter.ofPattern("d MMM yyyy", Locale.ENGLISH);
 
 	private final ShopOrderRepository shopOrderRepository;
 	private final CartRepository cartRepository;
@@ -352,6 +354,9 @@ public class OrderService {
 		}
 
 		order.setStatus(next);
+		if (next == OrderStatus.DELIVERED) {
+			order.setDeliveredAt(LocalDateTime.now());
+		}
 		ShopOrder saved = shopOrderRepository.save(order);
 		if (isStatusEmailStatus(next)) {
 			notifyOrderStatusUpdated(saved, next);
@@ -575,6 +580,7 @@ public class OrderService {
 					order.getPhone(),
 					order.getAddress(),
 					order.getPlacedAt().toLocalDate().format(PLACED_AT_FORMAT),
+					resolveDeliveredAt(order),
 					order.getStatus(),
 					order.getPaymentMethod(),
 					order.getSubtotal(),
@@ -600,6 +606,21 @@ public class OrderService {
 				return null;
 			}
 			return cancelledAt.format(CANCELLED_AT_FORMAT);
+		}
+
+		private static String formatDeliveredAt(LocalDateTime deliveredAt) {
+			if (deliveredAt == null) {
+				return null;
+			}
+			return deliveredAt.format(DELIVERED_AT_FORMAT);
+		}
+
+		private static String resolveDeliveredAt(ShopOrder order) {
+			LocalDateTime deliveredAt = order.getDeliveredAt();
+			if (deliveredAt == null && order.getStatus() == OrderStatus.DELIVERED) {
+				deliveredAt = order.getPlacedAt();
+			}
+			return formatDeliveredAt(deliveredAt);
 		}
 	}
 }

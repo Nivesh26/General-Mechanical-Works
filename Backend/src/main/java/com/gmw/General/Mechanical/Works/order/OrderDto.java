@@ -11,6 +11,7 @@ public record OrderDto(
 		String phone,
 		String address,
 		String placedAt,
+		String deliveredAt,
 		OrderStatus status,
 		PaymentMethod paymentMethod,
 		BigDecimal subtotal,

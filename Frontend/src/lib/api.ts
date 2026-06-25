@@ -746,6 +746,7 @@ export type AdminOrder = {
   phone: string | null
   address: string
   placedAt: string
+  deliveredAt?: string | null
   status: ApiOrderStatus
   paymentMethod: ApiPaymentMethod
   subtotal: number

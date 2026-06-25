@@ -77,6 +77,13 @@ function formatOrderDate(isoDate: string) {
   return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
+function formatEstimatedDelivery(placedAt: string) {
+  const date = new Date(`${placedAt}T12:00:00`)
+  if (Number.isNaN(date.getTime())) return undefined
+  date.setDate(date.getDate() + 3)
+  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
 function lineStatus(order: ApiOrder, item: ApiOrderLine): ProductLineStatus {
   if (item.cancelled || order.status === 'CANCELLED') return 'cancelled'
   return API_TO_UI_STATUS[order.status]
@@ -86,6 +93,7 @@ function mapOrdersToLines(orders: ApiOrder[]): TrackedProductLine[] {
   const lines: TrackedProductLine[] = []
   for (const order of orders) {
     const orderedOn = formatOrderDate(order.placedAt)
+    const estimatedDelivery = formatEstimatedDelivery(order.placedAt)
     const paymentMethod: PaymentMethod =
       order.paymentMethod === 'ESEWA'
         ? 'Esewa'
@@ -113,6 +121,11 @@ function mapOrdersToLines(orders: ApiOrder[]): TrackedProductLine[] {
         paymentMethod,
         canCancel: orderCanCancel && !item.cancelled,
         cancelledOn: item.cancelledAt ?? undefined,
+        deliveredOn: status === 'delivered' ? (order.deliveredAt ?? undefined) : undefined,
+        estimatedDelivery:
+          status === 'pending' || status === 'confirmed' || status === 'shipped'
+            ? estimatedDelivery
+            : undefined,
         description: `${item.productName}.${sizePart} Ordered on ${orderedOn}.`,
       })
     })

@@ -55,6 +55,9 @@ public class ShopOrder {
 	@Column(name = "cancelled_at")
 	private LocalDateTime cancelledAt;
 
+	@Column(name = "delivered_at")
+	private LocalDateTime deliveredAt;
+
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false, length = 32)
 	private OrderStatus status = OrderStatus.PENDING;
@@ -156,6 +159,14 @@ public class ShopOrder {
 
 	public void setCancelledAt(LocalDateTime cancelledAt) {
 		this.cancelledAt = cancelledAt;
+	}
+
+	public LocalDateTime getDeliveredAt() {
+		return deliveredAt;
+	}
+
+	public void setDeliveredAt(LocalDateTime deliveredAt) {
+		this.deliveredAt = deliveredAt;
 	}
 
 	public OrderStatus getStatus() {
