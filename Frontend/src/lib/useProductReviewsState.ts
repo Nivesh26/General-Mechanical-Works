@@ -16,6 +16,8 @@ export type ProductReview = {
   rating: number
   comment: string
   date: string
+  /** Optional photos uploaded with the review (demo — data URLs, frontend only). */
+  reviewImages?: string[]
   /** Short product copy for admin (clamped to ~2 lines in UI). */
   productDetail: string
 }
@@ -56,6 +58,7 @@ export const PRODUCT_REVIEWS_SEED: ProductReview[] = [
     comment:
       'Switched from mineral to this synthetic and the engine feels noticeably smoother on cold starts. Will stock up again.',
     date: '1 week ago',
+    reviewImages: [EngineOil],
   },
   {
     id: 'rev-amit',
@@ -103,6 +106,8 @@ type StoreSnapshot = {
   adminReplyByReviewId: Record<string, string>
   /** Review ids hidden in UI (demo — replace with API delete later). */
   removedReviewIds: string[]
+  /** Reviews submitted on the product page (demo — frontend only). */
+  submittedReviews: ProductReview[]
 }
 
 function emptyStore(): StoreSnapshot {
@@ -116,6 +121,7 @@ function emptyStore(): StoreSnapshot {
       'rev-raj': SEED_ADMIN_REPLY_REV_RAJ,
     },
     removedReviewIds: [],
+    submittedReviews: [],
   }
 }
 
@@ -150,6 +156,7 @@ export function useProductReviewsState() {
     adminReplyLikeCountById,
     adminReplyByReviewId,
     removedReviewIds,
+    submittedReviews,
   } =
     useSyncExternalStore(
     subscribe,
@@ -157,7 +164,22 @@ export function useProductReviewsState() {
     getServerSnapshot,
   )
 
-  const visibleReviews = PRODUCT_REVIEWS_SEED.filter((r) => !removedReviewIds.includes(r.id))
+  const visibleReviews = [
+    ...submittedReviews,
+    ...PRODUCT_REVIEWS_SEED,
+  ].filter((r) => !removedReviewIds.includes(r.id))
+
+  const addUserReview = useCallback((review: Omit<ProductReview, 'id' | 'date'>) => {
+    const s = getSnapshot()
+    const id = `rev-user-${Date.now()}`
+    const next: ProductReview = { ...review, id, date: 'Just now' }
+    setStore({
+      ...s,
+      submittedReviews: [next, ...s.submittedReviews],
+      reviewLikeCountById: { ...s.reviewLikeCountById, [id]: 0 },
+      adminReplyLikeCountById: { ...s.adminReplyLikeCountById, [id]: 0 },
+    })
+  }, [])
 
   const toggleUserLike = useCallback((reviewId: string) => {
     const s = getSnapshot()
@@ -225,7 +247,9 @@ export function useProductReviewsState() {
 
   const removeReview = useCallback((reviewId: string) => {
     const s = getSnapshot()
-    if (!PRODUCT_REVIEWS_SEED.some((r) => r.id === reviewId)) return
+    const isSeed = PRODUCT_REVIEWS_SEED.some((r) => r.id === reviewId)
+    const isSubmitted = s.submittedReviews.some((r) => r.id === reviewId)
+    if (!isSeed && !isSubmitted) return
     if (s.removedReviewIds.includes(reviewId)) return
     const nextAdminReplies = { ...s.adminReplyByReviewId }
     delete nextAdminReplies[reviewId]
@@ -235,7 +259,8 @@ export function useProductReviewsState() {
     delete nextAdminReplyLikes[reviewId]
     setStore({
       ...s,
-      removedReviewIds: [...s.removedReviewIds, reviewId],
+      submittedReviews: s.submittedReviews.filter((r) => r.id !== reviewId),
+      removedReviewIds: isSeed ? [...s.removedReviewIds, reviewId] : s.removedReviewIds,
       userLikedReviewIds: s.userLikedReviewIds.filter((id) => id !== reviewId),
       userLikedAdminReplyReviewIds: s.userLikedAdminReplyReviewIds.filter((id) => id !== reviewId),
       adminLikedReviewIds: s.adminLikedReviewIds.filter((id) => id !== reviewId),
@@ -259,5 +284,6 @@ export function useProductReviewsState() {
     setAdminReply,
     clearAdminReply,
     removeReview,
+    addUserReview,
   }
 }

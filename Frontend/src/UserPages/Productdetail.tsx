@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
+import { createPortal } from 'react-dom'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import Header from '../UserComponent/Header'
@@ -7,20 +8,22 @@ import Copyright from '../UserComponent/Copyright'
 import Productsuggestion from '../UserComponent/Productsuggestion'
 import { PAGE_GUTTER } from '../lib/layoutClasses'
 import GMWlogo from '../assets/GMWlogo.png'
-import { HiOutlineCheck, HiStar, HiOutlineHandThumbUp, HiHandThumbUp } from 'react-icons/hi2'
+import { HiOutlineCheck, HiStar, HiOutlineHandThumbUp, HiHandThumbUp, HiPhoto, HiXMark } from 'react-icons/hi2'
 import { DEMO_PRODUCT_ID, useProductReviewsState } from '../lib/useProductReviewsState'
-import { addToCart, fetchProduct, type ProductItem } from '../lib/api'
+import { addToCart, fetchProduct, toAbsoluteApiUrl, type ProductItem } from '../lib/api'
 import { mapProductImages } from '../lib/products'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
 
 const formatPrice = (n: number) => `Rs. ${n.toLocaleString('en-IN')}`
+const MAX_REVIEW_IMAGES = 2
+const REVIEW_IMAGE_MAX_BYTES = 2 * 1024 * 1024
 
 const Productdetail = () => {
   const { id: idParam } = useParams()
   const productId = Number(idParam)
   const navigate = useNavigate()
-  const { token } = useAuth()
+  const { token, user } = useAuth()
   const { refreshCart } = useCart()
 
   const [product, setProduct] = useState<ProductItem | null>(null)
@@ -32,6 +35,9 @@ const Productdetail = () => {
   const [selectedSize, setSelectedSize] = useState<string | null>(null)
   const [reviewText, setReviewText] = useState('')
   const [rating, setRating] = useState(0)
+  const [reviewImages, setReviewImages] = useState<string[]>([])
+  const [reviewImageLightbox, setReviewImageLightbox] = useState<string | null>(null)
+  const reviewImageInputRef = useRef<HTMLInputElement>(null)
   const {
     reviews,
     userLikedReviewIds,
@@ -41,6 +47,7 @@ const Productdetail = () => {
     adminReplyByReviewId,
     toggleUserLike,
     toggleUserLikeAdminReply,
+    addUserReview,
   } = useProductReviewsState()
 
   const productReviews = reviews.filter((r) => r.productId === DEMO_PRODUCT_ID)
@@ -49,6 +56,68 @@ const Productdetail = () => {
     () => (product ? mapProductImages(product) : []),
     [product],
   )
+
+  const handleReviewImagePick = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please choose an image file.')
+      return
+    }
+    if (file.size > REVIEW_IMAGE_MAX_BYTES) {
+      toast.error('Each image must be 2 MB or smaller.')
+      return
+    }
+    if (reviewImages.length >= MAX_REVIEW_IMAGES) {
+      toast.error(`You can add up to ${MAX_REVIEW_IMAGES} photos.`)
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        setReviewImages((prev) =>
+          prev.length >= MAX_REVIEW_IMAGES ? prev : [...prev, reader.result as string],
+        )
+      }
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const removeReviewImage = (index: number) => {
+    setReviewImages((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  const handlePostReview = () => {
+    const comment = reviewText.trim()
+    if (rating < 1) {
+      toast.error('Please select a star rating.')
+      return
+    }
+    if (!comment) {
+      toast.error('Please write your review.')
+      return
+    }
+    const reviewerName = user?.name?.trim() || 'Guest'
+    const reviewerPhoto = user?.profilePicture
+      ? toAbsoluteApiUrl(user.profilePicture) ?? ''
+      : ''
+    addUserReview({
+      productId: DEMO_PRODUCT_ID,
+      productName: product?.name ?? 'Product',
+      productDetail: product?.description ?? '',
+      productImage: images[0] ?? '',
+      userPhoto: reviewerPhoto,
+      name: reviewerName,
+      rating,
+      comment,
+      reviewImages: reviewImages.length > 0 ? [...reviewImages] : undefined,
+    })
+    setReviewText('')
+    setRating(0)
+    setReviewImages([])
+    toast.success('Review posted.')
+  }
 
   const sizes = product?.sizes ?? []
   const bulletPoints = product?.bulletPoints ?? []
@@ -86,6 +155,15 @@ const Productdetail = () => {
     }
   }, [productId])
 
+  useEffect(() => {
+    if (!reviewImageLightbox) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = prev
+    }
+  }, [reviewImageLightbox])
+
   const safeImageIndex = images.length > 0 ? Math.min(selectedImageIndex, images.length - 1) : 0
   const mainImage = images[safeImageIndex] ?? null
   const thumbIndices = images.map((_, i) => i).filter((i) => i !== safeImageIndex)
@@ -117,8 +195,41 @@ const Productdetail = () => {
     }
   }
 
+  const reviewImageLightboxPortal =
+    reviewImageLightbox &&
+    createPortal(
+      <div
+        className="fixed inset-0 z-200 flex items-center justify-center bg-black/80 p-4 cursor-pointer"
+        onClick={() => setReviewImageLightbox(null)}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Viewing review photo"
+      >
+        <button
+          type="button"
+          className="absolute top-4 right-4 z-10 flex h-10 w-10 items-center justify-center rounded-full border-2 border-gray-300 bg-white/90 text-gray-700 hover:bg-white cursor-pointer"
+          onClick={() => setReviewImageLightbox(null)}
+          aria-label="Close"
+        >
+          <HiXMark className="h-6 w-6" aria-hidden />
+        </button>
+        <div
+          className="relative flex max-h-[95vh] w-full max-w-7xl items-center justify-center"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <img
+            src={reviewImageLightbox}
+            alt="Enlarged review photo"
+            className="max-h-[95vh] w-auto max-w-full rounded-lg object-contain shadow-2xl"
+          />
+        </div>
+      </div>,
+      document.body,
+    )
+
   return (
     <div className="min-h-screen flex flex-col bg-white">
+      {reviewImageLightboxPortal}
       <Header />
 
       <main className="flex-1">
@@ -300,8 +411,52 @@ const Productdetail = () => {
                       className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary resize-y"
                     />
                   </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Photos</label>
+                    <input
+                      ref={reviewImageInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleReviewImagePick}
+                      className="hidden"
+                      aria-hidden
+                    />
+                    <div className="flex flex-wrap items-center gap-3">
+                      {reviewImages.map((src, index) => (
+                        <div
+                          key={`${index}-${src.slice(0, 24)}`}
+                          className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-white"
+                        >
+                          <img
+                            src={src}
+                            alt={`Review upload ${index + 1}`}
+                            className="h-full w-full object-cover"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeReviewImage(index)}
+                            className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/75 cursor-pointer"
+                            aria-label={`Remove photo ${index + 1}`}
+                          >
+                            <HiXMark className="h-4 w-4" aria-hidden />
+                          </button>
+                        </div>
+                      ))}
+                      {reviewImages.length < MAX_REVIEW_IMAGES && (
+                        <button
+                          type="button"
+                          onClick={() => reviewImageInputRef.current?.click()}
+                          className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-dashed border-gray-300 bg-white px-3 text-gray-500 hover:border-primary hover:text-primary transition-colors cursor-pointer"
+                        >
+                          <HiPhoto className="h-4 w-4" aria-hidden />
+                          <span className="text-xs font-medium">Add photo</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
                   <button
                     type="button"
+                    onClick={handlePostReview}
                     className="inline-block px-5 py-2.5 rounded-lg bg-primary text-white text-sm font-semibold hover:opacity-90 transition-opacity cursor-pointer"
                   >
                  Post
@@ -319,11 +474,20 @@ const Productdetail = () => {
                   return (
                     <div key={review.id} className="p-5 rounded-xl bg-gray-50 border border-gray-100">
                       <div className="flex items-start gap-3 mb-3">
-                        <img
-                          src={review.userPhoto}
-                          alt={`${review.name} profile`}
-                          className="w-10 h-10 shrink-0 rounded-full object-cover border border-gray-200"
-                        />
+                        {review.userPhoto ? (
+                          <img
+                            src={review.userPhoto}
+                            alt={`${review.name} profile`}
+                            className="w-10 h-10 shrink-0 rounded-full object-cover border border-gray-200"
+                          />
+                        ) : (
+                          <div
+                            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-gray-200 bg-gray-100 text-sm font-semibold text-gray-600"
+                            aria-hidden
+                          >
+                            {review.name.charAt(0).toUpperCase()}
+                          </div>
+                        )}
                         <div className="min-w-0 flex-1">
                           <p className="font-semibold text-gray-900">{review.name}</p>
                           <div className="flex items-center gap-1 mt-0.5">
@@ -338,6 +502,25 @@ const Productdetail = () => {
                         </div>
                       </div>
                       <p className="text-gray-600 text-sm leading-relaxed mb-3">{review.comment}</p>
+                      {review.reviewImages && review.reviewImages.length > 0 && (
+                        <div className="mb-3 flex flex-wrap gap-2">
+                          {review.reviewImages.map((src, index) => (
+                            <button
+                              key={`${review.id}-img-${index}`}
+                              type="button"
+                              onClick={() => setReviewImageLightbox(src)}
+                              className="h-24 w-24 overflow-hidden rounded-lg border border-gray-200 bg-white cursor-pointer transition hover:border-primary hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary/40"
+                              aria-label={`View ${review.name} review photo ${index + 1} larger`}
+                            >
+                              <img
+                                src={src}
+                                alt={`${review.name} review photo ${index + 1}`}
+                                className="h-full w-full object-cover"
+                              />
+                            </button>
+                          ))}
+                        </div>
+                      )}
                       <div className="mb-3">
                         <button
                           type="button"
