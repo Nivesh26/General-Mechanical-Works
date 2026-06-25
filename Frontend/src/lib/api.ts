@@ -878,6 +878,8 @@ export interface ProductReviewItem {
   reviewImages: string[]
   adminReply: string | null
   createdAt: string
+  likeCount: number
+  likedByCurrentUser: boolean
 }
 
 export interface ReviewEligibility {
@@ -886,10 +888,13 @@ export interface ReviewEligibility {
   hasDeliveredPurchase: boolean
 }
 
-export async function fetchProductReviews(productId: number): Promise<ProductReviewItem[]> {
-  const res = await fetch(`${getApiBase()}/api/products/${productId}/reviews`, {
-    headers: { Accept: 'application/json' },
-  })
+export async function fetchProductReviews(
+  productId: number,
+  token?: string | null,
+): Promise<ProductReviewItem[]> {
+  const headers: Record<string, string> = { Accept: 'application/json' }
+  if (token) headers.Authorization = `Bearer ${token}`
+  const res = await fetch(`${getApiBase()}/api/products/${productId}/reviews`, { headers })
   if (!res.ok) throw new Error(await parseErrorMessage(res))
   return res.json() as Promise<ProductReviewItem[]>
 }
@@ -957,4 +962,22 @@ export async function deleteAdminReview(token: string, reviewId: number): Promis
     headers: { Authorization: `Bearer ${token}` },
   })
   if (!res.ok) throw new Error(await parseErrorMessage(res))
+}
+
+export async function likeReview(reviewId: number, token: string): Promise<ProductReviewItem> {
+  const res = await fetch(`${getApiBase()}/api/reviews/${reviewId}/like`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<ProductReviewItem>
+}
+
+export async function unlikeReview(reviewId: number, token: string): Promise<ProductReviewItem> {
+  const res = await fetch(`${getApiBase()}/api/reviews/${reviewId}/like`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<ProductReviewItem>
 }

@@ -15,7 +15,9 @@ import {
   fetchProduct,
   fetchProductReviews,
   fetchReviewEligibility,
+  likeReview,
   submitProductReview,
+  unlikeReview,
   toAbsoluteApiUrl,
   type ProductItem,
   type ProductReviewItem,
@@ -51,13 +53,11 @@ const Productdetail = () => {
   const [reviewsLoading, setReviewsLoading] = useState(false)
   const [reviewEligibility, setReviewEligibility] = useState<ReviewEligibility | null>(null)
   const [submittingReview, setSubmittingReview] = useState(false)
+  const [likingReviewId, setLikingReviewId] = useState<number | null>(null)
   const reviewImageInputRef = useRef<HTMLInputElement>(null)
   const {
-    userLikedReviewIds,
     userLikedAdminReplyReviewIds,
-    reviewLikeCountById,
     adminReplyLikeCountById,
-    toggleUserLike,
     toggleUserLikeAdminReply,
   } = useProductReviewsState()
 
@@ -133,6 +133,26 @@ const Productdetail = () => {
     }
   }
 
+  const handleToggleReviewLike = async (review: ProductReviewItem) => {
+    if (likingReviewId === review.id) return
+    if (!token) {
+      toast.info('Please sign in to like this review.')
+      navigate('/login', { state: { from: `/productdetail/${productId}` } })
+      return
+    }
+    setLikingReviewId(review.id)
+    try {
+      const updated = review.likedByCurrentUser
+        ? await unlikeReview(review.id, token)
+        : await likeReview(review.id, token)
+      setProductReviews((prev) => prev.map((r) => (r.id === updated.id ? updated : r)))
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not update like.')
+    } finally {
+      setLikingReviewId(null)
+    }
+  }
+
   const sizes = product?.sizes ?? []
   const bulletPoints = product?.bulletPoints ?? []
 
@@ -178,7 +198,7 @@ const Productdetail = () => {
     const loadReviews = async () => {
       setReviewsLoading(true)
       try {
-        const data = await fetchProductReviews(productId)
+        const data = await fetchProductReviews(productId, token)
         if (!cancelled) setProductReviews(data)
       } catch {
         if (!cancelled) setProductReviews([])
@@ -190,7 +210,7 @@ const Productdetail = () => {
     return () => {
       cancelled = true
     }
-  }, [productId])
+  }, [productId, token])
 
   useEffect(() => {
     if (!token || !Number.isFinite(productId) || productId <= 0) {
@@ -540,10 +560,11 @@ const Productdetail = () => {
                   const reviewId = String(review.id)
                   const adminReply = (review.adminReply ?? '').trim()
                   const reviewerPhoto = review.userPhoto ? toAbsoluteApiUrl(review.userPhoto) : null
-                  const reviewLiked = userLikedReviewIds.includes(reviewId)
+                  const reviewLiked = review.likedByCurrentUser
                   const replyLiked = userLikedAdminReplyReviewIds.includes(reviewId)
-                  const reviewLikeCount = reviewLikeCountById[reviewId] ?? 0
+                  const reviewLikeCount = review.likeCount
                   const replyLikeCount = adminReplyLikeCountById[reviewId] ?? 0
+                  const likeBusy = likingReviewId === review.id
                   return (
                     <div key={review.id} className="p-5 rounded-xl bg-gray-50 border border-gray-100">
                       <div className="flex items-start gap-3 mb-3">
@@ -600,13 +621,14 @@ const Productdetail = () => {
                       <div className="mb-3">
                         <button
                           type="button"
-                          onClick={() => toggleUserLike(reviewId)}
+                          onClick={() => void handleToggleReviewLike(review)}
+                          disabled={likeBusy}
                           aria-label={
                             reviewLiked
                               ? `Unlike this review, ${reviewLikeCount} total`
                               : `Like this review, ${reviewLikeCount} total`
                           }
-                          className={`inline-flex items-center gap-1.5 text-sm font-medium cursor-pointer transition-colors ${
+                          className={`inline-flex items-center gap-1.5 text-sm font-medium cursor-pointer transition-colors disabled:opacity-60 ${
                             reviewLiked ? 'text-blue-600' : 'text-gray-500 hover:text-gray-700'
                           }`}
                         >

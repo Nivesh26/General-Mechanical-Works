@@ -14,8 +14,10 @@ import { useAuth } from '../context/AuthContext'
 import {
   deleteAdminReview,
   fetchAdminReviews,
+  likeReview,
   setAdminReviewReply,
   toAbsoluteApiUrl,
+  unlikeReview,
   type ProductReviewItem,
 } from '../lib/api'
 import { useProductReviewsState } from '../lib/useProductReviewsState'
@@ -38,15 +40,11 @@ const cardShell: CSSProperties = {
 
 const AdminReviews = () => {
   const { token } = useAuth()
-  const {
-    adminLikedReviewIds,
-    reviewLikeCountById,
-    adminReplyLikeCountById,
-    toggleAdminLike,
-  } = useProductReviewsState()
+  const { adminReplyLikeCountById } = useProductReviewsState()
 
   const [reviews, setReviews] = useState<ProductReviewItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [likingReviewId, setLikingReviewId] = useState<number | null>(null)
   const [drafts, setDrafts] = useState<Record<string, string>>({})
   const [replyOpenId, setReplyOpenId] = useState<string | null>(null)
   /** Collapsed by default: header shows “Linked product” + chevron only. */
@@ -142,6 +140,21 @@ const AdminReviews = () => {
     }
   }
 
+  const handleToggleReviewLike = async (review: ProductReviewItem) => {
+    if (!token || likingReviewId === review.id) return
+    setLikingReviewId(review.id)
+    try {
+      const updated = review.likedByCurrentUser
+        ? await unlikeReview(review.id, token)
+        : await likeReview(review.id, token)
+      setReviews((prev) => prev.map((r) => (r.id === updated.id ? updated : r)))
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : 'Could not update like.')
+    } finally {
+      setLikingReviewId(null)
+    }
+  }
+
   return (
     <div className="admin-page-root bg-[#f1f5f9]">
       <AdminNavbar />
@@ -178,11 +191,12 @@ const AdminReviews = () => {
               const reviewId = String(review.id)
               const userPhoto = review.userPhoto ? toAbsoluteApiUrl(review.userPhoto) ?? '' : ''
               const productImage = review.productImage ? toAbsoluteApiUrl(review.productImage) ?? '' : ''
-              const adminLiked = adminLikedReviewIds.includes(reviewId)
+              const adminLiked = review.likedByCurrentUser
               const savedAdminReply = (review.adminReply ?? '').trim()
               const linkedExpanded = linkedProductOpen[reviewId] === true
-              const reviewLikeCount = reviewLikeCountById[reviewId] ?? 0
+              const reviewLikeCount = review.likeCount
               const replyLikeCount = adminReplyLikeCountById[reviewId] ?? 0
+              const likeBusy = likingReviewId === review.id
               return (
                 <article key={reviewId} style={cardShell}>
                   <div
@@ -271,7 +285,8 @@ const AdminReviews = () => {
                     >
                       <button
                         type="button"
-                        onClick={() => toggleAdminLike(reviewId)}
+                        onClick={() => void handleToggleReviewLike(review)}
+                        disabled={likeBusy}
                         style={{
                           display: 'inline-flex',
                           alignItems: 'center',
@@ -283,7 +298,8 @@ const AdminReviews = () => {
                           color: adminLiked ? '#1d4ed8' : '#64748b',
                           fontSize: '13px',
                           fontWeight: 600,
-                          cursor: 'pointer',
+                          cursor: likeBusy ? 'wait' : 'pointer',
+                          opacity: likeBusy ? 0.6 : 1,
                         }}
                       >
                         {adminLiked ? (

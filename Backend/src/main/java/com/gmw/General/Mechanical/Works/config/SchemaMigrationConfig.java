@@ -405,11 +405,47 @@ public class SchemaMigrationConfig {
 						  `comment` TEXT NOT NULL,
 						  `image_paths` TEXT NULL,
 						  `admin_reply` TEXT NULL,
+						  `like_count` INT NOT NULL DEFAULT 0,
 						  `created_at` DATETIME(6) NOT NULL,
 						  PRIMARY KEY (`id`),
 						  UNIQUE KEY `uk_reviews_user_product` (`user_id`, `product_id`),
 						  CONSTRAINT `fk_reviews_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON DELETE CASCADE,
 						  CONSTRAINT `fk_reviews_product` FOREIGN KEY (`product_id`) REFERENCES `product` (`id`) ON DELETE CASCADE
+						)
+						""");
+			}
+
+			Integer reviewLikeCountColumnExists = jdbcTemplate.queryForObject(
+					"""
+					SELECT COUNT(*) FROM information_schema.COLUMNS
+					WHERE TABLE_SCHEMA = DATABASE()
+					  AND TABLE_NAME = 'reviews'
+					  AND COLUMN_NAME = 'like_count'
+					""",
+					Integer.class);
+			if (reviewLikeCountColumnExists == null || reviewLikeCountColumnExists == 0) {
+				jdbcTemplate.execute(
+						"ALTER TABLE `reviews` ADD COLUMN `like_count` INT NOT NULL DEFAULT 0");
+			}
+
+			Integer reviewLikeTableExists = jdbcTemplate.queryForObject(
+					"""
+					SELECT COUNT(*) FROM information_schema.TABLES
+					WHERE TABLE_SCHEMA = DATABASE()
+					  AND TABLE_NAME = 'review_like'
+					""",
+					Integer.class);
+			if (reviewLikeTableExists == null || reviewLikeTableExists == 0) {
+				jdbcTemplate.execute("""
+						CREATE TABLE `review_like` (
+						  `id` BIGINT NOT NULL AUTO_INCREMENT,
+						  `review_id` BIGINT NOT NULL,
+						  `user_id` BIGINT NOT NULL,
+						  `created_at` DATETIME(6) NOT NULL,
+						  PRIMARY KEY (`id`),
+						  UNIQUE KEY `uk_review_like_review_user` (`review_id`, `user_id`),
+						  CONSTRAINT `fk_review_like_review` FOREIGN KEY (`review_id`) REFERENCES `reviews` (`id`) ON DELETE CASCADE,
+						  CONSTRAINT `fk_review_like_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON DELETE CASCADE
 						)
 						""");
 			}

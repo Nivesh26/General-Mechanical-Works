@@ -1,5 +1,6 @@
 package com.gmw.General.Mechanical.Works.review;
 
+import java.security.Principal;
 import java.util.List;
 import java.util.Map;
 
@@ -22,13 +23,18 @@ public class AdminProductReviewController {
 	}
 
 	@GetMapping
-	public List<ProductReviewDto> list() {
-		return productReviewService.listAllForAdmin();
+	public List<ProductReviewDto> list(Principal principal) {
+		String email = principal != null ? principal.getName() : null;
+		return productReviewService.listAllForAdmin(email);
 	}
 
 	@PutMapping("/{id}/reply")
-	public ProductReviewDto reply(@PathVariable Long id, @RequestBody Map<String, String> body) {
-		return productReviewService.setAdminReply(id, body.get("reply"));
+	public ProductReviewDto reply(
+			@PathVariable Long id,
+			@RequestBody Map<String, String> body,
+			Principal principal) {
+		String email = principal != null ? principal.getName() : null;
+		return productReviewService.setAdminReply(id, body.get("reply"), email);
 	}
 
 	@DeleteMapping("/{id}")

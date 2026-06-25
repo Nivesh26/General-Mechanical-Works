@@ -1,8 +1,11 @@
 package com.gmw.General.Mechanical.Works.review;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -26,33 +29,42 @@ public class ProductReviewService {
 	private static final int MAX_REVIEW_IMAGE_BYTES = 2 * 1024 * 1024;
 
 	private final ProductReviewRepository productReviewRepository;
+	private final ProductReviewLikeRepository productReviewLikeRepository;
 	private final ProductRepository productRepository;
 	private final UserRepository userRepository;
 	private final ImageStorageService imageStorageService;
 
 	public ProductReviewService(
 			ProductReviewRepository productReviewRepository,
+			ProductReviewLikeRepository productReviewLikeRepository,
 			ProductRepository productRepository,
 			UserRepository userRepository,
 			ImageStorageService imageStorageService) {
 		this.productReviewRepository = productReviewRepository;
+		this.productReviewLikeRepository = productReviewLikeRepository;
 		this.productRepository = productRepository;
 		this.userRepository = userRepository;
 		this.imageStorageService = imageStorageService;
 	}
 
 	@Transactional(readOnly = true)
-	public List<ProductReviewDto> listForProduct(Long productId) {
+	public List<ProductReviewDto> listForProduct(Long productId, String userEmail) {
 		requireActiveProduct(productId);
-		return productReviewRepository.findByProductIdWithUserOrderByCreatedAtDesc(productId).stream()
-				.map(ProductReviewMapper::toDto)
+		Long userId = resolveUserId(userEmail);
+		List<ProductReview> reviews = productReviewRepository.findByProductIdWithUserOrderByCreatedAtDesc(productId);
+		Set<Long> likedReviewIds = likedReviewIdsForUser(userId, reviews);
+		return reviews.stream()
+				.map(review -> ProductReviewMapper.toDto(review, likedReviewIds.contains(review.getId())))
 				.toList();
 	}
 
 	@Transactional(readOnly = true)
-	public List<ProductReviewDto> listAllForAdmin() {
-		return productReviewRepository.findAllWithUserAndProductOrderByCreatedAtDesc().stream()
-				.map(ProductReviewMapper::toDto)
+	public List<ProductReviewDto> listAllForAdmin(String userEmail) {
+		Long userId = resolveUserId(userEmail);
+		List<ProductReview> reviews = productReviewRepository.findAllWithUserAndProductOrderByCreatedAtDesc();
+		Set<Long> likedReviewIds = likedReviewIdsForUser(userId, reviews);
+		return reviews.stream()
+				.map(review -> ProductReviewMapper.toDto(review, likedReviewIds.contains(review.getId())))
 				.toList();
 	}
 
@@ -94,18 +106,59 @@ public class ProductReviewService {
 		review.setRating(rating);
 		review.setComment(trimmedComment);
 		review.setImagePathsJson(ProductJson.writeStringList(storedImages));
+		review.setLikeCount(0);
 
 		ProductReview saved = productReviewRepository.save(review);
-		return ProductReviewMapper.toDto(saved);
+		return ProductReviewMapper.toDto(saved, false);
 	}
 
 	@Transactional
-	public ProductReviewDto setAdminReply(Long reviewId, String reply) {
+	public ProductReviewDto like(Long reviewId, String userEmail) {
+		Long userId = resolveUserId(userEmail);
+		if (userId == null) {
+			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required");
+		}
+		ProductReview review = productReviewRepository.findByIdWithDetails(reviewId)
+				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Review not found"));
+		if (productReviewLikeRepository.existsByReviewIdAndUserId(reviewId, userId)) {
+			return ProductReviewMapper.toDto(review, true);
+		}
+		ProductReviewLike like = new ProductReviewLike();
+		like.setReviewId(reviewId);
+		like.setUserId(userId);
+		like.setCreatedAt(LocalDateTime.now());
+		productReviewLikeRepository.save(like);
+		review.setLikeCount(review.getLikeCount() + 1);
+		return ProductReviewMapper.toDto(productReviewRepository.save(review), true);
+	}
+
+	@Transactional
+	public ProductReviewDto unlike(Long reviewId, String userEmail) {
+		Long userId = resolveUserId(userEmail);
+		if (userId == null) {
+			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required");
+		}
+		ProductReview review = productReviewRepository.findByIdWithDetails(reviewId)
+				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Review not found"));
+		if (!productReviewLikeRepository.existsByReviewIdAndUserId(reviewId, userId)) {
+			return ProductReviewMapper.toDto(review, false);
+		}
+		productReviewLikeRepository.deleteByReviewIdAndUserId(reviewId, userId);
+		review.setLikeCount(Math.max(0, review.getLikeCount() - 1));
+		return ProductReviewMapper.toDto(productReviewRepository.save(review), false);
+	}
+
+	@Transactional
+	public ProductReviewDto setAdminReply(Long reviewId, String reply, String userEmail) {
 		ProductReview review = productReviewRepository.findByIdWithDetails(reviewId)
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Review not found"));
 		String trimmed = reply != null ? reply.trim() : "";
 		review.setAdminReply(StringUtils.hasText(trimmed) ? trimmed : null);
-		return ProductReviewMapper.toDto(productReviewRepository.save(review));
+		ProductReview saved = productReviewRepository.save(review);
+		Long userId = resolveUserId(userEmail);
+		boolean liked = userId != null
+				&& productReviewLikeRepository.existsByReviewIdAndUserId(reviewId, userId);
+		return ProductReviewMapper.toDto(saved, liked);
 	}
 
 	@Transactional
@@ -154,12 +207,29 @@ public class ProductReviewService {
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 	}
 
+	private Long resolveUserId(String userEmail) {
+		if (!StringUtils.hasText(userEmail)) {
+			return null;
+		}
+		return userRepository.findByEmailIgnoreCase(userEmail.trim().toLowerCase())
+				.map(User::getId)
+				.orElse(null);
+	}
+
+	private Set<Long> likedReviewIdsForUser(Long userId, List<ProductReview> reviews) {
+		if (userId == null || reviews.isEmpty()) {
+			return Set.of();
+		}
+		List<Long> reviewIds = reviews.stream().map(ProductReview::getId).toList();
+		return new HashSet<>(productReviewLikeRepository.findReviewIdsByUserIdAndReviewIdIn(userId, reviewIds));
+	}
+
 	static final class ProductReviewMapper {
 
 		private ProductReviewMapper() {
 		}
 
-		static ProductReviewDto toDto(ProductReview review) {
+		static ProductReviewDto toDto(ProductReview review, boolean likedByCurrentUser) {
 			Product product = review.getProduct();
 			User user = review.getUser();
 			List<String> productImages = product.getImagePathsList();
@@ -176,7 +246,9 @@ public class ProductReviewService {
 					ProductJson.readStringList(review.getImagePathsJson()),
 					review.getAdminReply(),
 					review.getCreatedAt().toLocalDate().format(
-							java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy", Locale.ENGLISH)));
+							java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy", Locale.ENGLISH)),
+					review.getLikeCount(),
+					likedByCurrentUser);
 		}
 	}
 }

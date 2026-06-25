@@ -49,6 +49,9 @@ public class ProductReview {
 	@Column(name = "admin_reply", columnDefinition = "TEXT")
 	private String adminReply;
 
+	@Column(name = "like_count", nullable = false)
+	private int likeCount = 0;
+
 	@Column(name = "created_at", nullable = false)
 	private LocalDateTime createdAt;
 
@@ -109,6 +112,14 @@ public class ProductReview {
 
 	public void setAdminReply(String adminReply) {
 		this.adminReply = adminReply;
+	}
+
+	public int getLikeCount() {
+		return likeCount;
+	}
+
+	public void setLikeCount(int likeCount) {
+		this.likeCount = likeCount;
 	}
 
 	public LocalDateTime getCreatedAt() {

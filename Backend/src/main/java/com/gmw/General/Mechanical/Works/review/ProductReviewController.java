@@ -24,8 +24,9 @@ public class ProductReviewController {
 	}
 
 	@GetMapping
-	public List<ProductReviewDto> list(@PathVariable Long productId) {
-		return productReviewService.listForProduct(productId);
+	public List<ProductReviewDto> list(@PathVariable Long productId, Principal principal) {
+		String email = principal != null ? principal.getName() : null;
+		return productReviewService.listForProduct(productId, email);
 	}
 
 	@GetMapping("/eligibility")

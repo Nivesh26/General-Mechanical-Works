@@ -14,5 +14,7 @@ public record ProductReviewDto(
 		String comment,
 		List<String> reviewImages,
 		String adminReply,
-		String createdAt) {
+		String createdAt,
+		int likeCount,
+		boolean likedByCurrentUser) {
 }
