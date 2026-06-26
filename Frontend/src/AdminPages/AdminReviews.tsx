@@ -1,4 +1,5 @@
 import { useEffect, useState, type CSSProperties } from 'react'
+import { createPortal } from 'react-dom'
 import AdminNavbar from '../AdminComponent/AdminNavbar'
 import { ADMIN_MAIN_SCROLL_CLASS, ADMIN_PAGE_HEADER_SPACING, ADMIN_PAGE_SUBTITLE, ADMIN_PAGE_TITLE } from '../AdminComponent/adminMainStyles'
 import {
@@ -9,6 +10,7 @@ import {
   HiChatBubbleLeft,
   HiOutlineTrash,
   HiChevronDown,
+  HiXMark,
 } from 'react-icons/hi2'
 import { useAuth } from '../context/AuthContext'
 import {
@@ -49,6 +51,16 @@ const AdminReviews = () => {
   const [replyOpenId, setReplyOpenId] = useState<string | null>(null)
   /** Collapsed by default: header shows “Linked product” + chevron only. */
   const [linkedProductOpen, setLinkedProductOpen] = useState<Record<string, boolean>>({})
+  const [reviewImageLightbox, setReviewImageLightbox] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!reviewImageLightbox) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setReviewImageLightbox(null)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [reviewImageLightbox])
 
   useEffect(() => {
     if (!token) {
@@ -157,6 +169,64 @@ const AdminReviews = () => {
 
   return (
     <div className="admin-page-root bg-[#f1f5f9]">
+      {reviewImageLightbox &&
+        createPortal(
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Viewing review photo"
+            onClick={() => setReviewImageLightbox(null)}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              zIndex: 200,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: 'rgba(0, 0, 0, 0.8)',
+              padding: '16px',
+              cursor: 'pointer',
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => setReviewImageLightbox(null)}
+              aria-label="Close"
+              style={{
+                position: 'absolute',
+                top: '16px',
+                right: '16px',
+                zIndex: 10,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '40px',
+                height: '40px',
+                borderRadius: '999px',
+                border: '2px solid #d1d5db',
+                backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                color: '#374151',
+                cursor: 'pointer',
+              }}
+            >
+              <HiXMark style={{ width: 24, height: 24 }} aria-hidden />
+            </button>
+            <div onClick={(e) => e.stopPropagation()}>
+              <img
+                src={reviewImageLightbox}
+                alt="Enlarged review photo"
+                style={{
+                  maxHeight: '95vh',
+                  maxWidth: 'min(100vw - 32px, 1100px)',
+                  borderRadius: '12px',
+                  objectFit: 'contain',
+                  boxShadow: '0 25px 50px rgba(0, 0, 0, 0.35)',
+                }}
+              />
+            </div>
+          </div>,
+          document.body,
+        )}
       <AdminNavbar />
       <main className={`${ADMIN_MAIN_SCROLL_CLASS} bg-slate-100`}>
         <div style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
@@ -409,6 +479,50 @@ const AdminReviews = () => {
                     >
                       {review.comment}
                     </blockquote>
+                    {review.reviewImages.length > 0 ? (
+                      <div
+                        style={{
+                          marginTop: '14px',
+                          display: 'flex',
+                          flexWrap: 'wrap',
+                          gap: '10px',
+                        }}
+                      >
+                        {review.reviewImages.map((path, imgIndex) => {
+                          const src = toAbsoluteApiUrl(path) ?? path
+                          return (
+                            <button
+                              key={`${reviewId}-img-${imgIndex}`}
+                              type="button"
+                              onClick={() => setReviewImageLightbox(src)}
+                              aria-label={`View ${review.userName} review photo ${imgIndex + 1} larger`}
+                              style={{
+                                width: '96px',
+                                height: '96px',
+                                padding: 0,
+                                borderRadius: '12px',
+                                border: '1px solid #e2e8f0',
+                                backgroundColor: '#ffffff',
+                                overflow: 'hidden',
+                                cursor: 'pointer',
+                                flexShrink: 0,
+                              }}
+                            >
+                              <img
+                                src={src}
+                                alt={`${review.userName} review photo ${imgIndex + 1}`}
+                                style={{
+                                  width: '100%',
+                                  height: '100%',
+                                  objectFit: 'cover',
+                                  display: 'block',
+                                }}
+                              />
+                            </button>
+                          )
+                        })}
+                      </div>
+                    ) : null}
                     <p
                       style={{
                         margin: '14px 0 0',

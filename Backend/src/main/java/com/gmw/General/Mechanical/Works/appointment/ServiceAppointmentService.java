@@ -96,6 +96,15 @@ public class ServiceAppointmentService {
 	}
 
 	@Transactional(readOnly = true)
+	public List<ServiceAppointmentDto> listForUserId(Long userId) {
+		userRepository.findById(userId)
+				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+		return serviceAppointmentRepository.findByUserIdWithUserOrderByCreatedAtDesc(userId).stream()
+				.map(ServiceAppointmentMapper::toDto)
+				.toList();
+	}
+
+	@Transactional(readOnly = true)
 	public List<ServiceAppointmentDto> listForUser(String email) {
 		User user = requireUser(email);
 		return serviceAppointmentRepository.findByUserIdWithUserOrderByCreatedAtDesc(user.getId()).stream()

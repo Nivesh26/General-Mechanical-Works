@@ -205,6 +205,17 @@ export async function fetchAdminUserOrders(token: string, userId: number): Promi
   return res.json() as Promise<AdminOrder[]>
 }
 
+export async function fetchAdminUserAppointments(
+  token: string,
+  userId: number,
+): Promise<ServiceAppointmentItem[]> {
+  const res = await fetch(`${getApiBase()}/api/admin/users/${userId}/appointments`, {
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<ServiceAppointmentItem[]>
+}
+
 export async function patchUserProfile(
   token: string,
   body: ProfileUpdatePayload,

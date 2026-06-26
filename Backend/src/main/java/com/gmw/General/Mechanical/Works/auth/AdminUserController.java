@@ -9,6 +9,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.gmw.General.Mechanical.Works.order.OrderDto;
 import com.gmw.General.Mechanical.Works.order.OrderService;
+import com.gmw.General.Mechanical.Works.appointment.ServiceAppointmentDto;
+import com.gmw.General.Mechanical.Works.appointment.ServiceAppointmentService;
 import com.gmw.General.Mechanical.Works.vehicle.VehicleDto;
 import com.gmw.General.Mechanical.Works.vehicle.VehicleService;
 
@@ -19,14 +21,17 @@ public class AdminUserController {
 	private final AuthService authService;
 	private final VehicleService vehicleService;
 	private final OrderService orderService;
+	private final ServiceAppointmentService serviceAppointmentService;
 
 	public AdminUserController(
 			AuthService authService,
 			VehicleService vehicleService,
-			OrderService orderService) {
+			OrderService orderService,
+			ServiceAppointmentService serviceAppointmentService) {
 		this.authService = authService;
 		this.vehicleService = vehicleService;
 		this.orderService = orderService;
+		this.serviceAppointmentService = serviceAppointmentService;
 	}
 
 	@GetMapping
@@ -47,5 +52,10 @@ public class AdminUserController {
 	@GetMapping("/{id}/orders")
 	public List<OrderDto> listUserOrders(@PathVariable Long id) {
 		return orderService.listForUserId(id);
+	}
+
+	@GetMapping("/{id}/appointments")
+	public List<ServiceAppointmentDto> listUserAppointments(@PathVariable Long id) {
+		return serviceAppointmentService.listForUserId(id);
 	}
 }

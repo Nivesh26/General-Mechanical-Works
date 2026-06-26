@@ -6,6 +6,7 @@ import { ADMIN_MAIN_SCROLL_CLASS, ADMIN_PAGE_HEADER_SPACING } from '../AdminComp
 import { useAuth } from '../context/AuthContext'
 import {
   fetchAdminUser,
+  fetchAdminUserAppointments,
   fetchAdminUserOrders,
   fetchAdminUserVehicles,
   toAbsoluteApiUrl,
@@ -13,6 +14,8 @@ import {
   type ApiOrderStatus,
   type ApiVehicleDto,
   type ProfileGender,
+  type ServiceAppointmentItem,
+  type ServiceAppointmentStatus,
   type UserProfile,
 } from '../lib/api'
 import { profileInitialFromName } from '../lib/profileInitial'
@@ -39,15 +42,15 @@ type ProductOrder = {
   status: OrderStatus
 }
 
-type ServiceStatus = 'Completed' | 'In progress' | 'Scheduled'
-
 type ServiceRecord = {
   id: string
+  appointmentNumber: string
   date: string
+  slot: string
   bikeLabel: string
   serviceType: string
   details: string
-  status: ServiceStatus
+  status: ServiceAppointmentStatus
 }
 
 type UserSectionTab = 'bikes' | 'orders' | 'history'
@@ -60,33 +63,33 @@ const API_TO_ORDER_STATUS: Record<ApiOrderStatus, OrderStatus> = {
   CANCELLED: 'cancelled',
 }
 
-/** Service history — static until that table exists. */
-const STATIC_SERVICE_HISTORY: ServiceRecord[] = [
-  {
-    id: 'srv-221',
-    date: '15 Apr 2026',
-    bikeLabel: 'Honda CB 350 · BA 01 AB 1234',
-    serviceType: 'Full service & tune-up',
-    details: 'Oil change, filter, chain clean, brake check; all fluids topped.',
-    status: 'Completed',
-  },
-  {
-    id: 'srv-198',
-    date: '2 Apr 2026',
-    bikeLabel: 'Yamaha R15 V4 · BA 02 CD 5678',
-    serviceType: 'Electrical diagnostic',
-    details: 'Battery test OK; replaced faulty indicator relay.',
-    status: 'Completed',
-  },
-  {
-    id: 'srv-205',
-    date: '30 Apr 2026',
-    bikeLabel: 'Royal Enfield Classic 350 · BA 03 EF 9012',
-    serviceType: 'Clutch cable & adjustment',
-    details: 'Scheduled — customer drop-off 10:00 AM.',
-    status: 'Scheduled',
-  },
-]
+function formatServiceDate(isoDate: string) {
+  const date = new Date(`${isoDate}T12:00:00`)
+  if (Number.isNaN(date.getTime())) return isoDate
+  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+function mapAppointmentsToServiceHistory(items: ServiceAppointmentItem[]): ServiceRecord[] {
+  return [...items]
+    .sort((a, b) => {
+      const aCancelled = a.status === 'cancelled' ? 1 : 0
+      const bCancelled = b.status === 'cancelled' ? 1 : 0
+      if (aCancelled !== bCancelled) return aCancelled - bCancelled
+      return b.submittedAt.localeCompare(a.submittedAt)
+    })
+    .map((item) => ({
+      id: String(item.id),
+      appointmentNumber: item.appointmentNumber,
+      date: formatServiceDate(item.date),
+      slot: item.slot,
+      bikeLabel: item.bikeLabel,
+      serviceType: item.serviceTitle,
+      details: item.notes?.trim()
+        ? item.notes.trim()
+        : `${item.mode === 'pickup' ? 'Pickup' : 'Workshop visit'} · ${item.slot}`,
+      status: item.status,
+    }))
+}
 
 function displayOrDash(value: string | null | undefined): string {
   const t = value?.trim()
@@ -194,7 +197,7 @@ function orderStatusLabel(status: OrderStatus): string {
   return labels[status]
 }
 
-function serviceStatusStyle(status: ServiceStatus): CSSProperties {
+function serviceStatusStyle(status: ServiceAppointmentStatus): CSSProperties {
   const base: CSSProperties = {
     display: 'inline-block',
     padding: '4px 10px',
@@ -202,9 +205,26 @@ function serviceStatusStyle(status: ServiceStatus): CSSProperties {
     fontSize: '12px',
     fontWeight: 700,
   }
-  if (status === 'Completed') return { ...base, backgroundColor: '#dcfce7', color: '#166534' }
-  if (status === 'In progress') return { ...base, backgroundColor: '#dbeafe', color: '#1e40af' }
-  return { ...base, backgroundColor: '#e0e7ff', color: '#3730a3' }
+  const map: Record<ServiceAppointmentStatus, { bg: string; color: string }> = {
+    pending: { bg: '#fef3c7', color: '#b45309' },
+    accepted: { bg: '#dcfce7', color: '#166534' },
+    declined: { bg: '#fee2e2', color: '#b91c1c' },
+    cancelled: { bg: '#f1f5f9', color: '#475569' },
+    completed: { bg: '#e0e7ff', color: '#4338ca' },
+  }
+  const s = map[status]
+  return { ...base, backgroundColor: s.bg, color: s.color }
+}
+
+function serviceStatusLabel(status: ServiceAppointmentStatus): string {
+  const labels: Record<ServiceAppointmentStatus, string> = {
+    pending: 'Pending',
+    accepted: 'Accepted',
+    declined: 'Declined',
+    cancelled: 'Cancelled',
+    completed: 'Completed',
+  }
+  return labels[status]
 }
 
 function paymentMethodStyle(method: ProductOrder['paymentMethod']): CSSProperties {
@@ -238,9 +258,11 @@ const AdminUserProfile = () => {
   const [user, setUser] = useState<UserProfile | null>(null)
   const [bikes, setBikes] = useState<UserBike[]>([])
   const [orders, setOrders] = useState<ProductOrder[]>([])
+  const [serviceHistory, setServiceHistory] = useState<ServiceRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [bikesLoading, setBikesLoading] = useState(true)
   const [ordersLoading, setOrdersLoading] = useState(true)
+  const [historyLoading, setHistoryLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const loadProfile = useCallback(async () => {
@@ -248,9 +270,11 @@ const AdminUserProfile = () => {
       setUser(null)
       setBikes([])
       setOrders([])
+      setServiceHistory([])
       setLoading(false)
       setBikesLoading(false)
       setOrdersLoading(false)
+      setHistoryLoading(false)
       if (!Number.isFinite(userId)) {
         setError('No user selected. Open a profile from the Users list.')
       }
@@ -259,25 +283,30 @@ const AdminUserProfile = () => {
     setLoading(true)
     setBikesLoading(true)
     setOrdersLoading(true)
+    setHistoryLoading(true)
     setError(null)
     try {
-      const [profile, vehicles, userOrders] = await Promise.all([
+      const [profile, vehicles, userOrders, appointments] = await Promise.all([
         fetchAdminUser(token, userId),
         fetchAdminUserVehicles(token, userId),
         fetchAdminUserOrders(token, userId),
+        fetchAdminUserAppointments(token, userId),
       ])
       setUser(profile)
       setBikes(vehicles.map(vehicleToAdminBike))
       setOrders(mapOrdersToProductOrders(userOrders))
+      setServiceHistory(mapAppointmentsToServiceHistory(appointments))
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load user profile')
       setUser(null)
       setBikes([])
       setOrders([])
+      setServiceHistory([])
     } finally {
       setLoading(false)
       setBikesLoading(false)
       setOrdersLoading(false)
+      setHistoryLoading(false)
     }
   }, [token, userId])
 
@@ -650,11 +679,12 @@ const AdminUserProfile = () => {
                     </p>
                   </div>
                   <div className="admin-table-wrap">
-                    <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '760px' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '860px' }}>
                       <thead>
                         <tr style={{ backgroundColor: '#f1f5f9' }}>
                           <th style={{ ...th, width: '48px', textAlign: 'center' }}>No.</th>
                           <th style={th}>Date</th>
+                          <th style={th}>Time</th>
                           <th style={th}>Bike</th>
                           <th style={th}>Service</th>
                           <th style={th}>Details</th>
@@ -662,22 +692,37 @@ const AdminUserProfile = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {STATIC_SERVICE_HISTORY.map((row, index) => (
-                          <tr key={row.id} style={{ borderTop: '1px solid #e2e8f0' }}>
-                            <td style={{ ...td, textAlign: 'center', color: '#64748b', fontWeight: 600 }}>
-                              {index + 1}
-                            </td>
-                            <td style={td}>{row.date}</td>
-                            <td style={td}>
-                              <span style={{ fontWeight: 500, color: '#334155' }}>{row.bikeLabel}</span>
-                            </td>
-                            <td style={td}>{row.serviceType}</td>
-                            <td style={{ ...td, maxWidth: '280px' }}>{row.details}</td>
-                            <td style={td}>
-                              <span style={serviceStatusStyle(row.status)}>{row.status}</span>
+                        {historyLoading ? (
+                          <tr style={{ borderTop: '1px solid #e2e8f0' }}>
+                            <td style={td} colSpan={7}>
+                              Loading service history…
                             </td>
                           </tr>
-                        ))}
+                        ) : serviceHistory.length > 0 ? (
+                          serviceHistory.map((row, index) => (
+                            <tr key={row.id} style={{ borderTop: '1px solid #e2e8f0' }}>
+                              <td style={{ ...td, textAlign: 'center', color: '#64748b', fontWeight: 600 }}>
+                                {index + 1}
+                              </td>
+                              <td style={td}>{row.date}</td>
+                              <td style={td}>{row.slot}</td>
+                              <td style={td}>
+                                <span style={{ fontWeight: 500, color: '#334155' }}>{row.bikeLabel}</span>
+                              </td>
+                              <td style={td}>{row.serviceType}</td>
+                              <td style={{ ...td, maxWidth: '280px' }}>{row.details}</td>
+                              <td style={td}>
+                                <span style={serviceStatusStyle(row.status)}>{serviceStatusLabel(row.status)}</span>
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr style={{ borderTop: '1px solid #e2e8f0' }}>
+                            <td style={td} colSpan={7}>
+                              No service bookings for this customer yet.
+                            </td>
+                          </tr>
+                        )}
                       </tbody>
                     </table>
                   </div>
