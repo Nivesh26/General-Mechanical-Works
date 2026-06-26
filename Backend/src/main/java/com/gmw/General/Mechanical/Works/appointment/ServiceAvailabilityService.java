@@ -82,7 +82,10 @@ public class ServiceAvailabilityService {
 		serviceAvailabilityRepository.deleteByAvailabilityDate(date);
 	}
 
-	@Transactional(readOnly = true)
+	private static final List<AppointmentStatus> SLOT_BLOCKING_STATUSES =
+			List.of(AppointmentStatus.PENDING, AppointmentStatus.ACCEPTED);
+
+	@Transactional
 	public void validateBookableSlot(LocalDate date, String timeSlot) {
 		validateDateInWindow(date);
 		String slot = timeSlot != null ? timeSlot.trim() : "";
@@ -133,7 +136,18 @@ public class ServiceAvailabilityService {
 	private Set<String> bookedSlotsFor(LocalDate date) {
 		return new LinkedHashSet<>(serviceAppointmentRepository.findBookedTimeSlotsForDate(
 				date,
-				List.of(AppointmentStatus.PENDING, AppointmentStatus.ACCEPTED)));
+				SLOT_BLOCKING_STATUSES));
+	}
+
+	boolean isSlotBooked(LocalDate date, String timeSlot) {
+		String slot = timeSlot != null ? timeSlot.trim() : "";
+		if (!StringUtils.hasText(slot)) {
+			return false;
+		}
+		return serviceAppointmentRepository.existsByAppointmentDateAndTimeSlotAndStatusIn(
+				date,
+				slot,
+				SLOT_BLOCKING_STATUSES);
 	}
 
 	private static List<String> normalizeSlots(List<String> slots) {

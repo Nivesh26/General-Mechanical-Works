@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { useAuth } from "../context/AuthContext";
@@ -32,13 +32,16 @@ const ServiceWorkshopPanel = () => {
   const [availabilityLoading, setAvailabilityLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  const { minDate, maxDate } = useMemo(() => {
-    const today = new Date();
-    const max = new Date(today.getTime() + (BOOKING_WINDOW_DAYS - 1) * 24 * 60 * 60 * 1000);
-    return {
-      minDate: today.toISOString().slice(0, 10),
-      maxDate: max.toISOString().slice(0, 10),
-    };
+  const loadAvailability = useCallback(async (silent = false) => {
+    if (!silent) setAvailabilityLoading(true);
+    try {
+      const data = await fetchServiceAvailability();
+      setAvailability(data);
+    } catch {
+      setAvailability([]);
+    } finally {
+      if (!silent) setAvailabilityLoading(false);
+    }
   }, []);
 
   const availableDates = useMemo(
@@ -51,23 +54,22 @@ const ServiceWorkshopPanel = () => {
   }, [availability, date]);
 
   useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      setAvailabilityLoading(true);
-      try {
-        const data = await fetchServiceAvailability();
-        if (!cancelled) setAvailability(data);
-      } catch {
-        if (!cancelled) setAvailability([]);
-      } finally {
-        if (!cancelled) setAvailabilityLoading(false);
-      }
+    void loadAvailability();
+  }, [loadAvailability]);
+
+  useEffect(() => {
+    const onFocus = () => {
+      void loadAvailability(true);
     };
-    void load();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [loadAvailability]);
+
+  useEffect(() => {
+    if (date) {
+      void loadAvailability(true);
+    }
+  }, [date, loadAvailability]);
 
   useEffect(() => {
     if (!token) {
@@ -135,10 +137,10 @@ const ServiceWorkshopPanel = () => {
       setDate("");
       setSlot("");
       setNotes("");
-      const data = await fetchServiceAvailability();
-      setAvailability(data);
+      await loadAvailability(true);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not book appointment");
+      await loadAvailability(true);
     } finally {
       setSubmitting(false);
     }

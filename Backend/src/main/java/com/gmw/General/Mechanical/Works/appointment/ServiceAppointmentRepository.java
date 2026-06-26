@@ -46,4 +46,9 @@ public interface ServiceAppointmentRepository extends JpaRepository<ServiceAppoi
 	List<String> findBookedTimeSlotsForDate(
 			@org.springframework.data.repository.query.Param("date") LocalDate date,
 			@org.springframework.data.repository.query.Param("statuses") List<AppointmentStatus> statuses);
+
+	boolean existsByAppointmentDateAndTimeSlotAndStatusIn(
+			LocalDate appointmentDate,
+			String timeSlot,
+			List<AppointmentStatus> statuses);
 }

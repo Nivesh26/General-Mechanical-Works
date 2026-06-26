@@ -78,6 +78,10 @@ public class ServiceAppointmentService {
 					"Choose a date within the next " + ServiceAvailabilityService.BOOKING_WINDOW_DAYS + " days");
 		}
 		serviceAvailabilityService.validateBookableSlot(appointmentDate, request.timeSlot());
+		String timeSlot = request.timeSlot().trim();
+		if (serviceAvailabilityService.isSlotBooked(appointmentDate, timeSlot)) {
+			throw new ResponseStatusException(HttpStatus.CONFLICT, "This time slot is already booked");
+		}
 
 		Vehicle vehicle = vehicleRepository.findByIdAndUser_Id(request.vehicleId(), user.getId())
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Selected bike was not found"));
@@ -90,7 +94,7 @@ public class ServiceAppointmentService {
 		appointment.setServiceIdsJson(ProductJson.writeStringList(serviceIds));
 		appointment.setServiceTitles(String.join(", ", titles));
 		appointment.setAppointmentDate(appointmentDate);
-		appointment.setTimeSlot(request.timeSlot().trim());
+		appointment.setTimeSlot(timeSlot);
 		appointment.setBikeLabel(formatBikeLabel(vehicle));
 		appointment.setNotes(normalizeNotes(request.notes()));
 
