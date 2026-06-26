@@ -987,7 +987,7 @@ export async function unlikeReview(reviewId: number, token: string): Promise<Pro
   return res.json() as Promise<ProductReviewItem>
 }
 
-export type ServiceAppointmentStatus = 'pending' | 'accepted' | 'declined' | 'completed'
+export type ServiceAppointmentStatus = 'pending' | 'accepted' | 'declined' | 'cancelled' | 'completed'
 
 export type ServiceAppointmentMode = 'workshop' | 'pickup'
 
@@ -1024,6 +1024,15 @@ export async function fetchMyAppointments(token: string): Promise<ServiceAppoint
   return res.json() as Promise<ServiceAppointmentItem[]>
 }
 
+export async function cancelMyAppointment(token: string, appointmentId: number): Promise<ServiceAppointmentItem> {
+  const res = await fetch(`${getApiBase()}/api/appointments/me/${appointmentId}/cancel`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<ServiceAppointmentItem>
+}
+
 export async function createWorkshopAppointment(
   token: string,
   body: CreateWorkshopAppointmentPayload,
@@ -1052,7 +1061,7 @@ export async function fetchAdminAppointments(token: string): Promise<ServiceAppo
 export async function updateAdminAppointmentStatus(
   token: string,
   appointmentId: number,
-  status: Exclude<ServiceAppointmentStatus, 'pending'>,
+  status: Exclude<ServiceAppointmentStatus, 'pending' | 'cancelled'>,
 ): Promise<ServiceAppointmentItem> {
   const res = await fetch(`${getApiBase()}/api/admin/appointments/${appointmentId}/status`, {
     method: 'PATCH',

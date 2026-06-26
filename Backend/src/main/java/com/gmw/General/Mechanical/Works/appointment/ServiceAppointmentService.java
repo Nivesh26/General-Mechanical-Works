@@ -111,16 +111,32 @@ public class ServiceAppointmentService {
 	}
 
 	@Transactional
+	public ServiceAppointmentDto cancelForUser(String email, Long id) {
+		User user = requireUser(email);
+		ServiceAppointment appointment = serviceAppointmentRepository.findByIdAndUserIdWithUser(id, user.getId())
+				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Appointment not found"));
+		if (appointment.getStatus() != AppointmentStatus.PENDING) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only pending appointments can be cancelled");
+		}
+		appointment.setStatus(AppointmentStatus.CANCELLED);
+		ServiceAppointment saved = serviceAppointmentRepository.save(appointment);
+		notifyAppointmentStatusUpdate(saved, AppointmentStatus.CANCELLED);
+		return ServiceAppointmentMapper.toDto(saved);
+	}
+
+	@Transactional
 	public ServiceAppointmentDto updateStatusForAdmin(Long id, UpdateAppointmentStatusRequest request) {
 		ServiceAppointment appointment = serviceAppointmentRepository.findByIdWithUser(id)
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Appointment not found"));
 		AppointmentStatus current = appointment.getStatus();
 		AppointmentStatus next = request.status();
-		if (current == AppointmentStatus.DECLINED || current == AppointmentStatus.COMPLETED) {
+		if (current == AppointmentStatus.DECLINED
+				|| current == AppointmentStatus.CANCELLED
+				|| current == AppointmentStatus.COMPLETED) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "This appointment can no longer be updated");
 		}
-		if (next == AppointmentStatus.PENDING) {
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Status cannot move back to pending");
+		if (next == AppointmentStatus.PENDING || next == AppointmentStatus.CANCELLED) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid status change");
 		}
 		if (current == AppointmentStatus.ACCEPTED && next == AppointmentStatus.DECLINED) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Accepted appointments cannot be declined");

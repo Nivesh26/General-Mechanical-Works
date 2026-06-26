@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { toast } from 'react-toastify'
 import Header from '../UserComponent/Header'
 import Footer from '../UserComponent/Footer'
 import Copyright from '../UserComponent/Copyright'
 import { useAuth } from '../context/AuthContext'
 import {
+  cancelMyAppointment,
   fetchMyAppointments,
   type ServiceAppointmentItem,
   type ServiceAppointmentStatus,
@@ -53,6 +55,14 @@ function StatusBadge({ status }: { status: ServiceAppointmentStatus }) {
       </span>
     )
   }
+  if (status === 'cancelled') {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-700 ring-1 ring-gray-200">
+        <HiOutlineNoSymbol className="h-3.5 w-3.5" aria-hidden />
+        Cancelled
+      </span>
+    )
+  }
   if (status === 'completed') {
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-800 ring-1 ring-indigo-200/80">
@@ -78,7 +88,15 @@ function ModeBadge({ mode }: { mode: ServiceAppointmentItem['mode'] }) {
   )
 }
 
-function BookingCard({ booking }: { booking: ServiceAppointmentItem }) {
+function BookingCard({
+  booking,
+  onCancel,
+  cancelling,
+}: {
+  booking: ServiceAppointmentItem
+  onCancel?: () => void
+  cancelling?: boolean
+}) {
   return (
     <article className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-5 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
@@ -118,6 +136,19 @@ function BookingCard({ booking }: { booking: ServiceAppointmentItem }) {
           {booking.notes}
         </div>
       ) : null}
+
+      {booking.status === 'pending' && onCancel ? (
+        <div className="mt-4 pt-4 border-t border-gray-100">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={cancelling}
+            className="rounded-full border border-red-200 bg-white px-5 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {cancelling ? 'Cancelling…' : 'Cancel booking'}
+          </button>
+        </div>
+      ) : null}
     </article>
   )
 }
@@ -128,6 +159,7 @@ const BookingHistory = () => {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [filter, setFilter] = useState<FilterTab>('all')
+  const [cancellingId, setCancellingId] = useState<number | null>(null)
 
   const loadBookings = useCallback(async () => {
     if (!token) {
@@ -153,11 +185,12 @@ const BookingHistory = () => {
   }, [loadBookings])
 
   const counts = useMemo(() => {
-    const c = {
+    const c: Record<FilterTab, number> = {
       all: bookings.length,
       pending: 0,
       accepted: 0,
       declined: 0,
+      cancelled: 0,
       completed: 0,
     }
     for (const b of bookings) {
@@ -166,9 +199,35 @@ const BookingHistory = () => {
     return c
   }, [bookings])
 
+  const cancelBooking = async (booking: ServiceAppointmentItem) => {
+    if (!token || booking.status !== 'pending') return
+    if (
+      !window.confirm(
+        `Cancel booking ${booking.appointmentNumber}? This cannot be undone.`,
+      )
+    ) {
+      return
+    }
+    setCancellingId(booking.id)
+    try {
+      await cancelMyAppointment(token, booking.id)
+      toast.success('Booking cancelled.')
+      await loadBookings()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not cancel booking.')
+    } finally {
+      setCancellingId(null)
+    }
+  }
+
   const visible = useMemo(() => {
     const filtered = filter === 'all' ? bookings : bookings.filter((b) => b.status === filter)
-    return [...filtered].sort((a, b) => b.submittedAt.localeCompare(a.submittedAt))
+    return [...filtered].sort((a, b) => {
+      const aCancelled = a.status === 'cancelled' ? 1 : 0
+      const bCancelled = b.status === 'cancelled' ? 1 : 0
+      if (aCancelled !== bCancelled) return aCancelled - bCancelled
+      return b.submittedAt.localeCompare(a.submittedAt)
+    })
   }, [bookings, filter])
 
   return (
@@ -193,6 +252,7 @@ const BookingHistory = () => {
                 { key: 'pending' as const, label: 'Pending' },
                 { key: 'accepted' as const, label: 'Accepted' },
                 { key: 'declined' as const, label: 'Declined' },
+                { key: 'cancelled' as const, label: 'Cancelled' },
                 { key: 'completed' as const, label: 'Completed' },
               ] as const
             ).map(({ key, label }) => (
@@ -200,7 +260,7 @@ const BookingHistory = () => {
                 key={key}
                 type="button"
                 onClick={() => setFilter(key)}
-                className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                className={`rounded-full px-4 py-2 text-sm font-medium transition-colors cursor-pointer ${
                   filter === key
                     ? 'bg-primary text-white shadow-md shadow-primary/20'
                     : 'bg-white text-gray-700 border border-gray-200 hover:border-gray-300'
@@ -247,7 +307,16 @@ const BookingHistory = () => {
           ) : (
             <div className="space-y-4">
               {visible.map((booking) => (
-                <BookingCard key={booking.id} booking={booking} />
+                <BookingCard
+                  key={booking.id}
+                  booking={booking}
+                  onCancel={
+                    booking.status === 'pending'
+                      ? () => void cancelBooking(booking)
+                      : undefined
+                  }
+                  cancelling={cancellingId === booking.id}
+                />
               ))}
             </div>
           )}

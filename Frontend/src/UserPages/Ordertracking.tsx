@@ -247,7 +247,7 @@ function ProductLineCard({
                   type="button"
                   onClick={onCancelProduct}
                   disabled={cancelling}
-                  className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm font-medium text-red-700 transition-colors hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm font-medium text-red-700 transition-colors hover:bg-red-50 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {cancelling ? 'Cancelling…' : 'Cancel product'}
                 </button>
@@ -274,7 +274,7 @@ function ProductLineCard({
       <button
         type="button"
         onClick={onToggle}
-        className="flex w-full items-center justify-center gap-2 border-t border-gray-100 bg-gray-50/80 py-2.5 text-sm font-medium text-primary hover:bg-gray-100/80 transition-colors"
+        className="flex w-full items-center justify-center gap-2 border-t border-gray-100 bg-gray-50/80 py-2.5 text-sm font-medium text-primary hover:bg-gray-100/80 transition-colors cursor-pointer"
         aria-expanded={expanded}
       >
         {expanded ? (
@@ -499,7 +499,7 @@ const Ordertracking = () => {
                 key={key}
                 type="button"
                 onClick={() => setFilter(key)}
-                className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                className={`rounded-full px-4 py-2 text-sm font-medium transition-colors cursor-pointer ${
                   filter === key
                     ? 'bg-primary text-white shadow-md shadow-primary/20'
                     : 'bg-white text-gray-700 border border-gray-200 hover:border-gray-300'

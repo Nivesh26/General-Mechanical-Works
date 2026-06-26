@@ -81,6 +81,7 @@ function StatusBadge({ status }: { status: ServiceAppointmentStatus }) {
     pending: { label: 'Pending', bg: '#fef3c7', color: '#b45309' },
     accepted: { label: 'Accepted', bg: '#dcfce7', color: '#166534' },
     declined: { label: 'Declined', bg: '#fee2e2', color: '#b91c1c' },
+    cancelled: { label: 'Cancelled', bg: '#f1f5f9', color: '#475569' },
     completed: { label: 'Completed', bg: '#e0e7ff', color: '#4338ca' },
   }
   const s = map[status]
@@ -188,10 +189,15 @@ const AdminAppointments = () => {
       return haystack.includes(q)
     })
     return [...rows].sort((a, b) => {
-      const aDone = a.status === 'completed' ? 1 : 0
-      const bDone = b.status === 'completed' ? 1 : 0
-      if (aDone !== bDone) return aDone - bDone
-      return 0
+      const tailOrder = (status: ServiceAppointmentStatus) => {
+        if (status === 'cancelled') return 2
+        if (status === 'completed') return 1
+        return 0
+      }
+      const aTail = tailOrder(a.status)
+      const bTail = tailOrder(b.status)
+      if (aTail !== bTail) return aTail - bTail
+      return b.submittedAt.localeCompare(a.submittedAt)
     })
   }, [appointments, searchInput, statusFilter])
 
@@ -201,6 +207,7 @@ const AdminAppointments = () => {
       pending: 0,
       accepted: 0,
       declined: 0,
+      cancelled: 0,
       completed: 0,
     }
     for (const a of appointments) {
@@ -210,7 +217,7 @@ const AdminAppointments = () => {
   }, [appointments])
 
   const setStatus = async (id: string, next: ServiceAppointmentStatus) => {
-    if (!token || next === 'pending') return
+    if (!token || next === 'pending' || next === 'cancelled') return
     const numericId = Number(id.replace(/^APT-/i, ''))
     if (!Number.isFinite(numericId)) return
 
@@ -306,6 +313,7 @@ const AdminAppointments = () => {
               { key: 'pending' as const, label: 'Pending' },
               { key: 'accepted' as const, label: 'Accepted' },
               { key: 'declined' as const, label: 'Declined' },
+              { key: 'cancelled' as const, label: 'Cancelled' },
               { key: 'completed' as const, label: 'Completed' },
             ] as const
           ).map(({ key, label }) => {

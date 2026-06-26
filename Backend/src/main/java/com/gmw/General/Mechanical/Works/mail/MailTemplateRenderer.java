@@ -178,6 +178,14 @@ public class MailTemplateRenderer {
 					"margin:0 0 24px;background-color:#fef2f2;border:1px solid #fecaca;border-radius:10px;",
 					"padding:14px 16px;font-size:14px;line-height:1.6;color:#b91c1c;",
 					"Your appointment was declined.");
+			case CANCELLED -> new AppointmentStatusCopy(
+					"Appointment cancelled",
+					"Your appointment has been cancelled",
+					"Cancelled",
+					"You cancelled this service appointment. You can book a new workshop visit anytime from our website.",
+					"margin:0 0 24px;background-color:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;",
+					"padding:14px 16px;font-size:14px;line-height:1.6;color:#475569;",
+					"Your appointment has been cancelled.");
 			case COMPLETED -> new AppointmentStatusCopy(
 					"Appointment completed",
 					"Your service appointment is complete",

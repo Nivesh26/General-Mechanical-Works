@@ -25,6 +25,13 @@ public interface ServiceAppointmentRepository extends JpaRepository<ServiceAppoi
 	@Query("""
 			SELECT a FROM ServiceAppointment a
 			JOIN FETCH a.user
+			WHERE a.id = :id AND a.user.id = :userId
+			""")
+	Optional<ServiceAppointment> findByIdAndUserIdWithUser(Long id, Long userId);
+
+	@Query("""
+			SELECT a FROM ServiceAppointment a
+			JOIN FETCH a.user
 			WHERE a.user.id = :userId
 			ORDER BY a.createdAt DESC
 			""")
