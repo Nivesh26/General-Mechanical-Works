@@ -1,13 +1,18 @@
 import type { CSSProperties } from 'react'
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { toast } from 'react-toastify'
 import AdminNavbar from '../AdminComponent/AdminNavbar'
 import { ADMIN_MAIN_SCROLL_CLASS, ADMIN_PAGE_HEADER_SPACING, ADMIN_PAGE_SUBTITLE, ADMIN_PAGE_TITLE } from '../AdminComponent/adminMainStyles'
+import { useAuth } from '../context/AuthContext'
+import {
+  deleteAdminServiceAvailability,
+  fetchAdminServiceAvailability,
+  upsertAdminServiceAvailability,
+  type ServiceAvailabilityDay,
+} from '../lib/api'
 import { timeSlots } from '../UserComponent/serviceBookingShared'
 
-type DateAvailability = {
-  date: string
-  slots: string[]
-}
+const BOOKING_WINDOW_DAYS = 5
 
 function dayNameFromDate(date: string): string {
   const parsed = new Date(`${date}T00:00:00`)
@@ -16,19 +21,52 @@ function dayNameFromDate(date: string): string {
 }
 
 const AdminService = () => {
+  const { token } = useAuth()
   const [date, setDate] = useState('')
   const [selectedSlots, setSelectedSlots] = useState<string[]>([])
-  const [availability, setAvailability] = useState<DateAvailability[]>([])
+  const [availability, setAvailability] = useState<ServiceAvailabilityDay[]>([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [editingDate, setEditingDate] = useState<string | null>(null)
 
-  const minDate = useMemo(() => new Date().toISOString().slice(0, 10), [])
+  const { minDate, maxDate } = useMemo(() => {
+    const today = new Date()
+    const max = new Date(today.getTime() + (BOOKING_WINDOW_DAYS - 1) * 24 * 60 * 60 * 1000)
+    return {
+      minDate: today.toISOString().slice(0, 10),
+      maxDate: max.toISOString().slice(0, 10),
+    }
+  }, [])
+
+  const loadAvailability = useCallback(async () => {
+    if (!token) {
+      setAvailability([])
+      setLoading(false)
+      return
+    }
+    setLoading(true)
+    try {
+      const data = await fetchAdminServiceAvailability(token)
+      setAvailability(data)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not load availability')
+      setAvailability([])
+    } finally {
+      setLoading(false)
+    }
+  }, [token])
+
+  useEffect(() => {
+    void loadAvailability()
+  }, [loadAvailability])
 
   const toggleSlot = (slot: string) => {
     setSelectedSlots((prev) => (prev.includes(slot) ? prev.filter((s) => s !== slot) : [...prev, slot]))
   }
 
-  const addAvailability = () => {
+  const addAvailability = async () => {
+    if (!token) return
     if (!date) {
       setError('Please choose a date first.')
       return
@@ -38,32 +76,45 @@ const AdminService = () => {
       return
     }
 
-    setAvailability((prev) => {
-      const existing = prev.find((row) => row.date === date)
-      if (existing) {
-        const merged = Array.from(new Set([...existing.slots, ...selectedSlots]))
-        return prev
-          .map((row) => (row.date === date ? { ...row, slots: merged } : row))
-          .sort((a, b) => a.date.localeCompare(b.date))
-      }
-      return [...prev, { date, slots: [...selectedSlots] }].sort((a, b) => a.date.localeCompare(b.date))
-    })
-
-    setSelectedSlots([])
+    setSaving(true)
     setError('')
-    setEditingDate(null)
-  }
-
-  const removeDate = (targetDate: string) => {
-    setAvailability((prev) => prev.filter((row) => row.date !== targetDate))
-    if (editingDate === targetDate) {
-      setEditingDate(null)
-      setDate('')
+    try {
+      const saved = await upsertAdminServiceAvailability(token, {
+        date,
+        slots: selectedSlots,
+      })
+      setAvailability((prev) => {
+        const next = prev.filter((row) => row.date !== saved.date)
+        return [...next, saved].sort((a, b) => a.date.localeCompare(b.date))
+      })
       setSelectedSlots([])
+      setEditingDate(null)
+      toast.success(editingDate ? 'Availability updated.' : 'Availability added.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not save availability')
+    } finally {
+      setSaving(false)
     }
   }
 
-  const startEdit = (row: DateAvailability) => {
+  const removeDate = async (targetDate: string) => {
+    if (!token) return
+    if (!window.confirm(`Remove availability for ${targetDate}?`)) return
+    try {
+      await deleteAdminServiceAvailability(token, targetDate)
+      setAvailability((prev) => prev.filter((row) => row.date !== targetDate))
+      if (editingDate === targetDate) {
+        setEditingDate(null)
+        setDate('')
+        setSelectedSlots([])
+      }
+      toast.success('Availability removed.')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not remove availability')
+    }
+  }
+
+  const startEdit = (row: ServiceAvailabilityDay) => {
     setDate(row.date)
     setSelectedSlots([...row.slots])
     setEditingDate(row.date)
@@ -76,7 +127,10 @@ const AdminService = () => {
       <main className={ADMIN_MAIN_SCROLL_CLASS}>
         <div style={ADMIN_PAGE_HEADER_SPACING}>
           <h1 style={ADMIN_PAGE_TITLE}>Service</h1>
-          <p style={ADMIN_PAGE_SUBTITLE}>Set booking availability for serial dates and time slots.</p>
+          <p style={ADMIN_PAGE_SUBTITLE}>
+            Set booking availability for the upcoming {BOOKING_WINDOW_DAYS} days. Customers can only book the dates and
+            time slots you enable here.
+          </p>
         </div>
 
         <section style={cardStyle}>
@@ -90,10 +144,14 @@ const AdminService = () => {
                 id="admin-service-date"
                 type="date"
                 min={minDate}
+                max={maxDate}
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
                 style={inputStyle}
               />
+              <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#64748b' }}>
+                You can configure today through the next {BOOKING_WINDOW_DAYS - 1} days.
+              </p>
             </div>
             <div>
               <span style={labelStyle}>Available time slots</span>
@@ -127,8 +185,13 @@ const AdminService = () => {
           {error ? <p style={{ margin: '10px 0 0', color: '#b91c1c', fontSize: '13px' }}>{error}</p> : null}
 
           <div style={{ marginTop: '14px' }}>
-            <button type="button" onClick={addAvailability} style={buttonStyle}>
-              {editingDate ? 'Update availability' : 'Add availability'}
+            <button
+              type="button"
+              onClick={() => void addAvailability()}
+              disabled={saving}
+              style={{ ...buttonStyle, opacity: saving ? 0.6 : 1, cursor: saving ? 'wait' : 'pointer' }}
+            >
+              {saving ? 'Saving…' : editingDate ? 'Update availability' : 'Add availability'}
             </button>
           </div>
         </section>
@@ -147,7 +210,13 @@ const AdminService = () => {
                 </tr>
               </thead>
               <tbody>
-                {availability.length > 0 ? (
+                {loading ? (
+                  <tr>
+                    <td colSpan={5} style={{ ...tdStyle, textAlign: 'center', color: '#64748b' }}>
+                      Loading availability…
+                    </td>
+                  </tr>
+                ) : availability.length > 0 ? (
                   availability.map((row, index) => (
                     <tr key={row.date} style={{ borderTop: '1px solid #e2e8f0' }}>
                       <td style={{ ...tdStyle, textAlign: 'center', color: '#64748b', fontWeight: 600 }}>{index + 1}</td>
@@ -167,7 +236,7 @@ const AdminService = () => {
                           <button type="button" onClick={() => startEdit(row)} style={editButtonStyle}>
                             Edit
                           </button>
-                          <button type="button" onClick={() => removeDate(row.date)} style={removeButtonStyle}>
+                          <button type="button" onClick={() => void removeDate(row.date)} style={removeButtonStyle}>
                             Remove
                           </button>
                         </div>
@@ -177,7 +246,7 @@ const AdminService = () => {
                 ) : (
                   <tr>
                     <td colSpan={5} style={{ ...tdStyle, textAlign: 'center', color: '#64748b' }}>
-                      No availability added yet.
+                      No availability added yet for the upcoming {BOOKING_WINDOW_DAYS} days.
                     </td>
                   </tr>
                 )}

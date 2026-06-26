@@ -2,8 +2,16 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { useAuth } from "../context/AuthContext";
-import { createWorkshopAppointment, fetchMyVehicles, type ApiVehicleDto } from "../lib/api";
-import { timeSlots, workshopServices } from "./serviceBookingShared";
+import {
+  createWorkshopAppointment,
+  fetchMyVehicles,
+  fetchServiceAvailability,
+  type ApiVehicleDto,
+  type ServiceAvailabilityDay,
+} from "../lib/api";
+import { workshopServices } from "./serviceBookingShared";
+
+const BOOKING_WINDOW_DAYS = 5;
 
 function formatBikeLabel(vehicle: ApiVehicleDto): string {
   const name = `${vehicle.company} ${vehicle.model}`.trim();
@@ -20,14 +28,44 @@ const ServiceWorkshopPanel = () => {
   const [notes, setNotes] = useState("");
   const [vehicles, setVehicles] = useState<ApiVehicleDto[]>([]);
   const [vehiclesLoading, setVehiclesLoading] = useState(false);
+  const [availability, setAvailability] = useState<ServiceAvailabilityDay[]>([]);
+  const [availabilityLoading, setAvailabilityLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
   const { minDate, maxDate } = useMemo(() => {
     const today = new Date();
-    const max = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const max = new Date(today.getTime() + (BOOKING_WINDOW_DAYS - 1) * 24 * 60 * 60 * 1000);
     return {
       minDate: today.toISOString().slice(0, 10),
       maxDate: max.toISOString().slice(0, 10),
+    };
+  }, []);
+
+  const availableDates = useMemo(
+    () => availability.map((row) => row.date).sort((a, b) => a.localeCompare(b)),
+    [availability],
+  );
+
+  const slotsForSelectedDate = useMemo(() => {
+    return availability.find((row) => row.date === date)?.slots ?? [];
+  }, [availability, date]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      setAvailabilityLoading(true);
+      try {
+        const data = await fetchServiceAvailability();
+        if (!cancelled) setAvailability(data);
+      } catch {
+        if (!cancelled) setAvailability([]);
+      } finally {
+        if (!cancelled) setAvailabilityLoading(false);
+      }
+    };
+    void load();
+    return () => {
+      cancelled = true;
     };
   }, []);
 
@@ -61,6 +99,19 @@ const ServiceWorkshopPanel = () => {
     };
   }, [token]);
 
+  useEffect(() => {
+    if (date && !availableDates.includes(date)) {
+      setDate("");
+      setSlot("");
+    }
+  }, [availableDates, date]);
+
+  useEffect(() => {
+    if (slot && !slotsForSelectedDate.includes(slot)) {
+      setSlot("");
+    }
+  }, [slot, slotsForSelectedDate]);
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!token) {
@@ -84,6 +135,8 @@ const ServiceWorkshopPanel = () => {
       setDate("");
       setSlot("");
       setNotes("");
+      const data = await fetchServiceAvailability();
+      setAvailability(data);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not book appointment");
     } finally {
@@ -133,8 +186,7 @@ const ServiceWorkshopPanel = () => {
       <div>
         <h2 className="text-xl font-bold text-gray-900">Workshop visit</h2>
         <p className="mt-2 text-sm text-gray-600 max-w-2xl">
-          Pick the service you need, then choose a date and time slot. Bring your bike to our garage at the scheduled
-          time.
+          Pick the service you need, then choose from available dates and time slots set by our workshop.
         </p>
       </div>
 
@@ -172,34 +224,64 @@ const ServiceWorkshopPanel = () => {
             <label htmlFor="workshop-date" className="block text-sm font-medium text-gray-700 mb-1">
               Preferred date
             </label>
-            <input
-              id="workshop-date"
-              type="date"
-              min={minDate}
-              max={maxDate}
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary bg-white"
-            />
+            {availabilityLoading ? (
+              <p className="text-sm text-gray-500">Loading available dates…</p>
+            ) : availableDates.length === 0 ? (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                No workshop slots are open right now. Please check again later.
+              </div>
+            ) : (
+              <select
+                id="workshop-date"
+                value={date}
+                onChange={(e) => {
+                  setDate(e.target.value);
+                  setSlot("");
+                }}
+                required
+                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary bg-white"
+              >
+                <option value="" disabled>
+                  Select a date
+                </option>
+                {availableDates.map((d) => (
+                  <option key={d} value={d}>
+                    {new Date(`${d}T00:00:00`).toLocaleDateString(undefined, {
+                      weekday: "short",
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </option>
+                ))}
+              </select>
+            )}
+            <p className="mt-1 text-xs text-gray-500">Bookings open for the next {BOOKING_WINDOW_DAYS} days.</p>
           </div>
           <div>
-            <span className="block text-sm font-medium text-gray-700 mb-2">Time slot</span>
-            <div className="flex flex-wrap gap-2">
-              {timeSlots.map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => setSlot(slot === t ? "" : t)}
-                  className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors cursor-pointer ${
-                    slot === t
-                      ? "bg-primary text-white border-primary"
-                      : "bg-white text-gray-700 border-gray-300 hover:border-primary"
-                  }`}
-                >
-                  {t}
-                </button>
-              ))}
-            </div>
+            <span className="block text-sm font-medium text-gray-700 mb-2">Available time slots</span>
+            {!date ? (
+              <p className="text-sm text-gray-500">Select a date to see available times.</p>
+            ) : slotsForSelectedDate.length === 0 ? (
+              <p className="text-sm text-amber-800">No open slots left for this date.</p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {slotsForSelectedDate.map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setSlot(slot === t ? "" : t)}
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors cursor-pointer ${
+                      slot === t
+                        ? "bg-primary text-white border-primary"
+                        : "bg-white text-gray-700 border-gray-300 hover:border-primary"
+                    }`}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -254,7 +336,7 @@ const ServiceWorkshopPanel = () => {
 
         <button
           type="submit"
-          disabled={!canSubmit}
+          disabled={!canSubmit || availabilityLoading || availableDates.length === 0}
           className="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-primary text-white font-semibold hover:opacity-95 transition-opacity cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed"
         >
           {submitting ? "Booking…" : "Book workshop visit"}

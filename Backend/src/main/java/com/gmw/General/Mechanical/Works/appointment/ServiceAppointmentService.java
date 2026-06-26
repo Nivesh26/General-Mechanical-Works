@@ -25,7 +25,7 @@ import com.gmw.General.Mechanical.Works.vehicle.VehicleRepository;
 @Service
 public class ServiceAppointmentService {
 
-	private static final int MAX_BOOKING_DAYS_AHEAD = 7;
+	private static final int MAX_BOOKING_DAYS_AHEAD = ServiceAvailabilityService.BOOKING_WINDOW_DAYS - 1;
 	private static final DateTimeFormatter DATE_FORMAT =
 			DateTimeFormatter.ofPattern("yyyy-MM-dd", Locale.ROOT);
 	private static final DateTimeFormatter SUBMITTED_FORMAT =
@@ -36,18 +36,21 @@ public class ServiceAppointmentService {
 	private final VehicleRepository vehicleRepository;
 	private final EmailService emailService;
 	private final AppointmentMailMapper appointmentMailMapper;
+	private final ServiceAvailabilityService serviceAvailabilityService;
 
 	public ServiceAppointmentService(
 			ServiceAppointmentRepository serviceAppointmentRepository,
 			UserRepository userRepository,
 			VehicleRepository vehicleRepository,
 			EmailService emailService,
-			AppointmentMailMapper appointmentMailMapper) {
+			AppointmentMailMapper appointmentMailMapper,
+			ServiceAvailabilityService serviceAvailabilityService) {
 		this.serviceAppointmentRepository = serviceAppointmentRepository;
 		this.userRepository = userRepository;
 		this.vehicleRepository = vehicleRepository;
 		this.emailService = emailService;
 		this.appointmentMailMapper = appointmentMailMapper;
+		this.serviceAvailabilityService = serviceAvailabilityService;
 	}
 
 	@Transactional
@@ -72,8 +75,9 @@ public class ServiceAppointmentService {
 		LocalDate today = LocalDate.now();
 		if (appointmentDate.isBefore(today) || appointmentDate.isAfter(today.plusDays(MAX_BOOKING_DAYS_AHEAD))) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-					"Choose a date within the next " + MAX_BOOKING_DAYS_AHEAD + " days");
+					"Choose a date within the next " + ServiceAvailabilityService.BOOKING_WINDOW_DAYS + " days");
 		}
+		serviceAvailabilityService.validateBookableSlot(appointmentDate, request.timeSlot());
 
 		Vehicle vehicle = vehicleRepository.findByIdAndUser_Id(request.vehicleId(), user.getId())
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Selected bike was not found"));

@@ -529,6 +529,25 @@ public class SchemaMigrationConfig {
 						)
 						""");
 			}
+
+			Integer serviceAvailabilityTableExists = jdbcTemplate.queryForObject(
+					"""
+					SELECT COUNT(*) FROM information_schema.TABLES
+					WHERE TABLE_SCHEMA = DATABASE()
+					  AND TABLE_NAME = 'service_availability'
+					""",
+					Integer.class);
+			if (serviceAvailabilityTableExists == null || serviceAvailabilityTableExists == 0) {
+				jdbcTemplate.execute("""
+						CREATE TABLE `service_availability` (
+						  `id` BIGINT NOT NULL AUTO_INCREMENT,
+						  `availability_date` DATE NOT NULL,
+						  `time_slots_json` TEXT NOT NULL,
+						  PRIMARY KEY (`id`),
+						  UNIQUE KEY `uk_service_availability_date` (`availability_date`)
+						)
+						""");
+			}
 		};
 	}
 }

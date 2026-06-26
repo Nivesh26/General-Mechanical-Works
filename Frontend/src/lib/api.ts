@@ -1086,3 +1086,52 @@ export async function updateAdminAppointmentStatus(
   if (!res.ok) throw new Error(await parseErrorMessage(res))
   return res.json() as Promise<ServiceAppointmentItem>
 }
+
+export type ServiceAvailabilityDay = {
+  date: string
+  slots: string[]
+}
+
+export async function fetchServiceAvailability(): Promise<ServiceAvailabilityDay[]> {
+  const res = await fetch(`${getApiBase()}/api/service-availability`, {
+    headers: { Accept: 'application/json' },
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<ServiceAvailabilityDay[]>
+}
+
+export async function fetchAdminServiceAvailability(token: string): Promise<ServiceAvailabilityDay[]> {
+  const res = await fetch(`${getApiBase()}/api/admin/service-availability`, {
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<ServiceAvailabilityDay[]>
+}
+
+export async function upsertAdminServiceAvailability(
+  token: string,
+  body: { date: string; slots: string[] },
+): Promise<ServiceAvailabilityDay> {
+  const res = await fetch(`${getApiBase()}/api/admin/service-availability`, {
+    method: 'PUT',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<ServiceAvailabilityDay>
+}
+
+export async function deleteAdminServiceAvailability(token: string, date: string): Promise<void> {
+  const res = await fetch(
+    `${getApiBase()}/api/admin/service-availability?date=${encodeURIComponent(date)}`,
+    {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+    },
+  )
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+}
