@@ -2,6 +2,7 @@ package com.gmw.General.Mechanical.Works.mail;
 
 import java.time.Year;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 
 import org.springframework.stereotype.Component;
@@ -9,6 +10,7 @@ import org.thymeleaf.context.Context;
 import org.thymeleaf.spring6.SpringTemplateEngine;
 
 import com.gmw.General.Mechanical.Works.config.EmailProperties;
+import com.gmw.General.Mechanical.Works.appointment.AppointmentStatus;
 import com.gmw.General.Mechanical.Works.order.OrderStatus;
 import com.gmw.General.Mechanical.Works.payment.AppUrlProperties;
 
@@ -115,6 +117,156 @@ public class MailTemplateRenderer {
 				subject,
 				templateEngine.process("email/order-status-update", context),
 				plainOrderStatusUpdate(order, copy));
+	}
+
+	public RenderedMail renderAppointmentBooked(AppointmentMailMapper.AppointmentMailView appointment) {
+		String subject = "Workshop visit booked — " + appointment.appointmentNumber();
+		String preheader = "Your appointment " + appointment.appointmentNumber() + " is pending confirmation.";
+		Context context = baseContext(subject, preheader);
+		populateAppointmentContext(context, appointment);
+		context.setVariable("statusTag", "Pending");
+		context.setVariable(
+				"headline",
+				"Your " + appointment.modeLabel().toLowerCase(Locale.ROOT) + " is booked");
+		context.setVariable(
+				"statusMessage",
+				"Thank you for booking with us. Your appointment is currently pending. "
+						+ "We will email you again once it has been accepted or declined.");
+		context.setVariable("servicesUrl", frontendUrl() + "/service");
+		context.setVariable("helpCenterUrl", frontendUrl() + "/contactus");
+		return new RenderedMail(
+				subject,
+				templateEngine.process("email/appointment-booked", context),
+				plainAppointmentBooked(appointment));
+	}
+
+	public RenderedMail renderAppointmentStatusUpdate(
+			AppointmentMailMapper.AppointmentMailView appointment,
+			AppointmentStatus status) {
+		AppointmentStatusCopy copy = appointmentStatusCopy(status);
+		String subject = copy.statusTag() + " — " + appointment.appointmentNumber();
+		Context context = baseContext(subject, copy.preheader() + " " + appointment.appointmentNumber());
+		populateAppointmentContext(context, appointment);
+		context.setVariable("statusTag", copy.statusTag());
+		context.setVariable("headline", copy.headline());
+		context.setVariable("statusLabel", copy.statusLabel());
+		context.setVariable("statusMessage", copy.statusMessage());
+		context.setVariable("statusBoxStyle", copy.statusBoxStyle());
+		context.setVariable("statusTextStyle", copy.statusTextStyle());
+		context.setVariable("helpCenterUrl", frontendUrl() + "/contactus");
+		return new RenderedMail(
+				subject,
+				templateEngine.process("email/appointment-status-update", context),
+				plainAppointmentStatusUpdate(appointment, copy));
+	}
+
+	private static AppointmentStatusCopy appointmentStatusCopy(AppointmentStatus status) {
+		return switch (status) {
+			case ACCEPTED -> new AppointmentStatusCopy(
+					"Appointment accepted",
+					"Your appointment has been accepted",
+					"Accepted",
+					"Great news! We have accepted your service appointment. Please bring your bike at the scheduled date and time.",
+					"margin:0 0 24px;background-color:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;",
+					"padding:14px 16px;font-size:14px;line-height:1.6;color:#166534;",
+					"Your appointment has been accepted.");
+			case DECLINED -> new AppointmentStatusCopy(
+					"Appointment declined",
+					"Your appointment was declined",
+					"Declined",
+					"We're sorry — we could not accept this appointment slot. Please book another date or contact us for help.",
+					"margin:0 0 24px;background-color:#fef2f2;border:1px solid #fecaca;border-radius:10px;",
+					"padding:14px 16px;font-size:14px;line-height:1.6;color:#b91c1c;",
+					"Your appointment was declined.");
+			case COMPLETED -> new AppointmentStatusCopy(
+					"Appointment completed",
+					"Your service appointment is complete",
+					"Completed",
+					"Your workshop visit has been marked as completed. Thank you for choosing us!",
+					"margin:0 0 24px;background-color:#eef2ff;border:1px solid #c7d2fe;border-radius:10px;",
+					"padding:14px 16px;font-size:14px;line-height:1.6;color:#4338ca;",
+					"Your appointment has been completed.");
+			case PENDING -> throw new IllegalArgumentException("Unsupported appointment status email: " + status);
+		};
+	}
+
+	private record AppointmentStatusCopy(
+			String statusTag,
+			String headline,
+			String statusLabel,
+			String statusMessage,
+			String statusBoxStyle,
+			String statusTextStyle,
+			String preheader) {
+	}
+
+	private void populateAppointmentContext(Context context, AppointmentMailMapper.AppointmentMailView appointment) {
+		context.setVariable("appointmentNumber", appointment.appointmentNumber());
+		context.setVariable("customerName", appointment.customerName());
+		context.setVariable("customerEmail", appointment.customerEmail());
+		context.setVariable("customerPhone", appointment.customerPhone());
+		context.setVariable("serviceTitles", appointment.serviceTitles());
+		context.setVariable("appointmentDate", appointment.appointmentDate());
+		context.setVariable("timeSlot", appointment.timeSlot());
+		context.setVariable("bikeLabel", appointment.bikeLabel());
+		context.setVariable("notes", appointment.notes());
+		context.setVariable("modeLabel", appointment.modeLabel());
+	}
+
+	private static String plainAppointmentBooked(AppointmentMailMapper.AppointmentMailView appointment) {
+		return """
+				Hi %s,
+
+				Your service appointment is booked.
+
+				Appointment: %s
+				Status: Pending
+				Mode: %s
+				Services: %s
+				Date: %s
+				Time: %s
+				Bike: %s
+				Notes: %s
+
+				We have received your booking. Your appointment is pending confirmation. We will email you once it is accepted or declined.
+				""".formatted(
+				appointment.customerName(),
+				appointment.appointmentNumber(),
+				appointment.modeLabel(),
+				appointment.serviceTitles(),
+				appointment.appointmentDate(),
+				appointment.timeSlot(),
+				appointment.bikeLabel(),
+				appointment.notes());
+	}
+
+	private static String plainAppointmentStatusUpdate(
+			AppointmentMailMapper.AppointmentMailView appointment,
+			AppointmentStatusCopy copy) {
+		return """
+				Hi %s,
+
+				%s
+				Appointment: %s
+				Status: %s
+				Mode: %s
+				Services: %s
+				Date: %s
+				Time: %s
+				Bike: %s
+
+				%s
+				""".formatted(
+				appointment.customerName(),
+				copy.headline(),
+				appointment.appointmentNumber(),
+				copy.statusLabel(),
+				appointment.modeLabel(),
+				appointment.serviceTitles(),
+				appointment.appointmentDate(),
+				appointment.timeSlot(),
+				appointment.bikeLabel(),
+				copy.statusMessage());
 	}
 
 	private static StatusCopy statusCopy(OrderStatus status) {

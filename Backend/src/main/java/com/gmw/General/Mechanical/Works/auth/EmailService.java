@@ -7,8 +7,10 @@ import org.springframework.stereotype.Service;
 
 import com.gmw.General.Mechanical.Works.config.EmailProperties;
 import com.gmw.General.Mechanical.Works.mail.HtmlMailSender;
+import com.gmw.General.Mechanical.Works.mail.AppointmentMailMapper.AppointmentMailView;
 import com.gmw.General.Mechanical.Works.mail.MailTemplateRenderer;
 import com.gmw.General.Mechanical.Works.mail.OrderConfirmationMailMapper.OrderConfirmationView;
+import com.gmw.General.Mechanical.Works.appointment.AppointmentStatus;
 import com.gmw.General.Mechanical.Works.order.OrderStatus;
 
 @Service
@@ -61,6 +63,19 @@ public class EmailService {
 	@Async("mailTaskExecutor")
 	public void sendOrderStatusUpdate(OrderConfirmationView order, OrderStatus status) {
 		sendRendered(order.customerEmail(), null, mailTemplateRenderer.renderOrderStatusUpdate(order, status));
+	}
+
+	@Async("mailTaskExecutor")
+	public void sendAppointmentBooked(AppointmentMailView appointment) {
+		sendRendered(appointment.customerEmail(), null, mailTemplateRenderer.renderAppointmentBooked(appointment));
+	}
+
+	@Async("mailTaskExecutor")
+	public void sendAppointmentStatusUpdate(AppointmentMailView appointment, AppointmentStatus status) {
+		sendRendered(
+				appointment.customerEmail(),
+				null,
+				mailTemplateRenderer.renderAppointmentStatusUpdate(appointment, status));
 	}
 
 	private void sendRendered(String to, String replyTo, MailTemplateRenderer.RenderedMail mail) {

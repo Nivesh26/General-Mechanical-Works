@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <title th:text="${subject}">Appointment update</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f1f5f9;-webkit-text-size-adjust:100%;">
+  <span th:text="${preheader}" style="display:none!important;visibility:hidden;opacity:0;height:0;width:0;overflow:hidden;"></span>
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#f1f5f9;padding:32px 16px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width:600px;background-color:#ffffff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;">
+          <tr th:replace="~{email/fragments/shell :: header}"></tr>
+          <tr>
+            <td style="padding:36px 32px 24px;font-family:Arial,Helvetica,sans-serif;">
+              <p style="margin:0 0 8px;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#bd162c;" th:text="${statusTag}">Accepted</p>
+              <h1 style="margin:0 0 12px;font-size:24px;line-height:1.3;font-weight:700;color:#0f172a;" th:text="${headline}">Your appointment has been accepted</h1>
+              <p style="margin:0 0 20px;font-size:15px;line-height:1.6;color:#475569;">
+                Hi <span th:text="${customerName}">Customer</span>, appointment
+                <strong th:text="${appointmentNumber}">APT-0000</strong> is now
+                <strong th:text="${statusLabel}">Accepted</strong>.
+              </p>
+
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" th:style="${statusBoxStyle}">
+                <tr>
+                  <td th:style="${statusTextStyle}" th:text="${statusMessage}">
+                    Status update message
+                  </td>
+                </tr>
+              </table>
+
+              <h2 style="margin:0 0 12px;font-size:16px;font-weight:700;color:#0f172a;">Appointment details</h2>
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:0 0 24px;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;">
+                <tr>
+                  <td style="padding:12px 16px;background-color:#f8fafc;border-bottom:1px solid #e2e8f0;font-size:12px;font-weight:700;color:#64748b;width:110px;">Mode</td>
+                  <td style="padding:12px 16px;border-bottom:1px solid #e2e8f0;font-size:14px;color:#0f172a;" th:text="${modeLabel}">Workshop visit</td>
+                </tr>
+                <tr>
+                  <td style="padding:12px 16px;background-color:#f8fafc;border-bottom:1px solid #e2e8f0;font-size:12px;font-weight:700;color:#64748b;">Services</td>
+                  <td style="padding:12px 16px;border-bottom:1px solid #e2e8f0;font-size:14px;color:#0f172a;" th:text="${serviceTitles}">Service Work</td>
+                </tr>
+                <tr>
+                  <td style="padding:12px 16px;background-color:#f8fafc;border-bottom:1px solid #e2e8f0;font-size:12px;font-weight:700;color:#64748b;">Date</td>
+                  <td style="padding:12px 16px;border-bottom:1px solid #e2e8f0;font-size:14px;color:#0f172a;" th:text="${appointmentDate}">1 Jan 2026</td>
+                </tr>
+                <tr>
+                  <td style="padding:12px 16px;background-color:#f8fafc;border-bottom:1px solid #e2e8f0;font-size:12px;font-weight:700;color:#64748b;">Time slot</td>
+                  <td style="padding:12px 16px;border-bottom:1px solid #e2e8f0;font-size:14px;color:#0f172a;" th:text="${timeSlot}">10:00 AM</td>
+                </tr>
+                <tr>
+                  <td style="padding:12px 16px;background-color:#f8fafc;border-bottom:1px solid #e2e8f0;font-size:12px;font-weight:700;color:#64748b;">Bike</td>
+                  <td style="padding:12px 16px;border-bottom:1px solid #e2e8f0;font-size:14px;color:#0f172a;" th:text="${bikeLabel}">Honda CB 350</td>
+                </tr>
+                <tr>
+                  <td style="padding:12px 16px;background-color:#f8fafc;font-size:12px;font-weight:700;color:#64748b;vertical-align:top;">Notes</td>
+                  <td style="padding:12px 16px;font-size:14px;line-height:1.6;color:#0f172a;" th:text="${notes}">—</td>
+                </tr>
+              </table>
+
+              <p style="margin:20px 0 0;font-size:14px;line-height:1.6;color:#475569;text-align:center;">
+                Need to change your booking?
+                <a th:href="${helpCenterUrl}" style="color:#bd162c;font-weight:700;text-decoration:none;">Contact us</a>
+              </p>
+            </td>
+          </tr>
+          <tr th:replace="~{email/fragments/shell :: footer}"></tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

@@ -9,9 +9,13 @@ import java.util.Locale;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.StringUtils;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.gmw.General.Mechanical.Works.auth.EmailService;
+import com.gmw.General.Mechanical.Works.mail.AppointmentMailMapper;
 import com.gmw.General.Mechanical.Works.product.ProductJson;
 import com.gmw.General.Mechanical.Works.user.User;
 import com.gmw.General.Mechanical.Works.user.UserRepository;
@@ -30,14 +34,20 @@ public class ServiceAppointmentService {
 	private final ServiceAppointmentRepository serviceAppointmentRepository;
 	private final UserRepository userRepository;
 	private final VehicleRepository vehicleRepository;
+	private final EmailService emailService;
+	private final AppointmentMailMapper appointmentMailMapper;
 
 	public ServiceAppointmentService(
 			ServiceAppointmentRepository serviceAppointmentRepository,
 			UserRepository userRepository,
-			VehicleRepository vehicleRepository) {
+			VehicleRepository vehicleRepository,
+			EmailService emailService,
+			AppointmentMailMapper appointmentMailMapper) {
 		this.serviceAppointmentRepository = serviceAppointmentRepository;
 		this.userRepository = userRepository;
 		this.vehicleRepository = vehicleRepository;
+		this.emailService = emailService;
+		this.appointmentMailMapper = appointmentMailMapper;
 	}
 
 	@Transactional
@@ -80,7 +90,9 @@ public class ServiceAppointmentService {
 		appointment.setBikeLabel(formatBikeLabel(vehicle));
 		appointment.setNotes(normalizeNotes(request.notes()));
 
-		return ServiceAppointmentMapper.toDto(serviceAppointmentRepository.save(appointment));
+		ServiceAppointment saved = serviceAppointmentRepository.save(appointment);
+		notifyAppointmentBooked(saved);
+		return ServiceAppointmentMapper.toDto(saved);
 	}
 
 	@Transactional(readOnly = true)
@@ -106,7 +118,36 @@ public class ServiceAppointmentService {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Accepted appointments cannot be declined");
 		}
 		appointment.setStatus(next);
-		return ServiceAppointmentMapper.toDto(serviceAppointmentRepository.save(appointment));
+		ServiceAppointment saved = serviceAppointmentRepository.save(appointment);
+		if (next == AppointmentStatus.ACCEPTED
+				|| next == AppointmentStatus.DECLINED
+				|| next == AppointmentStatus.COMPLETED) {
+			notifyAppointmentStatusUpdate(saved, next);
+		}
+		return ServiceAppointmentMapper.toDto(saved);
+	}
+
+	private void notifyAppointmentBooked(ServiceAppointment appointment) {
+		var mailData = appointmentMailMapper.toView(appointment);
+		runAfterCommit(() -> emailService.sendAppointmentBooked(mailData));
+	}
+
+	private void notifyAppointmentStatusUpdate(ServiceAppointment appointment, AppointmentStatus status) {
+		var mailData = appointmentMailMapper.toView(appointment);
+		runAfterCommit(() -> emailService.sendAppointmentStatusUpdate(mailData, status));
+	}
+
+	private static void runAfterCommit(Runnable action) {
+		if (TransactionSynchronizationManager.isSynchronizationActive()) {
+			TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+				@Override
+				public void afterCommit() {
+					action.run();
+				}
+			});
+		} else {
+			action.run();
+		}
 	}
 
 	private User requireUser(String email) {
