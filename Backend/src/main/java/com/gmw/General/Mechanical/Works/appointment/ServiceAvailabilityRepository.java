@@ -21,4 +21,6 @@ public interface ServiceAvailabilityRepository extends JpaRepository<ServiceAvai
 			LocalDate toDate);
 
 	void deleteByAvailabilityDate(LocalDate availabilityDate);
+
+	long deleteByAvailabilityDateBefore(LocalDate availabilityDate);
 }

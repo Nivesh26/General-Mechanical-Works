@@ -3,6 +3,7 @@ package com.gmw.General.Mechanical.Works;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 import com.gmw.General.Mechanical.Works.config.EmailProperties;
 import com.gmw.General.Mechanical.Works.config.JwtProperties;
@@ -12,6 +13,7 @@ import com.gmw.General.Mechanical.Works.payment.KhaltiProperties;
 import com.gmw.General.Mechanical.Works.storage.CloudinaryProperties;
 
 @SpringBootApplication
+@EnableScheduling
 @EnableConfigurationProperties({
 		JwtProperties.class,
 		EmailProperties.class,

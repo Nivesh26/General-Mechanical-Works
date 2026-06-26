@@ -34,8 +34,9 @@ public class ServiceAvailabilityService {
 		this.serviceAppointmentRepository = serviceAppointmentRepository;
 	}
 
-	@Transactional(readOnly = true)
+	@Transactional
 	public List<ServiceAvailabilityDto> listBookableAvailability() {
+		purgeExpiredAvailability();
 		LocalDate today = LocalDate.now();
 		LocalDate end = bookingWindowEnd(today);
 		return serviceAvailabilityRepository.findByAvailabilityDateBetweenOrderByAvailabilityDateAsc(today, end)
@@ -45,8 +46,9 @@ public class ServiceAvailabilityService {
 				.toList();
 	}
 
-	@Transactional(readOnly = true)
+	@Transactional
 	public List<ServiceAvailabilityDto> listConfiguredAvailabilityForAdmin() {
+		purgeExpiredAvailability();
 		LocalDate today = LocalDate.now();
 		LocalDate end = bookingWindowEnd(today);
 		return serviceAvailabilityRepository.findByAvailabilityDateBetweenOrderByAvailabilityDateAsc(today, end)
@@ -57,6 +59,7 @@ public class ServiceAvailabilityService {
 
 	@Transactional
 	public ServiceAvailabilityDto upsertForAdmin(UpsertServiceAvailabilityRequest request) {
+		purgeExpiredAvailability();
 		LocalDate date = request.date();
 		validateDateInWindow(date);
 
@@ -103,6 +106,11 @@ public class ServiceAvailabilityService {
 
 	static LocalDate bookingWindowEnd(LocalDate today) {
 		return today.plusDays(BOOKING_WINDOW_DAYS - 1L);
+	}
+
+	@Transactional
+	public void purgeExpiredAvailability() {
+		serviceAvailabilityRepository.deleteByAvailabilityDateBefore(LocalDate.now());
 	}
 
 	private ServiceAvailabilityDto toBookableDto(ServiceAvailability row) {
