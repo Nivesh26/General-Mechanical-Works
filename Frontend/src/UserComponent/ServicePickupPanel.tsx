@@ -72,12 +72,7 @@ const ServicePickupPanel = () => {
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    // Backend hook: selectedServiceIds, date, slot, coords, selectedBikeId, notes
   };
-
-  const canSubmit = Boolean(
-    selectedServiceIds.length >= 1 && selectedServiceIds.length <= 3 && date && slot && coords && selectedBikeId
-  );
 
   const toggleService = (serviceId: string) => {
     setSelectedServiceIds((prev) => {
@@ -254,12 +249,13 @@ const ServicePickupPanel = () => {
         </div>
 
         <button
-          type="submit"
-          disabled={!canSubmit}
-          className="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-primary text-white font-semibold hover:opacity-95 transition-opacity cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed"
+          type="button"
+          disabled
+          className="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-gray-400 text-white font-semibold cursor-not-allowed opacity-90"
         >
-          Book pickup service
+          Coming soon
         </button>
+        <p className="text-xs text-gray-500">Pickup booking is not available yet. Workshop visits can be booked now.</p>
       </form>
     </section>
   );

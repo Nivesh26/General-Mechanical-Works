@@ -1,12 +1,26 @@
-import { useMemo, useState, type FormEvent } from "react";
-import { timeSlots, workshopBikes, workshopServices } from "./serviceBookingShared";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
+import { useAuth } from "../context/AuthContext";
+import { createWorkshopAppointment, fetchMyVehicles, type ApiVehicleDto } from "../lib/api";
+import { timeSlots, workshopServices } from "./serviceBookingShared";
+
+function formatBikeLabel(vehicle: ApiVehicleDto): string {
+  const name = `${vehicle.company} ${vehicle.model}`.trim();
+  return name ? `${name} — ${vehicle.plate}` : vehicle.plate;
+}
 
 const ServiceWorkshopPanel = () => {
+  const navigate = useNavigate();
+  const { token, loading: authLoading } = useAuth();
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
   const [date, setDate] = useState("");
   const [slot, setSlot] = useState("");
   const [selectedBikeId, setSelectedBikeId] = useState("");
   const [notes, setNotes] = useState("");
+  const [vehicles, setVehicles] = useState<ApiVehicleDto[]>([]);
+  const [vehiclesLoading, setVehiclesLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const { minDate, maxDate } = useMemo(() => {
     const today = new Date();
@@ -17,12 +31,75 @@ const ServiceWorkshopPanel = () => {
     };
   }, []);
 
-  const handleSubmit = (e: FormEvent) => {
+  useEffect(() => {
+    if (!token) {
+      setVehicles([]);
+      setSelectedBikeId("");
+      return;
+    }
+    let cancelled = false;
+    const load = async () => {
+      setVehiclesLoading(true);
+      try {
+        const list = await fetchMyVehicles(token);
+        if (cancelled) return;
+        setVehicles(list);
+        const main = list.find((v) => v.isMainBike) ?? list[0];
+        setSelectedBikeId(main ? String(main.id) : "");
+      } catch {
+        if (!cancelled) {
+          setVehicles([]);
+          setSelectedBikeId("");
+        }
+      } finally {
+        if (!cancelled) setVehiclesLoading(false);
+      }
+    };
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
+
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    // Backend hook: selectedServiceIds, date, slot, selectedBikeId, notes
+    if (!token) {
+      toast.info("Please sign in to book a workshop visit.");
+      navigate("/login");
+      return;
+    }
+    if (!canSubmit) return;
+
+    setSubmitting(true);
+    try {
+      await createWorkshopAppointment(token, {
+        serviceIds: selectedServiceIds,
+        date,
+        timeSlot: slot,
+        vehicleId: Number(selectedBikeId),
+        notes: notes.trim() || undefined,
+      });
+      toast.success("Workshop visit booked. We will confirm your appointment soon.");
+      setSelectedServiceIds([]);
+      setDate("");
+      setSlot("");
+      setNotes("");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not book appointment");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const canSubmit = Boolean(selectedServiceIds.length >= 1 && selectedServiceIds.length <= 3 && date && slot && selectedBikeId);
+  const canSubmit = Boolean(
+    token &&
+      selectedServiceIds.length >= 1 &&
+      selectedServiceIds.length <= 3 &&
+      date &&
+      slot &&
+      selectedBikeId &&
+      !submitting,
+  );
 
   const toggleService = (serviceId: string) => {
     setSelectedServiceIds((prev) => {
@@ -33,6 +110,23 @@ const ServiceWorkshopPanel = () => {
       return [...prev, serviceId];
     });
   };
+
+  if (!authLoading && !token) {
+    return (
+      <section className="mt-10 rounded-2xl border border-gray-200 bg-gray-50/60 p-6 sm:p-8">
+        <h2 className="text-xl font-bold text-gray-900">Workshop visit</h2>
+        <p className="mt-2 text-sm text-gray-600 max-w-2xl">
+          Sign in to choose services, pick a date and time, and book a visit to our workshop.
+        </p>
+        <Link
+          to="/login"
+          className="mt-6 inline-flex px-8 py-3.5 rounded-xl bg-primary text-white font-semibold hover:opacity-95 transition-opacity"
+        >
+          Sign in to book
+        </Link>
+      </section>
+    );
+  }
 
   return (
     <section className="mt-10 rounded-2xl border border-gray-200 bg-gray-50/60 p-6 sm:p-8 space-y-8">
@@ -114,22 +208,34 @@ const ServiceWorkshopPanel = () => {
           <label htmlFor="workshop-bike" className="block text-sm text-gray-600 mb-1">
             Choose which bike this booking is for.
           </label>
-          <select
-            id="workshop-bike"
-            value={selectedBikeId}
-            onChange={(e) => setSelectedBikeId(e.target.value)}
-            required
-            className="w-full max-w-md border border-gray-300 rounded-xl px-3 py-2.5 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary bg-white"
-          >
-            <option value="" disabled>
-              Select a bike
-            </option>
-            {workshopBikes.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.label}
+          {vehiclesLoading ? (
+            <p className="text-sm text-gray-500">Loading your bikes…</p>
+          ) : vehicles.length === 0 ? (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              Add a bike in your{" "}
+              <Link to="/profilevehicles" className="font-semibold underline hover:no-underline">
+                profile
+              </Link>{" "}
+              before booking.
+            </div>
+          ) : (
+            <select
+              id="workshop-bike"
+              value={selectedBikeId}
+              onChange={(e) => setSelectedBikeId(e.target.value)}
+              required
+              className="w-full max-w-md border border-gray-300 rounded-xl px-3 py-2.5 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary bg-white"
+            >
+              <option value="" disabled>
+                Select a bike
               </option>
-            ))}
-          </select>
+              {vehicles.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {formatBikeLabel(b)}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
 
         <div>
@@ -151,7 +257,7 @@ const ServiceWorkshopPanel = () => {
           disabled={!canSubmit}
           className="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-primary text-white font-semibold hover:opacity-95 transition-opacity cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed"
         >
-          Book workshop visit
+          {submitting ? "Booking…" : "Book workshop visit"}
         </button>
       </form>
     </section>

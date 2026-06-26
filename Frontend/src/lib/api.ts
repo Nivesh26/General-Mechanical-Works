@@ -986,3 +986,75 @@ export async function unlikeReview(reviewId: number, token: string): Promise<Pro
   if (!res.ok) throw new Error(await parseErrorMessage(res))
   return res.json() as Promise<ProductReviewItem>
 }
+
+export type ServiceAppointmentStatus = 'pending' | 'accepted' | 'declined' | 'completed'
+
+export type ServiceAppointmentMode = 'workshop' | 'pickup'
+
+export interface ServiceAppointmentItem {
+  id: number
+  appointmentNumber: string
+  submittedAt: string
+  status: ServiceAppointmentStatus
+  mode: ServiceAppointmentMode
+  customerName: string
+  customerEmail: string
+  customerPhone: string | null
+  serviceIds: string[]
+  serviceTitle: string
+  date: string
+  slot: string
+  bikeLabel: string
+  notes: string | null
+}
+
+export type CreateWorkshopAppointmentPayload = {
+  serviceIds: string[]
+  date: string
+  timeSlot: string
+  vehicleId: number
+  notes?: string
+}
+
+export async function createWorkshopAppointment(
+  token: string,
+  body: CreateWorkshopAppointmentPayload,
+): Promise<ServiceAppointmentItem> {
+  const res = await fetch(`${getApiBase()}/api/appointments/me/workshop`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<ServiceAppointmentItem>
+}
+
+export async function fetchAdminAppointments(token: string): Promise<ServiceAppointmentItem[]> {
+  const res = await fetch(`${getApiBase()}/api/admin/appointments`, {
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<ServiceAppointmentItem[]>
+}
+
+export async function updateAdminAppointmentStatus(
+  token: string,
+  appointmentId: number,
+  status: Exclude<ServiceAppointmentStatus, 'pending'>,
+): Promise<ServiceAppointmentItem> {
+  const res = await fetch(`${getApiBase()}/api/admin/appointments/${appointmentId}/status`, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({ status: status.toUpperCase() }),
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<ServiceAppointmentItem>
+}

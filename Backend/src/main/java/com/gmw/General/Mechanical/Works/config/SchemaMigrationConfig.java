@@ -499,6 +499,36 @@ public class SchemaMigrationConfig {
 						)
 						""");
 			}
+
+			Integer serviceAppointmentTableExists = jdbcTemplate.queryForObject(
+					"""
+					SELECT COUNT(*) FROM information_schema.TABLES
+					WHERE TABLE_SCHEMA = DATABASE()
+					  AND TABLE_NAME = 'service_appointment'
+					""",
+					Integer.class);
+			if (serviceAppointmentTableExists == null || serviceAppointmentTableExists == 0) {
+				jdbcTemplate.execute("""
+						CREATE TABLE `service_appointment` (
+						  `id` BIGINT NOT NULL AUTO_INCREMENT,
+						  `user_id` BIGINT NOT NULL,
+						  `vehicle_id` BIGINT NOT NULL,
+						  `mode` VARCHAR(16) NOT NULL,
+						  `status` VARCHAR(16) NOT NULL,
+						  `service_ids` TEXT NOT NULL,
+						  `service_titles` TEXT NOT NULL,
+						  `appointment_date` DATE NOT NULL,
+						  `time_slot` VARCHAR(32) NOT NULL,
+						  `bike_label` VARCHAR(255) NOT NULL,
+						  `notes` TEXT NULL,
+						  `created_at` DATETIME(6) NOT NULL,
+						  PRIMARY KEY (`id`),
+						  KEY `idx_service_appointment_user_id` (`user_id`),
+						  KEY `idx_service_appointment_status` (`status`),
+						  CONSTRAINT `fk_service_appointment_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON DELETE CASCADE
+						)
+						""");
+			}
 		};
 	}
 }

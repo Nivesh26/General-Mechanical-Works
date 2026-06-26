@@ -1,11 +1,16 @@
 import type { CSSProperties, FormEvent } from 'react'
-import { Fragment, useMemo, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { toast } from 'react-toastify'
 import AdminNavbar from '../AdminComponent/AdminNavbar'
 import { ADMIN_MAIN_SCROLL_CLASS, ADMIN_PAGE_SUBTITLE, ADMIN_PAGE_TITLE } from '../AdminComponent/adminMainStyles'
-
-/** Static demo data — replace with API when backend is ready. */
-type ServiceAppointmentStatus = 'pending' | 'accepted' | 'declined' | 'completed'
+import { useAuth } from '../context/AuthContext'
+import {
+  fetchAdminAppointments,
+  updateAdminAppointmentStatus,
+  type ServiceAppointmentItem,
+  type ServiceAppointmentStatus,
+} from '../lib/api'
 
 type ServiceAppointment = {
   id: string
@@ -15,7 +20,6 @@ type ServiceAppointment = {
   customerName: string
   customerEmail: string
   customerPhone: string
-  serviceId: string
   serviceTitle: string
   date: string
   slot: string
@@ -25,56 +29,22 @@ type ServiceAppointment = {
   pickupLng?: number
 }
 
-const INITIAL_APPOINTMENTS: ServiceAppointment[] = [
-  {
-    id: 'apt-1001',
-    submittedAt: '2026-04-28T08:30:00.000Z',
-    status: 'pending',
-    mode: 'workshop',
-    customerName: 'Ramesh KC',
-    customerEmail: 'ramesh.kc@example.com',
-    customerPhone: '+977 9811122001',
-    serviceId: 'service',
-    serviceTitle: 'Service Work',
-    date: '2026-05-02',
-    slot: '10:00 AM',
-    bikeLabel: 'Honda CB 350 — BA 01 1234',
-    notes: 'Oil leak check',
-  },
-  {
-    id: 'apt-1002',
-    submittedAt: '2026-04-30T11:15:00.000Z',
-    status: 'pending',
-    mode: 'pickup',
-    customerName: 'Anita Sharma',
-    customerEmail: 'anita.s@example.com',
-    customerPhone: '+977 9840099887',
-    serviceId: 'tyre',
-    serviceTitle: 'Tyre Repair',
-    date: '2026-05-03',
-    slot: '2:00 PM',
-    bikeLabel: 'Yamaha R15 — BA 02 5678',
-    notes: 'Front tyre losing pressure',
-    /** Customer pickup @ Virinchi College — https://www.google.com/maps/place/VIRINCHI+COLLEGE/ */
-    pickupLat: 27.6727033,
-    pickupLng: 85.3185455,
-  },
-  {
-    id: 'apt-1003',
-    submittedAt: '2026-04-25T14:00:00.000Z',
-    status: 'accepted',
-    mode: 'workshop',
-    customerName: 'Bikash Thapa',
-    customerEmail: 'bikash.t@example.com',
-    customerPhone: '+977 9855511220',
-    serviceId: 'wash',
-    serviceTitle: 'Bike Wash',
-    date: '2026-05-04',
-    slot: '11:00 AM',
-    bikeLabel: 'Royal Enfield Classic 350 — BA 03 9012',
-    notes: '',
-  },
-]
+function mapApiAppointment(item: ServiceAppointmentItem): ServiceAppointment {
+  return {
+    id: item.appointmentNumber,
+    submittedAt: item.submittedAt,
+    status: item.status,
+    mode: item.mode,
+    customerName: item.customerName,
+    customerEmail: item.customerEmail,
+    customerPhone: item.customerPhone ?? '—',
+    serviceTitle: item.serviceTitle,
+    date: item.date,
+    slot: item.slot,
+    bikeLabel: item.bikeLabel,
+    notes: item.notes ?? '',
+  }
+}
 
 /** General Mechanical Works — fixed workshop (matches Google Maps place listing). */
 const WORKSHOP_LOCATION = {
@@ -166,10 +136,35 @@ function formatSubmitted(iso: string): string {
 
 const AdminAppointments = () => {
   const navigate = useNavigate()
-  const [appointments, setAppointments] = useState<ServiceAppointment[]>(() => [...INITIAL_APPOINTMENTS])
+  const { token } = useAuth()
+  const [appointments, setAppointments] = useState<ServiceAppointment[]>([])
+  const [loading, setLoading] = useState(true)
   const [searchInput, setSearchInput] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | ServiceAppointmentStatus>('all')
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [updatingId, setUpdatingId] = useState<string | null>(null)
+
+  const loadAppointments = useCallback(async () => {
+    if (!token) {
+      setAppointments([])
+      setLoading(false)
+      return
+    }
+    setLoading(true)
+    try {
+      const data = await fetchAdminAppointments(token)
+      setAppointments(data.map(mapApiAppointment))
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not load appointments')
+      setAppointments([])
+    } finally {
+      setLoading(false)
+    }
+  }, [token])
+
+  useEffect(() => {
+    void loadAppointments()
+  }, [loadAppointments])
 
   const filtered = useMemo(() => {
     const q = searchInput.trim().toLowerCase()
@@ -214,8 +209,23 @@ const AdminAppointments = () => {
     return c
   }, [appointments])
 
-  const setStatus = (id: string, next: ServiceAppointmentStatus) => {
-    setAppointments((prev) => prev.map((a) => (a.id === id ? { ...a, status: next } : a)))
+  const setStatus = async (id: string, next: ServiceAppointmentStatus) => {
+    if (!token || next === 'pending') return
+    const numericId = Number(id.replace(/^APT-/i, ''))
+    if (!Number.isFinite(numericId)) return
+
+    setUpdatingId(id)
+    try {
+      const updated = await updateAdminAppointmentStatus(token, numericId, next)
+      setAppointments((prev) =>
+        prev.map((a) => (a.id === id ? mapApiAppointment(updated) : a)),
+      )
+      toast.success(`Appointment ${next}`)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not update appointment')
+    } finally {
+      setUpdatingId(null)
+    }
   }
 
   const onSearchSubmit = (e: FormEvent) => {
@@ -347,7 +357,14 @@ const AdminAppointments = () => {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((a) => {
+                {loading ? (
+                  <tr>
+                    <td colSpan={9} style={{ padding: '24px', textAlign: 'center', color: '#64748b', fontSize: '14px' }}>
+                      Loading appointments…
+                    </td>
+                  </tr>
+                ) : (
+                  filtered.map((a) => {
                   const isOpen = expandedId === a.id
                   return (
                     <Fragment key={a.id}>
@@ -391,14 +408,16 @@ const AdminAppointments = () => {
                               <>
                                 <button
                                   type="button"
-                                  onClick={() => setStatus(a.id, 'accepted')}
+                                  disabled={updatingId === a.id}
+                                  onClick={() => void setStatus(a.id, 'accepted')}
                                   style={btnAccept}
                                 >
                                   Accept
                                 </button>
                                 <button
                                   type="button"
-                                  onClick={() => setStatus(a.id, 'declined')}
+                                  disabled={updatingId === a.id}
+                                  onClick={() => void setStatus(a.id, 'declined')}
                                   style={btnDecline}
                                 >
                                   Decline
@@ -408,7 +427,8 @@ const AdminAppointments = () => {
                             {a.status === 'accepted' && (
                               <button
                                 type="button"
-                                onClick={() => setStatus(a.id, 'completed')}
+                                disabled={updatingId === a.id}
+                                onClick={() => void setStatus(a.id, 'completed')}
                                 style={btnComplete}
                               >
                                 Mark completed
@@ -489,8 +509,9 @@ const AdminAppointments = () => {
                       )}
                     </Fragment>
                   )
-                })}
-                {filtered.length === 0 && (
+                })
+                )}
+                {!loading && filtered.length === 0 && (
                   <tr>
                     <td colSpan={9} style={{ padding: '24px', textAlign: 'center', color: '#64748b', fontSize: '14px' }}>
                       No appointments match your filters.

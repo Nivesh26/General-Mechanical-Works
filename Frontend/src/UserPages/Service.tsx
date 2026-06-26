@@ -36,7 +36,7 @@ const Service = () => {
             Book a service
           </h1>
           <p className="mt-2 text-gray-600 max-w-2xl mx-auto">
-            Choose whether you’ll visit our workshop or use pickup service—we’ll take care of your bike.
+            Choose whether you&apos;ll visit our workshop or use pickup service—we&apos;ll take care of your bike.
           </p>
         </div>
       </section>
