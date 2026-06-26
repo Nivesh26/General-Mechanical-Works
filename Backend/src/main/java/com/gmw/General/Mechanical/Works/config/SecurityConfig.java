@@ -85,7 +85,7 @@ public class SecurityConfig {
 						.requestMatchers("/api/admin/blogs", "/api/admin/blogs/**").hasRole("ADMIN")
 						.requestMatchers("/api/admin/offers", "/api/admin/offers/**").hasRole("ADMIN")
 						.requestMatchers("/api/admin/products", "/api/admin/products/**").hasRole("ADMIN")
-						.requestMatchers(HttpMethod.POST, "/api/appointments/me/**").authenticated()
+						.requestMatchers("/api/appointments/me", "/api/appointments/me/**").authenticated()
 						.requestMatchers("/api/admin/appointments", "/api/admin/appointments/**").hasRole("ADMIN")
 						.anyRequest().denyAll())
 				.addFilterBefore(jwtAuthenticationFilter, AnonymousAuthenticationFilter.class)

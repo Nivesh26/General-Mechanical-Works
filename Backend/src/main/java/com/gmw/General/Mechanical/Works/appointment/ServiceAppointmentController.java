@@ -1,7 +1,9 @@
 package com.gmw.General.Mechanical.Works.appointment;
 
 import java.security.Principal;
+import java.util.List;
 
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -17,6 +19,11 @@ public class ServiceAppointmentController {
 
 	public ServiceAppointmentController(ServiceAppointmentService serviceAppointmentService) {
 		this.serviceAppointmentService = serviceAppointmentService;
+	}
+
+	@GetMapping
+	public List<ServiceAppointmentDto> listMine(Principal principal) {
+		return serviceAppointmentService.listForUser(principal.getName());
 	}
 
 	@PostMapping("/workshop")

@@ -1016,6 +1016,14 @@ export type CreateWorkshopAppointmentPayload = {
   notes?: string
 }
 
+export async function fetchMyAppointments(token: string): Promise<ServiceAppointmentItem[]> {
+  const res = await fetch(`${getApiBase()}/api/appointments/me`, {
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<ServiceAppointmentItem[]>
+}
+
 export async function createWorkshopAppointment(
   token: string,
   body: CreateWorkshopAppointmentPayload,

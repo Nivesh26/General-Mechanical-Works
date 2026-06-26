@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { NavLink, useNavigate } from 'react-router-dom'
+import { useCallback, useEffect, useState } from 'react'
+import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import {
   HiOutlineMagnifyingGlass,
@@ -12,6 +12,7 @@ import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
 import { useProfileAvatar } from '../hooks/useProfileAvatar'
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
+import { fetchMyAppointments } from '../lib/api'
 import { profileInitialFromName } from '../lib/profileInitial'
 import { PAGE_GUTTER } from '../lib/layoutClasses'
 
@@ -20,9 +21,28 @@ const Header = () => {
   const { cartCount } = useCart()
   const { avatarUrl } = useProfileAvatar(user, token, refreshUser)
   const navigate = useNavigate()
+  const location = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
+  const [pendingBookingCount, setPendingBookingCount] = useState(0)
 
   useBodyScrollLock(menuOpen)
+
+  const loadPendingBookings = useCallback(async () => {
+    if (!token) {
+      setPendingBookingCount(0)
+      return
+    }
+    try {
+      const list = await fetchMyAppointments(token)
+      setPendingBookingCount(list.filter((b) => b.status === 'pending').length)
+    } catch {
+      setPendingBookingCount(0)
+    }
+  }, [token])
+
+  useEffect(() => {
+    void loadPendingBookings()
+  }, [loadPendingBookings, location.pathname])
 
   useEffect(() => {
     if (!menuOpen) return
@@ -110,6 +130,15 @@ const Header = () => {
                 {label}
               </NavLink>
             ))}
+            {showLoggedInActions ? (
+              <NavLink
+                to="/bookings"
+                className={navLinkClass}
+                onClick={closeMenu}
+              >
+                My bookings
+              </NavLink>
+            ) : null}
           </nav>
           {showLoggedInActions ? (
             <button
@@ -193,12 +222,25 @@ const Header = () => {
                 </NavLink>
               ) : (
                 <>
-                  <span
-                    className={`${iconNavClass} hidden sm:flex cursor-default select-none`}
-                    aria-hidden="true"
+                  <NavLink
+                    to="/bookings"
+                    className={({ isActive }) =>
+                      `relative ${iconNavClass}${isActive ? ' text-primary bg-gray-50 border-gray-200' : ''}`
+                    }
+                    aria-label={
+                      pendingBookingCount > 0
+                        ? `My bookings, ${pendingBookingCount} pending`
+                        : 'My bookings'
+                    }
+                    title="My bookings"
                   >
-                    <HiOutlineCalendarDays className="w-5 h-5 sm:w-6 sm:h-6" />
-                  </span>
+                    <HiOutlineCalendarDays className="w-5 h-5 sm:w-6 sm:h-6" aria-hidden />
+                    {pendingBookingCount > 0 ? (
+                      <span className="absolute -top-0.5 -right-0.5 min-w-[1.125rem] h-[1.125rem] px-0.5 flex items-center justify-center rounded-full bg-primary text-white text-[10px] font-bold leading-none tabular-nums pointer-events-none">
+                        {pendingBookingCount > 99 ? '99+' : pendingBookingCount}
+                      </span>
+                    ) : null}
+                  </NavLink>
                   <NavLink
                     to="/cart"
                     className={({ isActive }) =>

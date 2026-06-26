@@ -96,6 +96,14 @@ public class ServiceAppointmentService {
 	}
 
 	@Transactional(readOnly = true)
+	public List<ServiceAppointmentDto> listForUser(String email) {
+		User user = requireUser(email);
+		return serviceAppointmentRepository.findByUserIdWithUserOrderByCreatedAtDesc(user.getId()).stream()
+				.map(ServiceAppointmentMapper::toDto)
+				.toList();
+	}
+
+	@Transactional(readOnly = true)
 	public List<ServiceAppointmentDto> listAllForAdmin() {
 		return serviceAppointmentRepository.findAllWithUserOrderByCreatedAtDesc().stream()
 				.map(ServiceAppointmentMapper::toDto)
