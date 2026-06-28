@@ -1246,3 +1246,93 @@ export async function deleteAdminServiceAvailability(token: string, date: string
   )
   if (!res.ok) throw new Error(await parseErrorMessage(res))
 }
+
+export type AdminBillLine = {
+  id: string
+  description: string
+  quantity: number
+  unitPrice: number
+}
+
+export type AdminBillItem = {
+  id: number
+  invoiceNumber: string
+  issuedAt: string
+  dueAt: string
+  customerName: string
+  customerEmail: string | null
+  customerPhone: string | null
+  customerAddress: string | null
+  lines: AdminBillLine[]
+  discountPercent: number
+  paymentTerms: string
+}
+
+export type SaveAdminBillPayload = {
+  invoiceNumber: string
+  issuedAt: string
+  dueAt: string
+  customerName: string
+  customerEmail?: string
+  customerPhone?: string
+  customerAddress?: string
+  lines: AdminBillLine[]
+  discountPercent: number
+  paymentTerms: string
+}
+
+export async function fetchAdminBills(token: string): Promise<AdminBillItem[]> {
+  const res = await fetch(`${getApiBase()}/api/admin/bills`, {
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<AdminBillItem[]>
+}
+
+export async function fetchNextAdminBillNumber(token: string): Promise<string> {
+  const res = await fetch(`${getApiBase()}/api/admin/bills/next-number`, {
+    headers: { Authorization: `Bearer ${token}`, Accept: 'text/plain, application/json' },
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.text()
+}
+
+export async function createAdminBill(token: string, body: SaveAdminBillPayload): Promise<AdminBillItem> {
+  const res = await fetch(`${getApiBase()}/api/admin/bills`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<AdminBillItem>
+}
+
+export async function updateAdminBill(
+  token: string,
+  billId: number,
+  body: SaveAdminBillPayload,
+): Promise<AdminBillItem> {
+  const res = await fetch(`${getApiBase()}/api/admin/bills/${billId}`, {
+    method: 'PUT',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<AdminBillItem>
+}
+
+export async function deleteAdminBill(token: string, billId: number): Promise<void> {
+  const res = await fetch(`${getApiBase()}/api/admin/bills/${billId}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+}

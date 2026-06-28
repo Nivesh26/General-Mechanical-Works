@@ -93,6 +93,7 @@ public class SecurityConfig {
 						.requestMatchers(HttpMethod.GET, "/api/admin/dashboard").hasRole("ADMIN")
 						.requestMatchers(HttpMethod.GET, "/api/admin/notifications").hasRole("ADMIN")
 						.requestMatchers(HttpMethod.GET, "/api/admin/nav-badges").hasRole("ADMIN")
+						.requestMatchers("/api/admin/bills", "/api/admin/bills/**").hasRole("ADMIN")
 						.anyRequest().denyAll())
 				.addFilterBefore(jwtAuthenticationFilter, AnonymousAuthenticationFilter.class)
 				.addFilterBefore(publicAuthEndpointFilter, AnonymousAuthenticationFilter.class);

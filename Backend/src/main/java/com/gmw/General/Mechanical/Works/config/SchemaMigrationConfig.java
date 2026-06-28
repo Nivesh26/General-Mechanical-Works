@@ -574,6 +574,35 @@ public class SchemaMigrationConfig {
 			if (pickupLngColumnExists == null || pickupLngColumnExists == 0) {
 				jdbcTemplate.execute("ALTER TABLE `service_appointment` ADD COLUMN `pickup_lng` DOUBLE NULL");
 			}
+
+			Integer billTableExists = jdbcTemplate.queryForObject(
+					"""
+					SELECT COUNT(*) FROM information_schema.TABLES
+					WHERE TABLE_SCHEMA = DATABASE()
+					  AND TABLE_NAME = 'bill'
+					""",
+					Integer.class);
+			if (billTableExists == null || billTableExists == 0) {
+				jdbcTemplate.execute("""
+						CREATE TABLE `bill` (
+						  `id` BIGINT NOT NULL AUTO_INCREMENT,
+						  `invoice_number` VARCHAR(32) NOT NULL,
+						  `issued_at` DATE NOT NULL,
+						  `due_at` DATE NOT NULL,
+						  `customer_name` VARCHAR(255) NOT NULL,
+						  `customer_email` VARCHAR(255) NULL,
+						  `customer_phone` VARCHAR(32) NULL,
+						  `customer_address` TEXT NULL,
+						  `discount_percent` DECIMAL(5,2) NOT NULL DEFAULT 0,
+						  `payment_terms` VARCHAR(64) NOT NULL,
+						  `lines_json` TEXT NOT NULL,
+						  `created_at` DATETIME(6) NOT NULL,
+						  `updated_at` DATETIME(6) NOT NULL,
+						  PRIMARY KEY (`id`),
+						  UNIQUE KEY `uk_bill_invoice_number` (`invoice_number`)
+						)
+						""");
+			}
 		};
 	}
 }
