@@ -10,7 +10,7 @@ import Brakes from '../assets/Brakekit.png'
 import EsewaLogo from '../assets/E-sewa.png'
 import KhaltiLogo from '../assets/Khalti.png'
 import { useAuth } from '../context/AuthContext'
-import { useCart } from '../context/CartContext'
+import CheckoutProcessingSpinner from '../UserComponent/CheckoutProcessingSpinner'
 import { esewaLaunchUrl, initEsewaPayment, initKhaltiPayment, placeOrder } from '../lib/api'
 import { productImageUrl } from '../lib/products'
 
@@ -48,7 +48,6 @@ const Checkout = () => {
   const routerLocation = useLocation()
   const navigate = useNavigate()
   const { token, user, loading: authLoading } = useAuth()
-  const { refreshCart } = useCart()
   const state = (routerLocation.state as CheckoutState | null) ?? null
   const [submitting, setSubmitting] = useState(false)
   const [paymentMethod, setPaymentMethod] = useState<PaymentChoice>('COD')
@@ -118,9 +117,10 @@ const Checkout = () => {
           cartLineIds,
           paymentMethod: 'COD',
         })
-        await refreshCart()
-        toast.success(`Order ${order.orderNumber} placed successfully.`)
-        navigate('/ordertracking', { replace: true })
+        navigate(
+          `/payment/cod/result?status=success&orderNumber=${encodeURIComponent(order.orderNumber)}`,
+          { replace: true },
+        )
         return
       }
 
@@ -147,6 +147,25 @@ const Checkout = () => {
   return (
     <div className="min-h-screen flex flex-col bg-gray-100">
       <Header />
+      {submitting ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+          role="status"
+          aria-live="polite"
+        >
+          <div className="w-full max-w-sm rounded-2xl border border-gray-200 bg-white p-8 shadow-xl">
+            <CheckoutProcessingSpinner
+              title={
+                paymentMethod === 'COD'
+                  ? 'Placing your order…'
+                  : paymentMethod === 'ESEWA'
+                    ? 'Redirecting to eSewa…'
+                    : 'Redirecting to Khalti…'
+              }
+            />
+          </div>
+        </div>
+      ) : null}
       <main className="flex-1 px-4 py-10">
         <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
           <section className="rounded-2xl border border-gray-200 bg-white p-6 md:p-8 shadow-sm">

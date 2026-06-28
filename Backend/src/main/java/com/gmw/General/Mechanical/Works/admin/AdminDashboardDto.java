@@ -10,7 +10,8 @@ public record AdminDashboardDto(
 		List<DashboardRecentOrderDto> recentOrders,
 		List<DashboardUpcomingBookingDto> upcomingBookings,
 		List<DashboardAvailabilityDto> serviceAvailability,
-		int notificationCount) {
+		int notificationCount,
+		List<AdminNotificationsDto.AdminNotificationItemDto> notifications) {
 
 	public record DashboardStatDto(String label, String value, String change) {
 	}

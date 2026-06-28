@@ -42,16 +42,19 @@ public class AdminDashboardService {
 	private final ServiceAppointmentRepository serviceAppointmentRepository;
 	private final UserRepository userRepository;
 	private final ServiceAvailabilityService serviceAvailabilityService;
+	private final AdminNotificationService adminNotificationService;
 
 	public AdminDashboardService(
 			ShopOrderRepository shopOrderRepository,
 			ServiceAppointmentRepository serviceAppointmentRepository,
 			UserRepository userRepository,
-			ServiceAvailabilityService serviceAvailabilityService) {
+			ServiceAvailabilityService serviceAvailabilityService,
+			AdminNotificationService adminNotificationService) {
 		this.shopOrderRepository = shopOrderRepository;
 		this.serviceAppointmentRepository = serviceAppointmentRepository;
 		this.userRepository = userRepository;
 		this.serviceAvailabilityService = serviceAvailabilityService;
+		this.adminNotificationService = adminNotificationService;
 	}
 
 	@Transactional(readOnly = true)
@@ -83,12 +86,8 @@ public class AdminDashboardService {
 		long bookingsToday = countAppointmentsOnDate(appointments, today);
 		long bookingsYesterday = countAppointmentsOnDate(appointments, yesterday);
 
-		int notificationCount = (int) orders.stream()
-				.filter(order -> order.getStatus() == OrderStatus.PENDING)
-				.count()
-				+ (int) appointments.stream()
-						.filter(appointment -> appointment.getStatus() == AppointmentStatus.PENDING)
-						.count();
+		AdminNotificationsDto notificationFeed = adminNotificationService.buildNotifications();
+		int notificationCount = notificationFeed.count();
 
 		List<AdminDashboardDto.DashboardStatDto> stats = List.of(
 				new AdminDashboardDto.DashboardStatDto(
@@ -160,7 +159,8 @@ public class AdminDashboardService {
 				recentOrders,
 				upcomingBookings,
 				serviceAvailability,
-				notificationCount);
+				notificationFeed.count(),
+				notificationFeed.notifications());
 	}
 
 	private AdminDashboardDto.DashboardAvailabilityDto toAvailabilityDto(ServiceAvailabilityDto dto) {

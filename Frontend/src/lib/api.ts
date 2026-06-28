@@ -1116,6 +1116,20 @@ export type AdminDashboardAvailability = {
   slots: string[]
 }
 
+export type AdminNotificationItem = {
+  id: string
+  type: 'order' | 'appointment'
+  title: string
+  message: string
+  linkPath: string
+  createdAt: string
+}
+
+export type AdminNotificationsData = {
+  count: number
+  notifications: AdminNotificationItem[]
+}
+
 export type AdminDashboardData = {
   stats: AdminDashboardStat[]
   monthLabels: string[]
@@ -1125,6 +1139,7 @@ export type AdminDashboardData = {
   upcomingBookings: AdminDashboardUpcomingBooking[]
   serviceAvailability: AdminDashboardAvailability[]
   notificationCount: number
+  notifications: AdminNotificationItem[]
 }
 
 export async function fetchAdminDashboard(token: string): Promise<AdminDashboardData> {
@@ -1133,6 +1148,14 @@ export async function fetchAdminDashboard(token: string): Promise<AdminDashboard
   })
   if (!res.ok) throw new Error(await parseErrorMessage(res))
   return res.json() as Promise<AdminDashboardData>
+}
+
+export async function fetchAdminNotifications(token: string): Promise<AdminNotificationsData> {
+  const res = await fetch(`${getApiBase()}/api/admin/notifications`, {
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<AdminNotificationsData>
 }
 
 export async function fetchAdminAppointments(token: string): Promise<ServiceAppointmentItem[]> {

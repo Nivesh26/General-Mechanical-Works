@@ -35,6 +35,7 @@ import AdminService from './AdminPages/AdminService'
 import Checkout from './UserPages/Checkout'
 import EsewaPaymentResult from './UserPages/EsewaPaymentResult'
 import KhaltiPaymentResult from './UserPages/KhaltiPaymentResult'
+import CodPaymentResult from './UserPages/CodPaymentResult'
 import Termsandpolicy from './UserPages/Termsandpolicy'
 import BookingHistory from './UserPages/BookingHistory'
 import { AdminPrivateRoute } from './components/AdminPrivateRoute'
@@ -102,6 +103,7 @@ function AnimatedRoutes() {
         <Route path="/checkout" element={userPage(<Checkout />)} />
         <Route path="/payment/esewa/result" element={<EsewaPaymentResult />} />
         <Route path="/payment/khalti/result" element={<KhaltiPaymentResult />} />
+        <Route path="/payment/cod/result" element={<CodPaymentResult />} />
 
         {/* Login and Signup */}
         <Route path="/login" element={<Login />} />

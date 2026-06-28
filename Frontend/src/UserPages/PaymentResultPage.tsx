@@ -4,13 +4,16 @@ import { HiOutlineCheck } from 'react-icons/hi2'
 import Header from '../UserComponent/Header'
 import Footer from '../UserComponent/Footer'
 import Copyright from '../UserComponent/Copyright'
+import CheckoutProcessingSpinner from '../UserComponent/CheckoutProcessingSpinner'
 import { useCart } from '../context/CartContext'
 
 type PaymentResultPageProps = {
   providerName: string
+  /** COD uses order copy instead of payment copy. */
+  variant?: 'payment' | 'order'
 }
 
-const PaymentResultPage = ({ providerName }: PaymentResultPageProps) => {
+const PaymentResultPage = ({ providerName, variant = 'payment' }: PaymentResultPageProps) => {
   const [searchParams] = useSearchParams()
   const { refreshCart } = useCart()
   const status = searchParams.get('status')
@@ -48,20 +51,24 @@ const PaymentResultPage = ({ providerName }: PaymentResultPageProps) => {
     }
   }, [isSuccess, refreshCart])
 
+  const isOrder = variant === 'order'
+  const verifyingTitle = isOrder ? 'Confirming your order…' : 'Confirming your payment…'
+  const successTitle = isOrder ? 'Order placed' : 'Payment successful'
+  const successMessage = orderNumber
+    ? isOrder
+      ? `Your order ${orderNumber} has been placed with Cash on Delivery.`
+      : `Your order ${orderNumber} has been placed and paid via ${providerName}.`
+    : isOrder
+      ? 'Your Cash on Delivery order was placed successfully.'
+      : `Your ${providerName} payment was completed successfully.`
+
   return (
     <div className="min-h-screen flex flex-col bg-gray-100">
       <Header />
       <main className="flex-1 px-4 py-16">
         <div className="max-w-lg mx-auto rounded-2xl border border-gray-200 bg-white p-8 shadow-sm text-center">
           {isSuccess && verifying ? (
-            <div className="py-6">
-              <div
-                className="mx-auto h-16 w-16 rounded-full border-4 border-primary/20 border-t-primary animate-spin"
-                aria-hidden
-              />
-              <p className="mt-6 text-lg font-semibold text-gray-900">Confirming your payment…</p>
-              <p className="mt-2 text-sm text-gray-500">Please wait a moment.</p>
-            </div>
+            <CheckoutProcessingSpinner title={verifyingTitle} />
           ) : null}
 
           {isSuccess && !verifying ? (
@@ -84,16 +91,14 @@ const PaymentResultPage = ({ providerName }: PaymentResultPageProps) => {
                   showTick ? 'opacity-100' : 'opacity-0'
                 }`}
               >
-                Payment successful
+                {successTitle}
               </h1>
               <p
                 className={`mt-3 text-gray-600 transition-opacity duration-500 delay-100 ${
                   showTick ? 'opacity-100' : 'opacity-0'
                 }`}
               >
-                {orderNumber
-                  ? `Your order ${orderNumber} has been placed and paid via ${providerName}.`
-                  : `Your ${providerName} payment was completed successfully.`}
+                {successMessage}
               </p>
               <Link
                 to="/ordertracking"
