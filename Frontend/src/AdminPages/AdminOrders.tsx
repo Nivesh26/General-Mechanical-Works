@@ -134,6 +134,12 @@ const STATUS_ORDER: Record<Exclude<OrderStatus, 'cancelled'>, number> = {
   delivered: 3,
 }
 
+function listSortRank(status: OrderStatus): number {
+  if (status === 'cancelled') return 2
+  if (status === 'delivered') return 1
+  return 0
+}
+
 function statusRank(status: OrderStatus): number | null {
   if (status === 'cancelled') return null
   return STATUS_ORDER[status]
@@ -264,8 +270,8 @@ const AdminOrders = () => {
       return haystack.includes(q)
     })
     return [...filtered].sort((a, b) => {
-      if (a.status === 'cancelled' && b.status !== 'cancelled') return 1
-      if (a.status !== 'cancelled' && b.status === 'cancelled') return -1
+      const rankDiff = listSortRank(a.status) - listSortRank(b.status)
+      if (rankDiff !== 0) return rankDiff
       return b.placedAt.localeCompare(a.placedAt)
     })
   }, [orders, searchInput, statusFilter])

@@ -147,22 +147,14 @@ const Checkout = () => {
   return (
     <div className="min-h-screen flex flex-col bg-gray-100">
       <Header />
-      {submitting ? (
+      {submitting && paymentMethod === 'COD' ? (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
           role="status"
           aria-live="polite"
         >
           <div className="w-full max-w-sm rounded-2xl border border-gray-200 bg-white p-8 shadow-xl">
-            <CheckoutProcessingSpinner
-              title={
-                paymentMethod === 'COD'
-                  ? 'Placing your order…'
-                  : paymentMethod === 'ESEWA'
-                    ? 'Redirecting to eSewa…'
-                    : 'Redirecting to Khalti…'
-              }
-            />
+            <CheckoutProcessingSpinner title="Placing your order…" />
           </div>
         </div>
       ) : null}
@@ -309,12 +301,8 @@ const Checkout = () => {
               disabled={!canPlaceOrder || submitting || authLoading}
               className="mt-6 w-full rounded-lg bg-primary py-3 text-white font-semibold hover:opacity-90 transition-opacity cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {submitting
-                ? paymentMethod === 'COD'
-                  ? 'Placing order…'
-                  : paymentMethod === 'ESEWA'
-                    ? 'Redirecting to eSewa…'
-                    : 'Redirecting to Khalti…'
+              {submitting && paymentMethod === 'COD'
+                ? 'Placing order…'
                 : paymentMethod === 'COD'
                   ? 'Place Order'
                   : paymentMethod === 'ESEWA'
