@@ -1090,6 +1090,51 @@ export async function createPickupAppointment(
   return res.json() as Promise<ServiceAppointmentItem>
 }
 
+export type AdminDashboardStat = {
+  label: string
+  value: string
+  change: string
+}
+
+export type AdminDashboardRecentOrder = {
+  id: string
+  customer: string
+  status: string
+}
+
+export type AdminDashboardUpcomingBooking = {
+  id: string
+  client: string
+  slot: string
+  service: string
+  status: string
+}
+
+export type AdminDashboardAvailability = {
+  date: string
+  day: string
+  slots: string[]
+}
+
+export type AdminDashboardData = {
+  stats: AdminDashboardStat[]
+  monthLabels: string[]
+  monthlySales: number[]
+  monthlyUsers: number[]
+  recentOrders: AdminDashboardRecentOrder[]
+  upcomingBookings: AdminDashboardUpcomingBooking[]
+  serviceAvailability: AdminDashboardAvailability[]
+  notificationCount: number
+}
+
+export async function fetchAdminDashboard(token: string): Promise<AdminDashboardData> {
+  const res = await fetch(`${getApiBase()}/api/admin/dashboard`, {
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<AdminDashboardData>
+}
+
 export async function fetchAdminAppointments(token: string): Promise<ServiceAppointmentItem[]> {
   const res = await fetch(`${getApiBase()}/api/admin/appointments`, {
     headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },

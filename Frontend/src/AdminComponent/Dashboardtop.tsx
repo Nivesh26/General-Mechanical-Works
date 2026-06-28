@@ -4,45 +4,39 @@ export type DashboardStatItem = {
   label: string
   value: string
   change: string
-  color: string
+  color?: string
 }
 
-/** Default KPI copy for the admin dashboard top row; replace with API data when available. */
+/** Fallback KPI copy when dashboard stats are not loaded yet. */
 export const defaultDashboardTopStats: DashboardStatItem[] = [
   {
     label: 'Total Sales',
-    value: 'NRP 157,000',
-    change: '+14.2% from last month',
-    color: '#0f172a',
+    value: 'NRP 0',
+    change: 'Loading…',
   },
   {
     label: 'Total Orders',
-    value: '1,284',
-    change: '-8.4% from last month',
-    color: '#0f172a',
+    value: '0',
+    change: 'Loading…',
   },
   {
     label: 'Active Users',
-    value: '492',
-    change: '+5.1% from last month',
-    color: '#0f172a',
+    value: '0',
+    change: 'Loading…',
   },
   {
     label: 'Total Bookings',
-    value: '246',
-    change: '+11.6% from last month',
-    color: '#0f172a',
+    value: '0',
+    change: 'Loading…',
   },
   {
     label: 'Bookings Today',
-    value: '19',
-    change: '-3 in last 2 hours',
-    color: '#0f172a',
+    value: '0',
+    change: 'Loading…',
   },
 ]
 
 type DashboardtopProps = {
-  /** When omitted, uses `defaultDashboardTopStats`. */
   stats?: DashboardStatItem[]
 }
 
@@ -76,7 +70,9 @@ const getStatAccentColor = (changeText: string): string => {
   return '#2563eb'
 }
 
-const Dashboardtop = ({ stats = defaultDashboardTopStats }: DashboardtopProps) => {
+const Dashboardtop = ({ stats }: DashboardtopProps) => {
+  const items = stats && stats.length > 0 ? stats : defaultDashboardTopStats
+
   return (
     <section
       style={{
@@ -86,7 +82,7 @@ const Dashboardtop = ({ stats = defaultDashboardTopStats }: DashboardtopProps) =
         marginBottom: '1rem',
       }}
     >
-      {stats.map((item) => (
+      {items.map((item) => (
         <article
           key={item.label}
           style={{

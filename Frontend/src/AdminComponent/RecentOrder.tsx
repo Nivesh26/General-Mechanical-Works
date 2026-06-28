@@ -8,9 +8,11 @@ export type RecentOrderRow = {
 
 const defaultOrderStatusStyles: Record<string, { color: string; border: string; backgroundColor: string }> = {
   Delivered: { color: '#166534', border: '#86efac', backgroundColor: '#f0fdf4' },
+  Confirmed: { color: '#166534', border: '#86efac', backgroundColor: '#f0fdf4' },
   Processing: { color: '#1d4ed8', border: '#93c5fd', backgroundColor: '#eff6ff' },
   Shipped: { color: '#7c3aed', border: '#c4b5fd', backgroundColor: '#f5f3ff' },
   Pending: { color: '#9a3412', border: '#fdba74', backgroundColor: '#fff7ed' },
+  Cancelled: { color: '#991b1b', border: '#fca5a5', backgroundColor: '#fef2f2' },
 }
 
 /** Default list for the Recent Orders card; replace with API data when available. */
@@ -27,7 +29,7 @@ type RecentOrderProps = {
 }
 
 const RecentOrder = ({
-  orders = defaultRecentOrders,
+  orders = [],
   orderStatusStyles = defaultOrderStatusStyles,
 }: RecentOrderProps) => {
   return (
@@ -47,7 +49,10 @@ const RecentOrder = ({
       <h2 style={{ margin: 0, color: '#1e293b', fontSize: '18px', fontWeight: 700 }}>Recent Orders</h2>
       <p style={{ margin: '0.35rem 0 1rem', color: '#64748b', fontSize: '14px' }}>Latest order updates from key customers.</p>
       <div style={{ display: 'grid', gap: '0.7rem', flex: 1, minHeight: 0, alignContent: 'start' }}>
-        {orders.map((order) => {
+        {orders.length === 0 ? (
+          <p style={{ margin: 0, color: '#64748b', fontSize: '0.875rem' }}>No orders yet.</p>
+        ) : (
+          orders.map((order) => {
           const statusStyle = orderStatusStyles[order.status] ?? {
             color: '#334155',
             border: '#cbd5e1',
@@ -85,7 +90,8 @@ const RecentOrder = ({
               </span>
             </div>
           )
-        })}
+        })
+        )}
       </div>
       <div
         style={{

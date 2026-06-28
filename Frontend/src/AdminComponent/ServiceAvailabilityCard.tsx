@@ -1,18 +1,16 @@
 import { Link } from 'react-router-dom'
 
-type ServiceAvailabilityRow = {
+export type ServiceAvailabilityRow = {
   date: string
   day: string
   slots: string[]
 }
 
-const defaultAvailability: ServiceAvailabilityRow[] = [
-  { date: '2026-05-08', day: 'Friday', slots: ['9:00 AM', '11:00 AM'] },
-  { date: '2026-05-09', day: 'Saturday', slots: ['10:00 AM', '2:00 PM', '4:00 PM'] },
-  { date: '2026-05-10', day: 'Sunday', slots: ['9:00 AM', '3:00 PM'] },
-]
+type ServiceAvailabilityCardProps = {
+  availability?: ServiceAvailabilityRow[]
+}
 
-const ServiceAvailabilityCard = () => {
+const ServiceAvailabilityCard = ({ availability = [] }: ServiceAvailabilityCardProps) => {
   return (
     <article
       style={{
@@ -35,23 +33,31 @@ const ServiceAvailabilityCard = () => {
       </div>
 
       <div style={{ display: 'grid', gap: '0.65rem', marginTop: '1rem', flex: 1, alignContent: 'start' }}>
-        {defaultAvailability.map((row) => (
-          <div
-            key={row.date}
-            style={{
-              border: '1px solid #e2e8f0',
-              borderRadius: 10,
-              padding: '0.7rem 0.85rem',
-              backgroundColor: '#f8fafc',
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', alignItems: 'center' }}>
-              <p style={{ margin: 0, color: '#0f172a', fontWeight: 700, fontSize: '0.84rem' }}>{row.day}</p>
-              <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>{row.date}</span>
+        {availability.length === 0 ? (
+          <p style={{ margin: 0, color: '#64748b', fontSize: '0.875rem' }}>
+            No service slots configured for the next few days.
+          </p>
+        ) : (
+          availability.map((row) => (
+            <div
+              key={row.date}
+              style={{
+                border: '1px solid #e2e8f0',
+                borderRadius: 10,
+                padding: '0.7rem 0.85rem',
+                backgroundColor: '#f8fafc',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', alignItems: 'center' }}>
+                <p style={{ margin: 0, color: '#0f172a', fontWeight: 700, fontSize: '0.84rem' }}>{row.day}</p>
+                <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>{row.date}</span>
+              </div>
+              <p style={{ margin: '0.3rem 0 0', fontSize: '0.76rem', color: '#475569' }}>
+                {row.slots.length > 0 ? row.slots.join('  •  ') : 'No slots open'}
+              </p>
             </div>
-            <p style={{ margin: '0.3rem 0 0', fontSize: '0.76rem', color: '#475569' }}>{row.slots.join('  •  ')}</p>
-          </div>
-        ))}
+          ))
+        )}
       </div>
 
       <div style={{ marginTop: 'auto', paddingTop: '0.95rem' }}>

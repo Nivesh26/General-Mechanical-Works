@@ -10,8 +10,11 @@ export type UpcomingBookingRow = {
 
 const defaultBookingBadgeStyles: Record<string, { color: string; border: string; backgroundColor: string }> = {
   Confirmed: { color: '#166534', border: '#86efac', backgroundColor: '#f0fdf4' },
+  Accepted: { color: '#166534', border: '#86efac', backgroundColor: '#f0fdf4' },
+  Completed: { color: '#4338ca', border: '#c7d2fe', backgroundColor: '#eef2ff' },
   Pending: { color: '#9a3412', border: '#fdba74', backgroundColor: '#fff7ed' },
   Rescheduled: { color: '#1d4ed8', border: '#93c5fd', backgroundColor: '#eff6ff' },
+  Declined: { color: '#64748b', border: '#cbd5e1', backgroundColor: '#f8fafc' },
   Cancelled: { color: '#991b1b', border: '#fca5a5', backgroundColor: '#fef2f2' },
 }
 
@@ -53,7 +56,7 @@ type UpcomingbookingProps = {
 }
 
 const Upcomingbooking = ({
-  bookings = defaultUpcomingBookings,
+  bookings = [],
   bookingBadgeStyles = defaultBookingBadgeStyles,
 }: UpcomingbookingProps) => {
   return (
@@ -75,7 +78,10 @@ const Upcomingbooking = ({
         Scheduled field and workshop bookings for your team.
       </p>
       <div style={{ display: 'grid', gap: '0.7rem', flex: 1, minHeight: 0, alignContent: 'start' }}>
-        {bookings.map((booking) => {
+        {bookings.length === 0 ? (
+          <p style={{ margin: 0, color: '#64748b', fontSize: '0.875rem' }}>No upcoming bookings.</p>
+        ) : (
+          bookings.map((booking) => {
           const bookingStyle = bookingBadgeStyles[booking.status] ?? {
             color: '#334155',
             border: '#cbd5e1',
@@ -122,7 +128,8 @@ const Upcomingbooking = ({
               </div>
             </div>
           )
-        })}
+        })
+        )}
       </div>
       <div
         style={{
