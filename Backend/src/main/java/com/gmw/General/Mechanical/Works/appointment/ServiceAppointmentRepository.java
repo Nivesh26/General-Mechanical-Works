@@ -51,4 +51,6 @@ public interface ServiceAppointmentRepository extends JpaRepository<ServiceAppoi
 			LocalDate appointmentDate,
 			String timeSlot,
 			List<AppointmentStatus> statuses);
+
+	long countByStatus(AppointmentStatus status);
 }

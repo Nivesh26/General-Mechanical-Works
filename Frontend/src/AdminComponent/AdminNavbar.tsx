@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { NavLink, useNavigate } from 'react-router-dom'
+import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { useAuth } from '../context/AuthContext'
+import { useAdminNavBadges } from '../hooks/useAdminNavBadges'
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
+import type { AdminNavBadgeKey } from '../lib/adminNavBadges'
 import {
   FiBookOpen,
   FiBox,
@@ -24,22 +26,36 @@ import {
 } from 'react-icons/fi'
 import GMWLogo from '../assets/GMWlogo.png'
 
+type NavItem = {
+  label: string
+  to: string
+  icon: typeof FiGrid
+  badgeKey?: AdminNavBadgeKey
+}
+
+function formatNavBadge(count: number): string {
+  if (count > 99) return '99+'
+  return String(count)
+}
+
 const AdminNavbar = () => {
   const navigate = useNavigate()
+  const location = useLocation()
   const { logout } = useAuth()
+  const { unreadOrders, unreadAppointments, unreadReviews, markSeen, badges } = useAdminNavBadges()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const navScrollRef = useRef<HTMLElement | null>(null)
   const navScrollStorageKey = 'admin-navbar-scroll-top'
 
   useBodyScrollLock(sidebarOpen)
 
-  const navItems = [
+  const navItems: NavItem[] = [
     { label: 'Dashboard', to: '/admindashboard', icon: FiGrid },
-    { label: 'Messages', to: '/adminmessages', icon: FiMessageSquare, badge: '1' },
+    { label: 'Messages', to: '/adminmessages', icon: FiMessageSquare },
     { label: 'Products', to: '/adminproducts', icon: FiBox },
-    { label: 'Orders', to: '/adminorders', icon: FiPackage },
-    { label: 'Reviews', to: '/adminreviews', icon: FiStar },
-    { label: 'Appointments', to: '/adminappointments', icon: FiCalendar },
+    { label: 'Orders', to: '/adminorders', icon: FiPackage, badgeKey: 'orders' },
+    { label: 'Reviews', to: '/adminreviews', icon: FiStar, badgeKey: 'reviews' },
+    { label: 'Appointments', to: '/adminappointments', icon: FiCalendar, badgeKey: 'appointments' },
     { label: 'Service', to: '/adminservice', icon: FiTool },
     { label: 'Bill', to: '/adminbills', icon: FiFileText },
     { label: 'Blogs', to: '/adminblogs', icon: FiBookOpen },
@@ -49,6 +65,23 @@ const AdminNavbar = () => {
     { label: 'Users', to: '/adminusers', icon: FiUsers },
     { label: 'Settings', to: '/adminsettings', icon: FiSettings },
   ]
+
+  const badgeCountFor = (key?: AdminNavBadgeKey) => {
+    if (key === 'orders') return unreadOrders
+    if (key === 'appointments') return unreadAppointments
+    if (key === 'reviews') return unreadReviews
+    return 0
+  }
+
+  useEffect(() => {
+    if (location.pathname.startsWith('/adminorders')) {
+      markSeen('orders')
+    } else if (location.pathname.startsWith('/adminappointments')) {
+      markSeen('appointments')
+    } else if (location.pathname.startsWith('/adminreviews')) {
+      markSeen('reviews')
+    }
+  }, [location.pathname, badges.pendingAppointments, badges.pendingOrders, badges.newReviews, markSeen])
 
   useEffect(() => {
     const navElement = navScrollRef.current
@@ -76,6 +109,11 @@ const AdminNavbar = () => {
     navigate('/login', { replace: true })
   }
 
+  const handleNavClick = (badgeKey?: AdminNavBadgeKey) => {
+    closeSidebar()
+    if (badgeKey) markSeen(badgeKey)
+  }
+
   const sidebarContent = (
     <>
       <div className="flex flex-col items-center justify-center mb-4 shrink-0">
@@ -100,28 +138,31 @@ const AdminNavbar = () => {
         className="flex-1 min-h-0 overflow-y-auto pr-1 scrollbar-thin"
         aria-label="Admin"
       >
-        {navItems.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            onClick={closeSidebar}
-            className={({ isActive }) =>
-              `flex items-center gap-2.5 px-3 py-2.5 mb-1.5 rounded-lg text-sm font-medium no-underline transition-colors ${
-                isActive
-                  ? 'bg-red-100 text-red-700'
-                  : 'text-slate-600 hover:bg-slate-200/60'
-              }`
-            }
-          >
-            <item.icon size={16} className="shrink-0" />
-            <span className="flex-1 min-w-0">{item.label}</span>
-            {item.badge ? (
-              <span className="min-w-[18px] h-[18px] rounded-full bg-red-600 text-white text-[11px] font-bold inline-flex items-center justify-center px-1.5">
-                {item.badge}
-              </span>
-            ) : null}
-          </NavLink>
-        ))}
+        {navItems.map((item) => {
+          const badgeCount = badgeCountFor(item.badgeKey)
+          return (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              onClick={() => handleNavClick(item.badgeKey)}
+              className={({ isActive }) =>
+                `flex items-center gap-2.5 px-3 py-2.5 mb-1.5 rounded-lg text-sm font-medium no-underline transition-colors ${
+                  isActive
+                    ? 'bg-red-100 text-red-700'
+                    : 'text-slate-600 hover:bg-slate-200/60'
+                }`
+              }
+            >
+              <item.icon size={16} className="shrink-0" />
+              <span className="flex-1 min-w-0">{item.label}</span>
+              {badgeCount > 0 ? (
+                <span className="min-w-[18px] h-[18px] rounded-full bg-red-600 text-white text-[11px] font-bold inline-flex items-center justify-center px-1.5">
+                  {formatNavBadge(badgeCount)}
+                </span>
+              ) : null}
+            </NavLink>
+          )
+        })}
       </nav>
 
       <button

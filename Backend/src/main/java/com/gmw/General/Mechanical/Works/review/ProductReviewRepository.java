@@ -37,6 +37,12 @@ public interface ProductReviewRepository extends JpaRepository<ProductReview, Lo
 	Optional<ProductReview> findByIdWithDetails(@Param("id") Long id);
 
 	@Query("""
+			SELECT COUNT(r) FROM ProductReview r
+			WHERE r.adminReply IS NULL OR TRIM(r.adminReply) = ''
+			""")
+	long countAwaitingAdminReply();
+
+	@Query("""
 			SELECT CASE WHEN COUNT(o) > 0 THEN true ELSE false END
 			FROM ShopOrder o
 			JOIN o.lines line

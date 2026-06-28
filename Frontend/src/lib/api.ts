@@ -1158,6 +1158,20 @@ export async function fetchAdminNotifications(token: string): Promise<AdminNotif
   return res.json() as Promise<AdminNotificationsData>
 }
 
+export type AdminNavBadges = {
+  pendingOrders: number
+  pendingAppointments: number
+  newReviews: number
+}
+
+export async function fetchAdminNavBadges(token: string): Promise<AdminNavBadges> {
+  const res = await fetch(`${getApiBase()}/api/admin/nav-badges`, {
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<AdminNavBadges>
+}
+
 export async function fetchAdminAppointments(token: string): Promise<ServiceAppointmentItem[]> {
   const res = await fetch(`${getApiBase()}/api/admin/appointments`, {
     headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
