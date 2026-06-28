@@ -1,6 +1,6 @@
 import type { CSSProperties, FormEvent } from 'react'
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { FiPlus, FiPrinter, FiTrash2 } from 'react-icons/fi'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { FiPlus, FiPrinter, FiSave, FiTrash2 } from 'react-icons/fi'
 import { toast } from 'react-toastify'
 import AdminNavbar from '../AdminComponent/AdminNavbar'
 import { ADMIN_MAIN_SCROLL_CLASS, ADMIN_PAGE_SUBTITLE, ADMIN_PAGE_TITLE } from '../AdminComponent/adminMainStyles'
@@ -93,6 +93,10 @@ function invoiceGrandTotal(inv: Invoice) {
   return invoiceAmountAfterDiscount(inv) + invoiceVat(inv)
 }
 
+function isDraftInvoice(id: number) {
+  return id < 0
+}
+
 function mapBillFromApi(b: AdminBillItem): Invoice {
   return {
     id: b.id,
@@ -177,8 +181,6 @@ const AdminBill = () => {
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const skipSaveRef = useRef(true)
-  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const selected = invoices.find((i) => i.id === selectedId) ?? null
 
@@ -212,7 +214,6 @@ const AdminBill = () => {
         const mapped = data.map(mapBillFromApi)
         setInvoices(mapped)
         setSelectedId(mapped[0]?.id ?? null)
-        skipSaveRef.current = true
       })
       .catch((err) => {
         if (cancelled) return
@@ -226,29 +227,35 @@ const AdminBill = () => {
     }
   }, [token])
 
-  useEffect(() => {
-    if (!token || !selected) return
-    if (skipSaveRef.current) {
-      skipSaveRef.current = false
-      return
-    }
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
-    saveTimerRef.current = setTimeout(async () => {
+  const saveSelectedInvoice = useCallback(
+    async (inv: Invoice) => {
+      if (!token) return
       setSaving(true)
       try {
-        const updated = await updateAdminBill(token, selected.id, mapBillToPayload(selected))
-        skipSaveRef.current = true
-        setInvoices((prev) => prev.map((i) => (i.id === updated.id ? mapBillFromApi(updated) : i)))
+        const payload = mapBillToPayload(inv)
+        if (isDraftInvoice(inv.id)) {
+          const created = await createAdminBill(token, payload)
+          const mapped = mapBillFromApi(created)
+          setInvoices((prev) => prev.map((i) => (i.id === inv.id ? mapped : i)))
+          setSelectedId(mapped.id)
+        } else {
+          const updated = await updateAdminBill(token, inv.id, payload)
+          setInvoices((prev) => prev.map((i) => (i.id === updated.id ? mapBillFromApi(updated) : i)))
+        }
+        toast.success('Invoice saved.')
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'Could not save invoice.')
       } finally {
         setSaving(false)
       }
-    }, 700)
-    return () => {
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
-    }
-  }, [selected, token])
+    },
+    [token],
+  )
+
+  const handleSave = () => {
+    if (!selected) return
+    void saveSelectedInvoice(selected)
+  }
 
   const patchSelected = (patch: Partial<Invoice>) => {
     if (!selectedId) return
@@ -292,19 +299,21 @@ const AdminBill = () => {
     due.setDate(due.getDate() + 15)
     try {
       const invoiceNumber = await fetchNextAdminBillNumber(token)
-      const created = await createAdminBill(token, {
-          invoiceNumber,
-          issuedAt: today,
-          dueAt: due.toISOString().slice(0, 10),
-          customerName: 'Customer',
-          lines: [{ id: uid(), description: '', quantity: 1, unitPrice: 0 }],
-          discountPercent: 0,
-          paymentTerms: 'Net 15',
-        })
-      const mapped = mapBillFromApi(created)
-      skipSaveRef.current = true
-      setInvoices((prev) => [mapped, ...prev])
-      setSelectedId(mapped.id)
+      const draft: Invoice = {
+        id: -Date.now(),
+        invoiceNumber,
+        issuedAt: today,
+        dueAt: due.toISOString().slice(0, 10),
+        customerName: '',
+        customerEmail: '',
+        customerPhone: '',
+        customerAddress: '',
+        lines: [emptyLine()],
+        discountPercent: 0,
+        paymentTerms: 'Net 15',
+      }
+      setInvoices((prev) => [draft, ...prev])
+      setSelectedId(draft.id)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Could not create invoice.')
     }
@@ -315,7 +324,9 @@ const AdminBill = () => {
     if (!inv || !token) return
     if (!window.confirm(`Delete invoice ${inv.invoiceNumber}? This cannot be undone.`)) return
     try {
-      await deleteAdminBill(token, id)
+      if (!isDraftInvoice(id)) {
+        await deleteAdminBill(token, id)
+      }
       const next = invoices.filter((i) => i.id !== id)
       setInvoices(next)
       if (selectedId === id) {
@@ -406,10 +417,7 @@ const AdminBill = () => {
           >
             <div>
               <h1 style={ADMIN_PAGE_TITLE}>Invoices</h1>
-              <p style={ADMIN_PAGE_SUBTITLE}>
-                Create, edit, and print professional bills for customers.
-                {saving ? ' Saving…' : ''}
-              </p>
+              <p style={ADMIN_PAGE_SUBTITLE}>Create, edit, and print professional bills for customers.</p>
             </div>
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
               <form onSubmit={onSearch}>
@@ -489,6 +497,11 @@ const AdminBill = () => {
                           >
                             <div style={{ fontWeight: 700, fontSize: '13px', color: '#0f172a' }}>
                               {inv.invoiceNumber}
+                              {isDraftInvoice(inv.id) ? (
+                                <span style={{ marginLeft: '6px', fontSize: '11px', color: '#b45309' }}>
+                                  (unsaved)
+                                </span>
+                              ) : null}
                             </div>
                             <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
                               {inv.customerName || 'No customer'}
@@ -929,6 +942,29 @@ const AdminBill = () => {
                           <span style={{ color: '#bd162c' }}>{formatRs(total)}</span>
                         </div>
                       </div>
+                    </div>
+
+                    <div
+                      className="admin-bill-no-print"
+                      style={{
+                        marginTop: '24px',
+                        display: 'flex',
+                        justifyContent: 'flex-end',
+                      }}
+                    >
+                      <button
+                        type="button"
+                        style={{
+                          ...btnPrimary,
+                          opacity: saving ? 0.75 : 1,
+                          cursor: saving ? 'wait' : 'pointer',
+                        }}
+                        onClick={handleSave}
+                        disabled={saving}
+                      >
+                        <FiSave size={18} />
+                        {saving ? 'Saving…' : 'Save invoice'}
+                      </button>
                     </div>
 
                     <footer
