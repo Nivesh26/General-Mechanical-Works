@@ -59,6 +59,12 @@ public class ServiceAppointment {
 	@Column(columnDefinition = "TEXT")
 	private String notes;
 
+	@Column(name = "pickup_lat")
+	private Double pickupLat;
+
+	@Column(name = "pickup_lng")
+	private Double pickupLng;
+
 	@Column(name = "created_at", nullable = false)
 	private LocalDateTime createdAt;
 
@@ -151,6 +157,22 @@ public class ServiceAppointment {
 
 	public void setNotes(String notes) {
 		this.notes = notes;
+	}
+
+	public Double getPickupLat() {
+		return pickupLat;
+	}
+
+	public void setPickupLat(Double pickupLat) {
+		this.pickupLat = pickupLat;
+	}
+
+	public Double getPickupLng() {
+		return pickupLng;
+	}
+
+	public void setPickupLng(Double pickupLng) {
+		this.pickupLng = pickupLng;
 	}
 
 	public LocalDateTime getCreatedAt() {

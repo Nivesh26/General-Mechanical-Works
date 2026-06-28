@@ -43,6 +43,8 @@ function mapApiAppointment(item: ServiceAppointmentItem): ServiceAppointment {
     slot: item.slot,
     bikeLabel: item.bikeLabel,
     notes: item.notes ?? '',
+    pickupLat: item.pickupLat ?? undefined,
+    pickupLng: item.pickupLng ?? undefined,
   }
 }
 

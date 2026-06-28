@@ -20,7 +20,7 @@ function formatBikeLabel(vehicle: ApiVehicleDto): string {
 
 const ServiceWorkshopPanel = () => {
   const navigate = useNavigate();
-  const { token, loading: authLoading } = useAuth();
+  const { token } = useAuth();
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
   const [date, setDate] = useState("");
   const [slot, setSlot] = useState("");
@@ -121,6 +121,10 @@ const ServiceWorkshopPanel = () => {
       navigate("/login");
       return;
     }
+    if (!selectedBikeId) {
+      toast.info("Select a bike before booking.");
+      return;
+    }
     if (!canSubmit) return;
 
     setSubmitting(true);
@@ -147,12 +151,11 @@ const ServiceWorkshopPanel = () => {
   };
 
   const canSubmit = Boolean(
-    token &&
-      selectedServiceIds.length >= 1 &&
+    selectedServiceIds.length >= 1 &&
       selectedServiceIds.length <= 3 &&
       date &&
       slot &&
-      selectedBikeId &&
+      (!token || selectedBikeId) &&
       !submitting,
   );
 
@@ -165,23 +168,6 @@ const ServiceWorkshopPanel = () => {
       return [...prev, serviceId];
     });
   };
-
-  if (!authLoading && !token) {
-    return (
-      <section className="mt-10 rounded-2xl border border-gray-200 bg-gray-50/60 p-6 sm:p-8">
-        <h2 className="text-xl font-bold text-gray-900">Workshop visit</h2>
-        <p className="mt-2 text-sm text-gray-600 max-w-2xl">
-          Sign in to choose services, pick a date and time, and book a visit to our workshop.
-        </p>
-        <Link
-          to="/login"
-          className="mt-6 inline-flex px-8 py-3.5 rounded-xl bg-primary text-white font-semibold hover:opacity-95 transition-opacity"
-        >
-          Sign in to book
-        </Link>
-      </section>
-    );
-  }
 
   return (
     <section className="mt-10 rounded-2xl border border-gray-200 bg-gray-50/60 p-6 sm:p-8 space-y-8">
@@ -292,7 +278,9 @@ const ServiceWorkshopPanel = () => {
           <label htmlFor="workshop-bike" className="block text-sm text-gray-600 mb-1">
             Choose which bike this booking is for.
           </label>
-          {vehiclesLoading ? (
+          {!token ? (
+            <p className="text-sm text-gray-600">Sign in to choose from your saved bikes.</p>
+          ) : vehiclesLoading ? (
             <p className="text-sm text-gray-500">Loading your bikes…</p>
           ) : vehicles.length === 0 ? (
             <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">

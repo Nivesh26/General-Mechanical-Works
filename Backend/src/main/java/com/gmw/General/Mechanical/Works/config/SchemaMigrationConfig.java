@@ -521,6 +521,8 @@ public class SchemaMigrationConfig {
 						  `time_slot` VARCHAR(32) NOT NULL,
 						  `bike_label` VARCHAR(255) NOT NULL,
 						  `notes` TEXT NULL,
+						  `pickup_lat` DOUBLE NULL,
+						  `pickup_lng` DOUBLE NULL,
 						  `created_at` DATETIME(6) NOT NULL,
 						  PRIMARY KEY (`id`),
 						  KEY `idx_service_appointment_user_id` (`user_id`),
@@ -547,6 +549,30 @@ public class SchemaMigrationConfig {
 						  UNIQUE KEY `uk_service_availability_date` (`availability_date`)
 						)
 						""");
+			}
+
+			Integer pickupLatColumnExists = jdbcTemplate.queryForObject(
+					"""
+					SELECT COUNT(*) FROM information_schema.COLUMNS
+					WHERE TABLE_SCHEMA = DATABASE()
+					  AND TABLE_NAME = 'service_appointment'
+					  AND COLUMN_NAME = 'pickup_lat'
+					""",
+					Integer.class);
+			if (pickupLatColumnExists == null || pickupLatColumnExists == 0) {
+				jdbcTemplate.execute("ALTER TABLE `service_appointment` ADD COLUMN `pickup_lat` DOUBLE NULL");
+			}
+
+			Integer pickupLngColumnExists = jdbcTemplate.queryForObject(
+					"""
+					SELECT COUNT(*) FROM information_schema.COLUMNS
+					WHERE TABLE_SCHEMA = DATABASE()
+					  AND TABLE_NAME = 'service_appointment'
+					  AND COLUMN_NAME = 'pickup_lng'
+					""",
+					Integer.class);
+			if (pickupLngColumnExists == null || pickupLngColumnExists == 0) {
+				jdbcTemplate.execute("ALTER TABLE `service_appointment` ADD COLUMN `pickup_lng` DOUBLE NULL");
 			}
 		};
 	}

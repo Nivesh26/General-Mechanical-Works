@@ -120,7 +120,9 @@ public class MailTemplateRenderer {
 	}
 
 	public RenderedMail renderAppointmentBooked(AppointmentMailMapper.AppointmentMailView appointment) {
-		String subject = "Workshop visit booked — " + appointment.appointmentNumber();
+		boolean pickup = isPickup(appointment);
+		String subject = (pickup ? "Pickup service booked" : "Workshop visit booked")
+				+ " — " + appointment.appointmentNumber();
 		String preheader = "Your appointment " + appointment.appointmentNumber() + " is pending confirmation.";
 		Context context = baseContext(subject, preheader);
 		populateAppointmentContext(context, appointment);
@@ -130,8 +132,11 @@ public class MailTemplateRenderer {
 				"Your " + appointment.modeLabel().toLowerCase(Locale.ROOT) + " is booked");
 		context.setVariable(
 				"statusMessage",
-				"Thank you for booking with us. Your appointment is currently pending. "
-						+ "We will email you again once it has been accepted or declined.");
+				pickup
+						? "Thank you for booking pickup service. Your request is pending. "
+								+ "We will email you again once it has been accepted or declined."
+						: "Thank you for booking with us. Your appointment is currently pending. "
+								+ "We will email you again once it has been accepted or declined.");
 		context.setVariable("servicesUrl", frontendUrl() + "/service");
 		context.setVariable("helpCenterUrl", frontendUrl() + "/contactus");
 		return new RenderedMail(
@@ -143,7 +148,7 @@ public class MailTemplateRenderer {
 	public RenderedMail renderAppointmentStatusUpdate(
 			AppointmentMailMapper.AppointmentMailView appointment,
 			AppointmentStatus status) {
-		AppointmentStatusCopy copy = appointmentStatusCopy(status);
+		AppointmentStatusCopy copy = appointmentStatusCopy(status, isPickup(appointment));
 		String subject = copy.statusTag() + " — " + appointment.appointmentNumber();
 		Context context = baseContext(subject, copy.preheader() + " " + appointment.appointmentNumber());
 		populateAppointmentContext(context, appointment);
@@ -160,16 +165,25 @@ public class MailTemplateRenderer {
 				plainAppointmentStatusUpdate(appointment, copy));
 	}
 
-	private static AppointmentStatusCopy appointmentStatusCopy(AppointmentStatus status) {
+	private static AppointmentStatusCopy appointmentStatusCopy(AppointmentStatus status, boolean pickup) {
 		return switch (status) {
-			case ACCEPTED -> new AppointmentStatusCopy(
-					"Appointment accepted",
-					"Your appointment has been accepted",
-					"Accepted",
-					"Great news! We have accepted your service appointment. Please bring your bike at the scheduled date and time.",
-					"margin:0 0 24px;background-color:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;",
-					"padding:14px 16px;font-size:14px;line-height:1.6;color:#166534;",
-					"Your appointment has been accepted.");
+			case ACCEPTED -> pickup
+					? new AppointmentStatusCopy(
+							"Team on the way",
+							"We are on the way",
+							"On the way",
+							"Great news! We have accepted your pickup request and our team is on the way to your location.",
+							"margin:0 0 24px;background-color:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;",
+							"padding:14px 16px;font-size:14px;line-height:1.6;color:#166534;",
+							"Our team is on the way to your pickup location.")
+					: new AppointmentStatusCopy(
+							"Appointment accepted",
+							"Your appointment has been accepted",
+							"Accepted",
+							"Great news! We have accepted your service appointment. Please bring your bike at the scheduled date and time.",
+							"margin:0 0 24px;background-color:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;",
+							"padding:14px 16px;font-size:14px;line-height:1.6;color:#166534;",
+							"Your appointment has been accepted.");
 			case DECLINED -> new AppointmentStatusCopy(
 					"Appointment declined",
 					"Your appointment was declined",
@@ -182,18 +196,29 @@ public class MailTemplateRenderer {
 					"Appointment cancelled",
 					"Your appointment has been cancelled",
 					"Cancelled",
-					"You cancelled this service appointment. You can book a new workshop visit anytime from our website.",
+					pickup
+							? "You cancelled this pickup appointment. You can book a new pickup or workshop visit anytime from our website."
+							: "You cancelled this service appointment. You can book a new workshop visit anytime from our website.",
 					"margin:0 0 24px;background-color:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;",
 					"padding:14px 16px;font-size:14px;line-height:1.6;color:#475569;",
 					"Your appointment has been cancelled.");
-			case COMPLETED -> new AppointmentStatusCopy(
-					"Appointment completed",
-					"Your service appointment is complete",
-					"Completed",
-					"Your workshop visit has been marked as completed. Thank you for choosing us!",
-					"margin:0 0 24px;background-color:#eef2ff;border:1px solid #c7d2fe;border-radius:10px;",
-					"padding:14px 16px;font-size:14px;line-height:1.6;color:#4338ca;",
-					"Your appointment has been completed.");
+			case COMPLETED -> pickup
+					? new AppointmentStatusCopy(
+							"Pickup complete",
+							"Your pickup service is done",
+							"Done",
+							"Your pickup service is complete. Thank you for choosing us!",
+							"margin:0 0 24px;background-color:#eef2ff;border:1px solid #c7d2fe;border-radius:10px;",
+							"padding:14px 16px;font-size:14px;line-height:1.6;color:#4338ca;",
+							"Your pickup service is done.")
+					: new AppointmentStatusCopy(
+							"Appointment completed",
+							"Your service appointment is complete",
+							"Completed",
+							"Your workshop visit has been marked as completed. Thank you for choosing us!",
+							"margin:0 0 24px;background-color:#eef2ff;border:1px solid #c7d2fe;border-radius:10px;",
+							"padding:14px 16px;font-size:14px;line-height:1.6;color:#4338ca;",
+							"Your appointment has been completed.");
 			case PENDING -> throw new IllegalArgumentException("Unsupported appointment status email: " + status);
 		};
 	}
@@ -208,6 +233,10 @@ public class MailTemplateRenderer {
 			String preheader) {
 	}
 
+	private static boolean isPickup(AppointmentMailMapper.AppointmentMailView appointment) {
+		return "Pickup service".equals(appointment.modeLabel());
+	}
+
 	private void populateAppointmentContext(Context context, AppointmentMailMapper.AppointmentMailView appointment) {
 		context.setVariable("appointmentNumber", appointment.appointmentNumber());
 		context.setVariable("customerName", appointment.customerName());
@@ -219,9 +248,19 @@ public class MailTemplateRenderer {
 		context.setVariable("bikeLabel", appointment.bikeLabel());
 		context.setVariable("notes", appointment.notes());
 		context.setVariable("modeLabel", appointment.modeLabel());
+		context.setVariable("pickupLocationLabel", appointment.pickupLocationLabel());
+		context.setVariable("pickupLocationUrl", appointment.pickupLocationUrl());
+		context.setVariable("hasPickupLocation", appointment.pickupLocationUrl() != null);
 	}
 
 	private static String plainAppointmentBooked(AppointmentMailMapper.AppointmentMailView appointment) {
+		String pickupLine = appointment.pickupLocationLabel() != null
+				? "\nPickup location: " + appointment.pickupLocationLabel()
+						+ (appointment.pickupLocationUrl() != null ? "\nMap: " + appointment.pickupLocationUrl() : "")
+				: "";
+		String pendingMessage = isPickup(appointment)
+				? "We have received your pickup booking. Your appointment is pending confirmation. We will email you once it is accepted or declined."
+				: "We have received your booking. Your appointment is pending confirmation. We will email you once it is accepted or declined.";
 		return """
 				Hi %s,
 
@@ -234,9 +273,9 @@ public class MailTemplateRenderer {
 				Date: %s
 				Time: %s
 				Bike: %s
-				Notes: %s
+				Notes: %s%s
 
-				We have received your booking. Your appointment is pending confirmation. We will email you once it is accepted or declined.
+				%s
 				""".formatted(
 				appointment.customerName(),
 				appointment.appointmentNumber(),
@@ -245,7 +284,9 @@ public class MailTemplateRenderer {
 				appointment.appointmentDate(),
 				appointment.timeSlot(),
 				appointment.bikeLabel(),
-				appointment.notes());
+				appointment.notes(),
+				pickupLine,
+				pendingMessage);
 	}
 
 	private static String plainAppointmentStatusUpdate(

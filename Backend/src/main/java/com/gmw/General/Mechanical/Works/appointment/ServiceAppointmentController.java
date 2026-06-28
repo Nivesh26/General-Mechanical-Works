@@ -38,4 +38,11 @@ public class ServiceAppointmentController {
 			@Valid @RequestBody CreateWorkshopAppointmentRequest request) {
 		return serviceAppointmentService.createWorkshopVisit(principal.getName(), request);
 	}
+
+	@PostMapping("/pickup")
+	public ServiceAppointmentDto createPickup(
+			Principal principal,
+			@Valid @RequestBody CreatePickupAppointmentRequest request) {
+		return serviceAppointmentService.createPickup(principal.getName(), request);
+	}
 }

@@ -18,6 +18,14 @@ public class AppointmentMailMapper {
 
 	public AppointmentMailView toView(ServiceAppointment appointment) {
 		User user = appointment.getUser();
+		Double lat = appointment.getPickupLat();
+		Double lng = appointment.getPickupLng();
+		String pickupLocationUrl = null;
+		String pickupLocationLabel = null;
+		if (lat != null && lng != null) {
+			pickupLocationUrl = "https://www.google.com/maps?q=" + lat + "," + lng;
+			pickupLocationLabel = String.format(Locale.ROOT, "%.5f, %.5f", lat, lng);
+		}
 		return new AppointmentMailView(
 				"APT-" + appointment.getId(),
 				user.getName(),
@@ -28,7 +36,9 @@ public class AppointmentMailMapper {
 				appointment.getTimeSlot(),
 				appointment.getBikeLabel(),
 				displayValue(appointment.getNotes(), "—"),
-				modeLabel(appointment.getMode()));
+				modeLabel(appointment.getMode()),
+				pickupLocationLabel,
+				pickupLocationUrl);
 	}
 
 	private static String modeLabel(AppointmentMode mode) {
@@ -49,7 +59,9 @@ public class AppointmentMailMapper {
 			String timeSlot,
 			String bikeLabel,
 			String notes,
-			String modeLabel) {
+			String modeLabel,
+			String pickupLocationLabel,
+			String pickupLocationUrl) {
 	}
 
 }

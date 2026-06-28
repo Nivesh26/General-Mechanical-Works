@@ -1017,6 +1017,8 @@ export interface ServiceAppointmentItem {
   slot: string
   bikeLabel: string
   notes: string | null
+  pickupLat: number | null
+  pickupLng: number | null
 }
 
 export type CreateWorkshopAppointmentPayload = {
@@ -1024,6 +1026,16 @@ export type CreateWorkshopAppointmentPayload = {
   date: string
   timeSlot: string
   vehicleId: number
+  notes?: string
+}
+
+export type CreatePickupAppointmentPayload = {
+  serviceIds: string[]
+  date: string
+  timeSlot: string
+  vehicleId: number
+  pickupLat: number
+  pickupLng: number
   notes?: string
 }
 
@@ -1049,6 +1061,23 @@ export async function createWorkshopAppointment(
   body: CreateWorkshopAppointmentPayload,
 ): Promise<ServiceAppointmentItem> {
   const res = await fetch(`${getApiBase()}/api/appointments/me/workshop`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<ServiceAppointmentItem>
+}
+
+export async function createPickupAppointment(
+  token: string,
+  body: CreatePickupAppointmentPayload,
+): Promise<ServiceAppointmentItem> {
+  const res = await fetch(`${getApiBase()}/api/appointments/me/pickup`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,

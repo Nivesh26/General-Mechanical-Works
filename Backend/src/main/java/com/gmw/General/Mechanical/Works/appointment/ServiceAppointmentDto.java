@@ -16,5 +16,7 @@ public record ServiceAppointmentDto(
 		String date,
 		String slot,
 		String bikeLabel,
-		String notes) {
+		String notes,
+		Double pickupLat,
+		Double pickupLng) {
 }

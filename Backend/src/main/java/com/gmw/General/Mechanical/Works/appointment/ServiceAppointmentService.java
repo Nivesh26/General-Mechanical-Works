@@ -55,8 +55,70 @@ public class ServiceAppointmentService {
 
 	@Transactional
 	public ServiceAppointmentDto createWorkshopVisit(String email, CreateWorkshopAppointmentRequest request) {
+		PreparedBooking prepared = prepareBooking(email, request.serviceIds(), request.date(), request.timeSlot(),
+				request.vehicleId(), request.notes());
+
+		ServiceAppointment appointment = new ServiceAppointment();
+		appointment.setUser(prepared.user());
+		appointment.setVehicleId(prepared.vehicle().getId());
+		appointment.setMode(AppointmentMode.WORKSHOP);
+		appointment.setStatus(AppointmentStatus.PENDING);
+		appointment.setServiceIdsJson(ProductJson.writeStringList(prepared.serviceIds()));
+		appointment.setServiceTitles(String.join(", ", prepared.titles()));
+		appointment.setAppointmentDate(prepared.appointmentDate());
+		appointment.setTimeSlot(prepared.timeSlot());
+		appointment.setBikeLabel(formatBikeLabel(prepared.vehicle()));
+		appointment.setNotes(prepared.notes());
+
+		ServiceAppointment saved = serviceAppointmentRepository.save(appointment);
+		notifyAppointmentBooked(saved);
+		return ServiceAppointmentMapper.toDto(saved);
+	}
+
+	@Transactional
+	public ServiceAppointmentDto createPickup(String email, CreatePickupAppointmentRequest request) {
+		validatePickupCoordinates(request.pickupLat(), request.pickupLng());
+		PreparedBooking prepared = prepareBooking(email, request.serviceIds(), request.date(), request.timeSlot(),
+				request.vehicleId(), request.notes());
+
+		ServiceAppointment appointment = new ServiceAppointment();
+		appointment.setUser(prepared.user());
+		appointment.setVehicleId(prepared.vehicle().getId());
+		appointment.setMode(AppointmentMode.PICKUP);
+		appointment.setStatus(AppointmentStatus.PENDING);
+		appointment.setServiceIdsJson(ProductJson.writeStringList(prepared.serviceIds()));
+		appointment.setServiceTitles(String.join(", ", prepared.titles()));
+		appointment.setAppointmentDate(prepared.appointmentDate());
+		appointment.setTimeSlot(prepared.timeSlot());
+		appointment.setBikeLabel(formatBikeLabel(prepared.vehicle()));
+		appointment.setNotes(prepared.notes());
+		appointment.setPickupLat(request.pickupLat());
+		appointment.setPickupLng(request.pickupLng());
+
+		ServiceAppointment saved = serviceAppointmentRepository.save(appointment);
+		notifyAppointmentBooked(saved);
+		return ServiceAppointmentMapper.toDto(saved);
+	}
+
+	private record PreparedBooking(
+			User user,
+			Vehicle vehicle,
+			List<String> serviceIds,
+			List<String> titles,
+			LocalDate appointmentDate,
+			String timeSlot,
+			String notes) {
+	}
+
+	private PreparedBooking prepareBooking(
+			String email,
+			List<String> rawServiceIds,
+			LocalDate appointmentDate,
+			String rawTimeSlot,
+			Long vehicleId,
+			String rawNotes) {
 		User user = requireUser(email);
-		List<String> serviceIds = request.serviceIds().stream()
+		List<String> serviceIds = rawServiceIds.stream()
 				.map(String::trim)
 				.filter(StringUtils::hasText)
 				.distinct()
@@ -68,39 +130,34 @@ public class ServiceAppointmentService {
 		if (titles.size() != serviceIds.size()) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "One or more services are invalid");
 		}
-		if (!WorkshopServiceCatalog.isValidTimeSlot(request.timeSlot())) {
+		if (!WorkshopServiceCatalog.isValidTimeSlot(rawTimeSlot)) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid time slot");
 		}
-		LocalDate appointmentDate = request.date();
 		LocalDate today = LocalDate.now();
 		if (appointmentDate.isBefore(today) || appointmentDate.isAfter(today.plusDays(MAX_BOOKING_DAYS_AHEAD))) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
 					"Choose a date within the next " + ServiceAvailabilityService.BOOKING_WINDOW_DAYS + " days");
 		}
-		serviceAvailabilityService.validateBookableSlot(appointmentDate, request.timeSlot());
-		String timeSlot = request.timeSlot().trim();
+		serviceAvailabilityService.validateBookableSlot(appointmentDate, rawTimeSlot);
+		String timeSlot = rawTimeSlot.trim();
 		if (serviceAvailabilityService.isSlotBooked(appointmentDate, timeSlot)) {
 			throw new ResponseStatusException(HttpStatus.CONFLICT, "This time slot is already booked");
 		}
 
-		Vehicle vehicle = vehicleRepository.findByIdAndUser_Id(request.vehicleId(), user.getId())
+		Vehicle vehicle = vehicleRepository.findByIdAndUser_Id(vehicleId, user.getId())
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Selected bike was not found"));
 
-		ServiceAppointment appointment = new ServiceAppointment();
-		appointment.setUser(user);
-		appointment.setVehicleId(vehicle.getId());
-		appointment.setMode(AppointmentMode.WORKSHOP);
-		appointment.setStatus(AppointmentStatus.PENDING);
-		appointment.setServiceIdsJson(ProductJson.writeStringList(serviceIds));
-		appointment.setServiceTitles(String.join(", ", titles));
-		appointment.setAppointmentDate(appointmentDate);
-		appointment.setTimeSlot(timeSlot);
-		appointment.setBikeLabel(formatBikeLabel(vehicle));
-		appointment.setNotes(normalizeNotes(request.notes()));
+		return new PreparedBooking(user, vehicle, serviceIds, titles, appointmentDate, timeSlot,
+				normalizeNotes(rawNotes));
+	}
 
-		ServiceAppointment saved = serviceAppointmentRepository.save(appointment);
-		notifyAppointmentBooked(saved);
-		return ServiceAppointmentMapper.toDto(saved);
+	private static void validatePickupCoordinates(Double lat, Double lng) {
+		if (lat == null || lng == null || !Double.isFinite(lat) || !Double.isFinite(lng)) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Pickup location is required");
+		}
+		if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid pickup coordinates");
+		}
 	}
 
 	@Transactional(readOnly = true)
@@ -232,7 +289,9 @@ public class ServiceAppointmentService {
 					appointment.getAppointmentDate().format(DATE_FORMAT),
 					appointment.getTimeSlot(),
 					appointment.getBikeLabel(),
-					appointment.getNotes());
+					appointment.getNotes(),
+					appointment.getPickupLat(),
+					appointment.getPickupLng());
 		}
 	}
 }
