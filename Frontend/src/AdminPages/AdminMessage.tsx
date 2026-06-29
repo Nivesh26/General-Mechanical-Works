@@ -22,6 +22,7 @@ import {
 import GMWLogo from '../assets/GMWlogo.png'
 import ChatMessageAttachment from '../UserComponent/ChatMessageAttachment'
 import { prepareChatUploadFile } from '../lib/chatImage'
+import { scrollChatToBottom } from '../lib/chatScroll'
 
 const CHATBOT_USER_ID = 'chatbot'
 
@@ -246,6 +247,7 @@ const AdminMessage = () => {
 
   const selectedUser = orderedUsers.find((user) => user.id === selectedUserId)
   const selectedMessages = messagesByUser[selectedUserId] ?? []
+  const lastSelectedMessageId = selectedMessages.at(-1)?.id
   const filteredUsers = orderedUsers.filter((user) => user.name.toLowerCase().includes(userSearch.toLowerCase()))
 
   const loadConversations = useCallback(async () => {
@@ -371,10 +373,8 @@ const AdminMessage = () => {
   }, [conversationMenuUserId])
 
   useEffect(() => {
-    const messageList = messageListRef.current
-    if (!messageList) return
-    messageList.scrollTop = messageList.scrollHeight
-  }, [selectedUserId, selectedMessages.length])
+    scrollChatToBottom(messageListRef.current)
+  }, [selectedUserId, selectedMessages.length, lastSelectedMessageId])
 
   const togglePinConversation = (userId: string) => {
     setPinnedUserIds((prev) =>

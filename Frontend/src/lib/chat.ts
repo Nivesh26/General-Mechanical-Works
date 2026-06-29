@@ -45,6 +45,32 @@ export function chatMessagePreview(message: Pick<ApiChatMessage, 'body' | 'attac
   return ''
 }
 
+export function chatLastSeenStorageKey(userId: number): string {
+  return `gmw-chat-last-seen-${userId}`
+}
+
+export function readChatLastSeenMessageId(userId: number): number {
+  const raw = localStorage.getItem(chatLastSeenStorageKey(userId))
+  const parsed = raw ? Number(raw) : 0
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+export function writeChatLastSeenMessageId(userId: number, messageId: number): void {
+  if (messageId <= 0) return
+  localStorage.setItem(chatLastSeenStorageKey(userId), String(messageId))
+}
+
+export function countUnreadAdminChatMessages(
+  messages: ApiChatMessage[],
+  lastSeenMessageId: number,
+): number {
+  return messages.filter((m) => m.sender === 'ADMIN' && m.id > lastSeenMessageId).length
+}
+
+export function maxChatMessageId(messages: Pick<ApiChatMessage, 'id'>[]): number {
+  return messages.reduce((max, m) => Math.max(max, m.id), 0)
+}
+
 const AVATAR_COLORS = ['#dc2626', '#2563eb', '#7c3aed', '#059669', '#ea580c', '#0891b2', '#be123c']
 
 export function avatarColorForUserId(userId: number): string {

@@ -6,14 +6,19 @@ import { toast } from 'react-toastify'
 import { useAuth } from '../context/AuthContext'
 import { useChatWebSocket } from '../hooks/useChatWebSocket'
 import {
+  countUnreadAdminChatMessages,
   fetchMyChatMessages,
   formatChatTime,
+  maxChatMessageId,
+  readChatLastSeenMessageId,
   sendMyChatMessage,
   sendMyChatMessageWithFile,
+  writeChatLastSeenMessageId,
   type ApiChatAttachmentType,
   type ApiChatMessage,
 } from '../lib/chat'
 import { prepareChatUploadFile } from '../lib/chatImage'
+import { scrollChatToBottom } from '../lib/chatScroll'
 import GMWLogo from '../assets/GMWlogo.png'
 import ChatMessageAttachment from './ChatMessageAttachment'
 
@@ -46,6 +51,7 @@ const ChatbotWidget = () => {
   const isLoggedIn = Boolean(token && user)
   const [open, setOpen] = useState(false)
   const [messages, setMessages] = useState<UiMessage[]>([])
+  const [unreadCount, setUnreadCount] = useState(0)
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -55,6 +61,22 @@ const ChatbotWidget = () => {
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const pendingSendIdRef = useRef<string | null>(null)
   const pendingPreviewUrlRef = useRef<string | null>(null)
+  const openRef = useRef(open)
+  const notifiedAdminMessageIdsRef = useRef<Set<number>>(new Set())
+  openRef.current = open
+
+  const markChatAsRead = useCallback(
+    (apiMessages: Pick<ApiChatMessage, 'id'>[]) => {
+      if (!user?.id) return
+      const maxId = maxChatMessageId(apiMessages)
+      if (maxId > 0) {
+        writeChatLastSeenMessageId(user.id, maxId)
+      }
+      apiMessages.forEach((m) => notifiedAdminMessageIdsRef.current.add(m.id))
+      setUnreadCount(0)
+    },
+    [user?.id],
+  )
 
   const finalizeSentMessage = useCallback((message: ApiChatMessage) => {
     setMessages((prev) => {
@@ -82,12 +104,45 @@ const ChatbotWidget = () => {
 
   const appendMessage = useCallback(
     (message: ApiChatMessage) => {
-      finalizeSentMessage(message)
+      if (message.sender === 'ADMIN' && !openRef.current && user?.id) {
+        if (!notifiedAdminMessageIdsRef.current.has(message.id)) {
+          notifiedAdminMessageIdsRef.current.add(message.id)
+          const lastSeen = readChatLastSeenMessageId(user.id)
+          if (message.id > lastSeen) {
+            setUnreadCount((count) => count + 1)
+          }
+        }
+      }
+      if (openRef.current || message.sender === 'USER') {
+        finalizeSentMessage(message)
+      }
     },
-    [finalizeSentMessage],
+    [finalizeSentMessage, user?.id],
   )
 
   useChatWebSocket(isLoggedIn ? token : null, appendMessage)
+
+  useEffect(() => {
+    if (!isLoggedIn || !token || !user?.id) {
+      setUnreadCount(0)
+      notifiedAdminMessageIdsRef.current.clear()
+      return
+    }
+    let cancelled = false
+    fetchMyChatMessages(token)
+      .then((data) => {
+        if (cancelled || openRef.current) return
+        data.forEach((m) => notifiedAdminMessageIdsRef.current.add(m.id))
+        const lastSeen = readChatLastSeenMessageId(user.id)
+        setUnreadCount(countUnreadAdminChatMessages(data, lastSeen))
+      })
+      .catch(() => {
+        /* ignore background unread sync */
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [isLoggedIn, token, user?.id])
 
   useEffect(() => {
     if (!open || !isLoggedIn || !token) return
@@ -97,6 +152,7 @@ const ChatbotWidget = () => {
       .then((data) => {
         if (cancelled) return
         setMessages(data.map(mapApiMessage))
+        markChatAsRead(data)
       })
       .catch((err) => {
         if (cancelled) return
@@ -108,13 +164,20 @@ const ChatbotWidget = () => {
     return () => {
       cancelled = true
     }
-  }, [open, token, isLoggedIn])
+  }, [open, token, isLoggedIn, markChatAsRead])
 
   useEffect(() => {
-    const list = listRef.current
-    if (!list) return
-    list.scrollTop = list.scrollHeight
-  }, [messages.length, open])
+    if (!open || loading || !user?.id) return
+    const apiMessages = messages
+      .filter((m) => /^\d+$/.test(m.id))
+      .map((m) => ({ id: Number(m.id) }))
+    markChatAsRead(apiMessages)
+  }, [open, loading, messages, markChatAsRead, user?.id])
+
+  useEffect(() => {
+    if (!open || loading) return
+    scrollChatToBottom(listRef.current)
+  }, [open, loading, messages])
 
   const resetFileSelection = () => {
     setSelectedFile(null)
@@ -369,9 +432,20 @@ const ChatbotWidget = () => {
         type="button"
         onClick={() => setOpen((v) => !v)}
         className="fixed right-4 bottom-4 sm:right-6 sm:bottom-6 z-[70] w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-primary text-white flex items-center justify-center shadow-lg shadow-red-900/30 cursor-pointer"
-        aria-label={open ? 'Close support chat' : 'Open support chat'}
+        aria-label={
+          unreadCount > 0 && !open
+            ? `Open support chat, ${unreadCount} unread ${unreadCount === 1 ? 'message' : 'messages'}`
+            : open
+              ? 'Close support chat'
+              : 'Open support chat'
+        }
       >
         <HiOutlineChatBubbleBottomCenterText className="w-6 h-6 sm:w-7 sm:h-7" />
+        {unreadCount > 0 && !open ? (
+          <span className="absolute -top-0.5 -right-0.5 min-w-[1.125rem] h-[1.125rem] px-0.5 flex items-center justify-center rounded-full bg-white text-primary text-[10px] font-bold leading-none tabular-nums pointer-events-none border-2 border-primary">
+            {unreadCount > 99 ? '99+' : unreadCount}
+          </span>
+        ) : null}
       </button>
     </>
   )
