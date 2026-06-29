@@ -73,7 +73,8 @@ public class ChatService {
 							user.getName(),
 							preview,
 							time,
-							chatWebSocketSessions.isUserOnline(user.getId()));
+							chatWebSocketSessions.isUserOnline(user.getId()),
+							user.getProfilePicture());
 				})
 				.filter(java.util.Objects::nonNull)
 				.toList();

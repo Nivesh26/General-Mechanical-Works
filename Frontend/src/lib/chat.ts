@@ -17,6 +17,7 @@ export type ApiChatConversation = {
   lastMessage: string
   lastMessageAt: string
   online: boolean
+  profilePicture: string | null
 }
 
 export function getWsChatUrl(token: string): string {
@@ -68,6 +69,43 @@ export async function fetchAdminChatMessages(token: string, userId: number): Pro
   })
   if (!res.ok) throw new Error(await parseErrorMessage(res))
   return res.json() as Promise<ApiChatMessage[]>
+}
+
+export async function sendMyChatMessage(
+  token: string,
+  text: string,
+  replyToId?: number | null,
+): Promise<ApiChatMessage> {
+  const res = await fetch(`${getApiBase()}/api/chat/me/messages`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({ text, replyToId: replyToId ?? null }),
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<ApiChatMessage>
+}
+
+export async function sendAdminChatMessage(
+  token: string,
+  userId: number,
+  text: string,
+  replyToId?: number | null,
+): Promise<ApiChatMessage> {
+  const res = await fetch(`${getApiBase()}/api/admin/chat/conversations/${userId}/messages`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({ text, replyToId: replyToId ?? null, targetUserId: userId }),
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<ApiChatMessage>
 }
 
 export type ChatWsSendPayload = {

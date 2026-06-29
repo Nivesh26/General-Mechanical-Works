@@ -7,12 +7,13 @@ import AdminNavbar from '../AdminComponent/AdminNavbar'
 import { ADMIN_MAIN_MESSAGES_CLASS, ADMIN_PAGE_HEADER_SPACING, ADMIN_PAGE_TITLE } from '../AdminComponent/adminMainStyles'
 import { useAuth } from '../context/AuthContext'
 import { useChatWebSocket } from '../hooks/useChatWebSocket'
+import { toAbsoluteApiUrl } from '../lib/api'
 import {
   avatarColorForUserId,
   fetchAdminChatConversations,
   fetchAdminChatMessages,
   formatChatTime,
-  sendChatWsMessage,
+  sendAdminChatMessage,
   type ApiChatMessage,
 } from '../lib/chat'
 import GMWLogo from '../assets/GMWlogo.png'
@@ -26,6 +27,7 @@ type ChatUser = {
   isOnline: boolean
   lastOnline: string
   avatarColor: string
+  avatarUrl?: string | null
   isAiAssistant?: boolean
 }
 
@@ -115,6 +117,7 @@ function conversationToChatUser(conv: {
   lastMessage: string
   lastMessageAt: string
   online: boolean
+  profilePicture?: string | null
 }): ChatUser {
   return {
     id: String(conv.userId),
@@ -123,7 +126,56 @@ function conversationToChatUser(conv: {
     isOnline: conv.online,
     lastOnline: conv.lastMessageAt || '—',
     avatarColor: avatarColorForUserId(conv.userId),
+    avatarUrl: conv.profilePicture ? toAbsoluteApiUrl(conv.profilePicture) : null,
   }
+}
+
+function ChatUserAvatar({
+  user,
+  size,
+  fontSize = 12,
+  marginRight,
+}: {
+  user: Pick<ChatUser, 'name' | 'avatarColor' | 'avatarUrl' | 'isAiAssistant'>
+  size: number
+  fontSize?: number
+  marginRight?: number
+}) {
+  const label = user.isAiAssistant ? 'AI' : getInitials(user.name)
+  const sharedStyle: CSSProperties = {
+    width: `${size}px`,
+    height: `${size}px`,
+    borderRadius: '999px',
+    flexShrink: 0,
+    ...(marginRight != null ? { marginRight: `${marginRight}px` } : {}),
+  }
+
+  if (user.avatarUrl && !user.isAiAssistant) {
+    return (
+      <img
+        src={user.avatarUrl}
+        alt=""
+        style={{ ...sharedStyle, objectFit: 'cover', backgroundColor: user.avatarColor }}
+      />
+    )
+  }
+
+  return (
+    <div
+      style={{
+        ...sharedStyle,
+        backgroundColor: user.avatarColor,
+        color: '#ffffff',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: `${fontSize}px`,
+        fontWeight: 700,
+      }}
+    >
+      {label}
+    </div>
+  )
 }
 
 const unreadConversationListDotStyle: CSSProperties = {
@@ -259,7 +311,7 @@ const AdminMessage = () => {
     [loadConversations, selectedUserId],
   )
 
-  const { getSocket, ready } = useChatWebSocket(token, handleIncomingMessage)
+  useChatWebSocket(token, handleIncomingMessage)
 
   useEffect(() => {
     if (orderedUsers.length === 0) return
@@ -340,7 +392,7 @@ const AdminMessage = () => {
     setConversationMenuUserId(null)
   }
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     const text = messageInput.trim()
     if (!text && !selectedImageUrl) return
 
@@ -369,21 +421,25 @@ const AdminMessage = () => {
       return
     }
 
-    if (!text) return
-    const ws = getSocket()
-    if (!ws) {
-      toast.error(ready ? 'Chat disconnected. Refresh the page.' : 'Connecting… try again in a moment.')
-      return
-    }
-    sendChatWsMessage(ws, {
-      action: 'send',
-      text,
-      targetUserId: Number(selectedUserId),
-      replyToId: replyTarget ? Number(replyTarget.id) : null,
-    })
+    if (!text || !token) return
+    const replyToId = replyTarget ? Number(replyTarget.id) : null
     setMessageInput('')
     setSelectedImageUrl(null)
     setReplyTarget(null)
+    try {
+      const sent = await sendAdminChatMessage(token, Number(selectedUserId), text, replyToId)
+      setMessagesByUser((prev) => {
+        const existing = prev[selectedUserId] ?? []
+        if (existing.some((m) => m.id === String(sent.id))) return prev
+        return {
+          ...prev,
+          [selectedUserId]: [...existing, mapApiChatMessage(sent)],
+        }
+      })
+    } catch (err) {
+      setMessageInput(text)
+      toast.error(err instanceof Error ? err.message : 'Could not send message.')
+    }
   }
 
   return (
@@ -514,22 +570,7 @@ const AdminMessage = () => {
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                         <div style={{ flexShrink: 0 }}>
-                          <div
-                            style={{
-                              width: '34px',
-                              height: '34px',
-                              borderRadius: '999px',
-                              backgroundColor: user.avatarColor,
-                              color: '#ffffff',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontSize: '12px',
-                              fontWeight: 700,
-                            }}
-                          >
-                            {user.isAiAssistant ? 'AI' : getInitials(user.name)}
-                          </div>
+                          <ChatUserAvatar user={user} size={34} fontSize={12} />
                         </div>
 
                         <div style={{ minWidth: 0 }}>
@@ -777,22 +818,18 @@ const AdminMessage = () => {
                 gap: '10px',
               }}
             >
-              <div
-                style={{
-                  width: '36px',
-                  height: '36px',
-                  borderRadius: '999px',
-                  backgroundColor: selectedUser?.avatarColor ?? '#94a3b8',
-                  color: '#ffffff',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '13px',
-                  fontWeight: 700,
-                }}
-              >
-                {selectedUser?.isAiAssistant ? 'AI' : getInitials(selectedUser?.name ?? 'U')}
-              </div>
+              {selectedUser ? (
+                <ChatUserAvatar user={selectedUser} size={36} fontSize={13} />
+              ) : (
+                <div
+                  style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '999px',
+                    backgroundColor: '#94a3b8',
+                  }}
+                />
+              )}
               <div>
                 <div style={{ fontSize: '15px', fontWeight: 600, color: '#1e293b' }}>
                   {selectedUser?.name ?? 'Select a user'}
@@ -835,27 +872,19 @@ const AdminMessage = () => {
                     marginBottom: '10px',
                   }}
                 >
-                  {(message.sender === 'user' || message.sender === 'assistant') && (
-                    <div
-                      style={{
-                        width: '30px',
-                        height: '30px',
-                        borderRadius: '999px',
-                        backgroundColor:
-                          message.sender === 'assistant' ? '#6366f1' : selectedUser?.avatarColor ?? '#94a3b8',
-                        color: '#ffffff',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: message.sender === 'assistant' ? '9px' : '11px',
-                        fontWeight: 700,
-                        marginRight: '8px',
-                        flexShrink: 0,
+                  {(message.sender === 'user' || message.sender === 'assistant') && selectedUser ? (
+                    <ChatUserAvatar
+                      user={{
+                        ...selectedUser,
+                        isAiAssistant: message.sender === 'assistant',
+                        avatarColor:
+                          message.sender === 'assistant' ? '#6366f1' : selectedUser.avatarColor,
                       }}
-                    >
-                      {message.sender === 'assistant' ? 'AI' : getInitials(selectedUser?.name ?? 'U')}
-                    </div>
-                  )}
+                      size={30}
+                      fontSize={message.sender === 'assistant' ? 9 : 11}
+                      marginRight={8}
+                    />
+                  ) : null}
                   <div
                     onContextMenu={(event) => {
                       event.preventDefault()

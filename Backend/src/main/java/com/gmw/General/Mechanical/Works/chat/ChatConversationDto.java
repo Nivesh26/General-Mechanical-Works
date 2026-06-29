@@ -5,5 +5,6 @@ public record ChatConversationDto(
 		String userName,
 		String lastMessage,
 		String lastMessageAt,
-		boolean online) {
+		boolean online,
+		String profilePicture) {
 }
