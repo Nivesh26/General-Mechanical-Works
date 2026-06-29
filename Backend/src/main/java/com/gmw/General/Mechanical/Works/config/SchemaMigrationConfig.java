@@ -603,6 +603,28 @@ public class SchemaMigrationConfig {
 						)
 						""");
 			}
+
+			Integer chatMessageTableExists = jdbcTemplate.queryForObject(
+					"""
+					SELECT COUNT(*) FROM information_schema.TABLES
+					WHERE TABLE_SCHEMA = DATABASE()
+					  AND TABLE_NAME = 'chat_message'
+					""",
+					Integer.class);
+			if (chatMessageTableExists == null || chatMessageTableExists == 0) {
+				jdbcTemplate.execute("""
+						CREATE TABLE `chat_message` (
+						  `id` BIGINT NOT NULL AUTO_INCREMENT,
+						  `user_id` BIGINT NOT NULL,
+						  `sender` VARCHAR(16) NOT NULL,
+						  `body` TEXT NOT NULL,
+						  `reply_to_id` BIGINT NULL,
+						  `created_at` DATETIME(6) NOT NULL,
+						  PRIMARY KEY (`id`),
+						  KEY `idx_chat_message_user_created` (`user_id`, `created_at`)
+						)
+						""");
+			}
 		};
 	}
 }

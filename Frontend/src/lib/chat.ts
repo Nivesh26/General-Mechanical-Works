@@ -1,0 +1,97 @@
+import { getApiBase } from './api'
+
+export type ApiChatSender = 'USER' | 'ADMIN'
+
+export type ApiChatMessage = {
+  id: number
+  userId: number
+  sender: ApiChatSender
+  body: string
+  replyToId: number | null
+  createdAt: string
+}
+
+export type ApiChatConversation = {
+  userId: number
+  userName: string
+  lastMessage: string
+  lastMessageAt: string
+  online: boolean
+}
+
+export function getWsChatUrl(token: string): string {
+  const base = getApiBase().replace(/^http/i, 'ws')
+  return `${base.replace(/\/+$/, '')}/ws/chat?token=${encodeURIComponent(token)}`
+}
+
+export function formatChatTime(iso: string): string {
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return ''
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+}
+
+const AVATAR_COLORS = ['#dc2626', '#2563eb', '#7c3aed', '#059669', '#ea580c', '#0891b2', '#be123c']
+
+export function avatarColorForUserId(userId: number): string {
+  return AVATAR_COLORS[Math.abs(userId) % AVATAR_COLORS.length]
+}
+
+async function parseErrorMessage(res: Response): Promise<string> {
+  try {
+    const data = (await res.json()) as { message?: string }
+    if (data?.message) return data.message
+  } catch {
+    /* ignore */
+  }
+  return res.statusText || 'Request failed'
+}
+
+export async function fetchMyChatMessages(token: string): Promise<ApiChatMessage[]> {
+  const res = await fetch(`${getApiBase()}/api/chat/me/messages`, {
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<ApiChatMessage[]>
+}
+
+export async function fetchAdminChatConversations(token: string): Promise<ApiChatConversation[]> {
+  const res = await fetch(`${getApiBase()}/api/admin/chat/conversations`, {
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<ApiChatConversation[]>
+}
+
+export async function fetchAdminChatMessages(token: string, userId: number): Promise<ApiChatMessage[]> {
+  const res = await fetch(`${getApiBase()}/api/admin/chat/conversations/${userId}/messages`, {
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<ApiChatMessage[]>
+}
+
+export type ChatWsSendPayload = {
+  action: 'send'
+  text: string
+  replyToId?: number | null
+  targetUserId?: number
+}
+
+export function sendChatWsMessage(ws: WebSocket | null, payload: ChatWsSendPayload) {
+  if (!ws || ws.readyState !== WebSocket.OPEN) return
+  ws.send(JSON.stringify(payload))
+}
+
+export type ChatWsEvent =
+  | { event: 'connected' }
+  | { event: 'message'; message: ApiChatMessage }
+
+export function parseChatWsEvent(raw: string): ChatWsEvent | null {
+  try {
+    const data = JSON.parse(raw) as ChatWsEvent
+    if (data.event === 'connected' || data.event === 'message') return data
+  } catch {
+    /* ignore */
+  }
+  return null
+}

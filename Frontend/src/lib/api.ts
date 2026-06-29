@@ -54,6 +54,8 @@ function getApiBase(): string {
   return import.meta.env.VITE_API_URL ?? 'http://localhost:8080'
 }
 
+export { getApiBase }
+
 async function parseErrorMessage(res: Response): Promise<string> {
   try {
     const data = (await res.json()) as { message?: string }

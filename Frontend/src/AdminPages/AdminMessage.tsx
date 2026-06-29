@@ -1,9 +1,20 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { FiImage, FiMoreHorizontal, FiTrash2 } from 'react-icons/fi'
 import { HiOutlineMagnifyingGlass, HiOutlineShieldCheck } from 'react-icons/hi2'
 import { LuBan, LuBell, LuBellOff, LuMailOpen, LuPin, LuPinOff } from 'react-icons/lu'
+import { toast } from 'react-toastify'
 import AdminNavbar from '../AdminComponent/AdminNavbar'
 import { ADMIN_MAIN_MESSAGES_CLASS, ADMIN_PAGE_HEADER_SPACING, ADMIN_PAGE_TITLE } from '../AdminComponent/adminMainStyles'
+import { useAuth } from '../context/AuthContext'
+import { useChatWebSocket } from '../hooks/useChatWebSocket'
+import {
+  avatarColorForUserId,
+  fetchAdminChatConversations,
+  fetchAdminChatMessages,
+  formatChatTime,
+  sendChatWsMessage,
+  type ApiChatMessage,
+} from '../lib/chat'
 import GMWLogo from '../assets/GMWlogo.png'
 
 const CHATBOT_USER_ID = 'chatbot'
@@ -58,6 +69,63 @@ const conversationMenuItemStyle: CSSProperties = {
 
 const conversationMenuIconProps = { size: 16, strokeWidth: 2.1 } as const
 
+const CHATBOT_USER: ChatUser = {
+  id: CHATBOT_USER_ID,
+  name: 'Chatbot',
+  lastMessage: 'Hi! I am your AI assistant. How can I help today?',
+  isOnline: true,
+  lastOnline: 'Always available',
+  avatarColor: '#6366f1',
+  isAiAssistant: true,
+}
+
+const CHATBOT_MESSAGES: ChatMessage[] = [
+  {
+    id: 'cb-m1',
+    sender: 'assistant',
+    text: 'Hi! I am your AI assistant. Ask me about bookings, parts, or shop policies.',
+    time: '9:00 AM',
+  },
+  {
+    id: 'cb-m2',
+    sender: 'admin',
+    text: 'Summarize today’s bookings.',
+    time: '9:02 AM',
+  },
+  {
+    id: 'cb-m3',
+    sender: 'assistant',
+    text: 'You have 4 open bookings and 2 completed services today.',
+    time: '9:02 AM',
+  },
+]
+
+function mapApiChatMessage(message: ApiChatMessage): ChatMessage {
+  return {
+    id: String(message.id),
+    sender: message.sender === 'ADMIN' ? 'admin' : 'user',
+    text: message.body,
+    time: formatChatTime(message.createdAt),
+  }
+}
+
+function conversationToChatUser(conv: {
+  userId: number
+  userName: string
+  lastMessage: string
+  lastMessageAt: string
+  online: boolean
+}): ChatUser {
+  return {
+    id: String(conv.userId),
+    name: conv.userName,
+    lastMessage: conv.lastMessage || 'No messages yet',
+    isOnline: conv.online,
+    lastOnline: conv.lastMessageAt || '—',
+    avatarColor: avatarColorForUserId(conv.userId),
+  }
+}
+
 const unreadConversationListDotStyle: CSSProperties = {
   width: '10px',
   height: '10px',
@@ -67,46 +135,9 @@ const unreadConversationListDotStyle: CSSProperties = {
 }
 
 const AdminMessage = () => {
-  const users: ChatUser[] = useMemo(
-    () => [
-      {
-        id: CHATBOT_USER_ID,
-        name: 'Chatbot',
-        lastMessage: 'Hi! I am your AI assistant. How can I help today?',
-        isOnline: true,
-        lastOnline: 'Always available',
-        avatarColor: '#6366f1',
-        isAiAssistant: true,
-      },
-      {
-        id: 'u1',
-        name: 'Nivesh Shrestha',
-        lastMessage: 'Can I book service for tomorrow?',
-        isOnline: true,
-        lastOnline: 'Today 11:20 AM',
-        avatarColor: '#dc2626',
-      },
-      {
-        id: 'u2',
-        name: 'Aarav Sharma',
-        lastMessage: 'Please update my order status.',
-        isOnline: false,
-        lastOnline: 'Today 10:58 AM',
-        avatarColor: '#2563eb',
-      },
-      {
-        id: 'u3',
-        name: 'Diya Patel',
-        lastMessage: 'Do you have premium brake kits?',
-        isOnline: false,
-        lastOnline: 'Yesterday 7:42 PM',
-        avatarColor: '#7c3aed',
-      },
-    ],
-    []
-  )
-
-  const [selectedUserId, setSelectedUserId] = useState('u1')
+  const { token } = useAuth()
+  const [liveUsers, setLiveUsers] = useState<ChatUser[]>([])
+  const [selectedUserId, setSelectedUserId] = useState(CHATBOT_USER_ID)
   const [removedUserIds, setRemovedUserIds] = useState<Set<string>>(new Set())
   const [pinnedUserIds, setPinnedUserIds] = useState<string[]>([])
   const [unreadByUserId, setUnreadByUserId] = useState<Record<string, boolean>>({})
@@ -121,37 +152,10 @@ const AdminMessage = () => {
   const [replyTarget, setReplyTarget] = useState<ChatMessage | null>(null)
   const messageListRef = useRef<HTMLDivElement | null>(null)
   const [messagesByUser, setMessagesByUser] = useState<Record<string, ChatMessage[]>>({
-    [CHATBOT_USER_ID]: [
-      {
-        id: 'cb-m1',
-        sender: 'assistant',
-        text: 'Hi! I am your AI assistant. Ask me about bookings, parts, or shop policies.',
-        time: '9:00 AM',
-      },
-      {
-        id: 'cb-m2',
-        sender: 'admin',
-        text: 'Summarize today’s bookings.',
-        time: '9:02 AM',
-      },
-      {
-        id: 'cb-m3',
-        sender: 'assistant',
-        text: 'You have 4 open bookings and 2 completed services today.',
-        time: '9:02 AM',
-      },
-    ],
-    u1: [
-      { id: 'm1', sender: 'user', text: 'Hello admin, I need servicing help.', time: '10:30 AM' },
-      { id: 'm2', sender: 'admin', text: 'Sure. Please share your vehicle model.', time: '10:32 AM' },
-      { id: 'm3', sender: 'user', text: 'Can I book service for tomorrow?', time: '10:34 AM' },
-    ],
-    u2: [
-      { id: 'm4', sender: 'user', text: 'Please update my order status.', time: '9:58 AM' },
-      { id: 'm5', sender: 'admin', text: 'Your order is packed and will ship today.', time: '10:05 AM' },
-    ],
-    u3: [{ id: 'm6', sender: 'user', text: 'Do you have premium brake kits?', time: '9:46 AM' }],
+    [CHATBOT_USER_ID]: CHATBOT_MESSAGES,
   })
+
+  const users = useMemo(() => [CHATBOT_USER, ...liveUsers], [liveUsers])
 
   const visibleUsers = useMemo(
     () => users.filter((user) => !removedUserIds.has(user.id)),
@@ -174,6 +178,88 @@ const AdminMessage = () => {
   const selectedUser = orderedUsers.find((user) => user.id === selectedUserId)
   const selectedMessages = messagesByUser[selectedUserId] ?? []
   const filteredUsers = orderedUsers.filter((user) => user.name.toLowerCase().includes(userSearch.toLowerCase()))
+
+  const loadConversations = useCallback(async () => {
+    if (!token) return
+    try {
+      const conversations = await fetchAdminChatConversations(token)
+      setLiveUsers(conversations.map(conversationToChatUser))
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not load conversations.')
+    }
+  }, [token])
+
+  const loadMessagesForUser = useCallback(
+    async (userId: string) => {
+      if (!token || userId === CHATBOT_USER_ID) return
+      try {
+        const messages = await fetchAdminChatMessages(token, Number(userId))
+        setMessagesByUser((prev) => ({
+          ...prev,
+          [userId]: messages.map(mapApiChatMessage),
+        }))
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Could not load messages.')
+      }
+    },
+    [token],
+  )
+
+  useEffect(() => {
+    void loadConversations()
+  }, [loadConversations])
+
+  useEffect(() => {
+    if (selectedUserId === CHATBOT_USER_ID) return
+    void loadMessagesForUser(selectedUserId)
+  }, [selectedUserId, loadMessagesForUser])
+
+  const handleIncomingMessage = useCallback(
+    (message: ApiChatMessage) => {
+      const userKey = String(message.userId)
+      setMessagesByUser((prev) => {
+        const existing = prev[userKey] ?? []
+        if (existing.some((m) => m.id === String(message.id))) return prev
+        return {
+          ...prev,
+          [userKey]: [...existing, mapApiChatMessage(message)],
+        }
+      })
+      setLiveUsers((prev) => {
+        const idx = prev.findIndex((u) => u.id === userKey)
+        const preview = message.body
+        const time = formatChatTime(message.createdAt)
+        if (idx === -1) {
+          return [
+            {
+              id: userKey,
+              name: `User #${message.userId}`,
+              lastMessage: preview,
+              isOnline: message.sender === 'USER',
+              lastOnline: time,
+              avatarColor: avatarColorForUserId(message.userId),
+            },
+            ...prev,
+          ]
+        }
+        const next = [...prev]
+        next[idx] = {
+          ...next[idx],
+          lastMessage: preview,
+          lastOnline: time,
+          isOnline: message.sender === 'USER' ? true : next[idx].isOnline,
+        }
+        return next
+      })
+      if (selectedUserId !== userKey && message.sender === 'USER') {
+        setUnreadByUserId((prev) => ({ ...prev, [userKey]: true }))
+      }
+      void loadConversations()
+    },
+    [loadConversations, selectedUserId],
+  )
+
+  const { getSocket, ready } = useChatWebSocket(token, handleIncomingMessage)
 
   useEffect(() => {
     if (orderedUsers.length === 0) return
@@ -258,25 +344,43 @@ const AdminMessage = () => {
     const text = messageInput.trim()
     if (!text && !selectedImageUrl) return
 
-    const newMessage: ChatMessage = {
-      id: `${selectedUserId}-${Date.now()}`,
-      sender: 'admin',
-      text: text || undefined,
-      imageUrl: selectedImageUrl || undefined,
-      replyTo: replyTarget
-        ? {
-            sender: replyTarget.sender,
-            text: replyTarget.text,
-            imageUrl: replyTarget.imageUrl,
-          }
-        : undefined,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    if (selectedUserId === CHATBOT_USER_ID) {
+      const newMessage: ChatMessage = {
+        id: `${selectedUserId}-${Date.now()}`,
+        sender: 'admin',
+        text: text || undefined,
+        imageUrl: selectedImageUrl || undefined,
+        replyTo: replyTarget
+          ? {
+              sender: replyTarget.sender,
+              text: replyTarget.text,
+              imageUrl: replyTarget.imageUrl,
+            }
+          : undefined,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      }
+      setMessagesByUser((prev) => ({
+        ...prev,
+        [selectedUserId]: [...(prev[selectedUserId] ?? []), newMessage],
+      }))
+      setMessageInput('')
+      setSelectedImageUrl(null)
+      setReplyTarget(null)
+      return
     }
 
-    setMessagesByUser((prev) => ({
-      ...prev,
-      [selectedUserId]: [...(prev[selectedUserId] ?? []), newMessage],
-    }))
+    if (!text) return
+    const ws = getSocket()
+    if (!ws) {
+      toast.error(ready ? 'Chat disconnected. Refresh the page.' : 'Connecting… try again in a moment.')
+      return
+    }
+    sendChatWsMessage(ws, {
+      action: 'send',
+      text,
+      targetUserId: Number(selectedUserId),
+      replyToId: replyTarget ? Number(replyTarget.id) : null,
+    })
     setMessageInput('')
     setSelectedImageUrl(null)
     setReplyTarget(null)
