@@ -13,10 +13,15 @@ import {
   fetchAdminChatConversations,
   fetchAdminChatMessages,
   formatChatTime,
+  chatMessagePreview,
   sendAdminChatMessage,
+  sendAdminChatMessageWithFile,
+  type ApiChatAttachmentType,
   type ApiChatMessage,
 } from '../lib/chat'
 import GMWLogo from '../assets/GMWlogo.png'
+import ChatMessageAttachment from '../UserComponent/ChatMessageAttachment'
+import { prepareChatUploadFile } from '../lib/chatImage'
 
 const CHATBOT_USER_ID = 'chatbot'
 
@@ -38,12 +43,17 @@ type ChatMessage = {
   sender: MessageSender
   text?: string
   imageUrl?: string
+  attachmentUrl?: string | null
+  attachmentType?: ApiChatAttachmentType | null
+  attachmentName?: string | null
   replyTo?: {
     sender: MessageSender
     text?: string
     imageUrl?: string
+    attachmentType?: ApiChatAttachmentType | null
   }
   time: string
+  pending?: boolean
 }
 
 const replySenderLabel = (sender: MessageSender, peerName: string | undefined) => {
@@ -106,7 +116,11 @@ function mapApiChatMessage(message: ApiChatMessage): ChatMessage {
   return {
     id: String(message.id),
     sender: message.sender === 'ADMIN' ? 'admin' : 'user',
-    text: message.body,
+    text: message.body || undefined,
+    attachmentUrl: message.attachmentUrl,
+    attachmentType: message.attachmentType,
+    attachmentName: message.attachmentName,
+    imageUrl: message.attachmentType === 'IMAGE' ? message.attachmentUrl ?? undefined : undefined,
     time: formatChatTime(message.createdAt),
   }
 }
@@ -199,10 +213,13 @@ const AdminMessage = () => {
   const [hoveredConversationUserId, setHoveredConversationUserId] = useState<string | null>(null)
   const [userSearch, setUserSearch] = useState('')
   const [messageInput, setMessageInput] = useState('')
-  const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null)
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null)
   const [replyTarget, setReplyTarget] = useState<ChatMessage | null>(null)
   const messageListRef = useRef<HTMLDivElement | null>(null)
+  const pendingSendIdRef = useRef<string | null>(null)
+  const pendingPreviewUrlRef = useRef<string | null>(null)
   const [messagesByUser, setMessagesByUser] = useState<Record<string, ChatMessage[]>>({
     [CHATBOT_USER_ID]: CHATBOT_MESSAGES,
   })
@@ -269,18 +286,40 @@ const AdminMessage = () => {
   const handleIncomingMessage = useCallback(
     (message: ApiChatMessage) => {
       const userKey = String(message.userId)
+      const preview = chatMessagePreview(message)
+      const time = formatChatTime(message.createdAt)
+
       setMessagesByUser((prev) => {
         const existing = prev[userKey] ?? []
-        if (existing.some((m) => m.id === String(message.id))) return prev
+        const withoutPending =
+          message.sender === 'ADMIN' ? existing.filter((m) => !m.pending) : existing
+
+        if (withoutPending.some((m) => m.id === String(message.id))) {
+          if (message.sender === 'ADMIN') {
+            if (pendingPreviewUrlRef.current) {
+              URL.revokeObjectURL(pendingPreviewUrlRef.current)
+              pendingPreviewUrlRef.current = null
+            }
+            pendingSendIdRef.current = null
+          }
+          return { ...prev, [userKey]: withoutPending }
+        }
+
+        if (message.sender === 'ADMIN') {
+          if (pendingPreviewUrlRef.current) {
+            URL.revokeObjectURL(pendingPreviewUrlRef.current)
+            pendingPreviewUrlRef.current = null
+          }
+          pendingSendIdRef.current = null
+        }
+
         return {
           ...prev,
-          [userKey]: [...existing, mapApiChatMessage(message)],
+          [userKey]: [...withoutPending, mapApiChatMessage(message)],
         }
       })
       setLiveUsers((prev) => {
         const idx = prev.findIndex((u) => u.id === userKey)
-        const preview = message.body
-        const time = formatChatTime(message.createdAt)
         if (idx === -1) {
           return [
             {
@@ -306,9 +345,8 @@ const AdminMessage = () => {
       if (selectedUserId !== userKey && message.sender === 'USER') {
         setUnreadByUserId((prev) => ({ ...prev, [userKey]: true }))
       }
-      void loadConversations()
     },
-    [loadConversations, selectedUserId],
+    [selectedUserId],
   )
 
   useChatWebSocket(token, handleIncomingMessage)
@@ -394,19 +432,20 @@ const AdminMessage = () => {
 
   const handleSendMessage = async () => {
     const text = messageInput.trim()
-    if (!text && !selectedImageUrl) return
+    if (!text && !selectedFile) return
 
     if (selectedUserId === CHATBOT_USER_ID) {
       const newMessage: ChatMessage = {
         id: `${selectedUserId}-${Date.now()}`,
         sender: 'admin',
         text: text || undefined,
-        imageUrl: selectedImageUrl || undefined,
+        imageUrl: filePreviewUrl || undefined,
         replyTo: replyTarget
           ? {
               sender: replyTarget.sender,
               text: replyTarget.text,
               imageUrl: replyTarget.imageUrl,
+              attachmentType: replyTarget.attachmentType,
             }
           : undefined,
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -416,30 +455,127 @@ const AdminMessage = () => {
         [selectedUserId]: [...(prev[selectedUserId] ?? []), newMessage],
       }))
       setMessageInput('')
-      setSelectedImageUrl(null)
+      clearSelectedFile()
       setReplyTarget(null)
       return
     }
 
-    if (!text || !token) return
+    if (!token) return
     const replyToId = replyTarget ? Number(replyTarget.id) : null
+    const savedReplyTarget = replyTarget
+    const fileToSend = selectedFile
+    const textToSend = text
+    const isPdf =
+      fileToSend != null &&
+      (fileToSend.type === 'application/pdf' || fileToSend.name.toLowerCase().endsWith('.pdf'))
+    const localPreviewUrl =
+      filePreviewUrl ??
+      (fileToSend && fileToSend.type.startsWith('image/') ? URL.createObjectURL(fileToSend) : null)
+    const tempId = `pending-${Date.now()}`
+    pendingSendIdRef.current = tempId
+    pendingPreviewUrlRef.current = localPreviewUrl
+
+    const optimistic: ChatMessage = {
+      id: tempId,
+      sender: 'admin',
+      text: textToSend || undefined,
+      attachmentUrl: localPreviewUrl,
+      attachmentType: fileToSend ? (isPdf ? 'PDF' : 'IMAGE') : null,
+      attachmentName: fileToSend?.name ?? null,
+      imageUrl: localPreviewUrl ?? undefined,
+      replyTo: savedReplyTarget
+        ? {
+            sender: savedReplyTarget.sender,
+            text: savedReplyTarget.text,
+            imageUrl: savedReplyTarget.imageUrl,
+            attachmentType: savedReplyTarget.attachmentType,
+          }
+        : undefined,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      pending: true,
+    }
+
+    setMessagesByUser((prev) => ({
+      ...prev,
+      [selectedUserId]: [...(prev[selectedUserId] ?? []), optimistic],
+    }))
+    setLiveUsers((prev) => {
+      const idx = prev.findIndex((u) => u.id === selectedUserId)
+      if (idx === -1) return prev
+      const next = [...prev]
+      next[idx] = {
+        ...next[idx],
+        lastMessage: chatMessagePreview({
+          body: textToSend,
+          attachmentType: optimistic.attachmentType ?? null,
+        }),
+        lastOnline: optimistic.time,
+      }
+      return next
+    })
     setMessageInput('')
-    setSelectedImageUrl(null)
+    resetFileSelection()
     setReplyTarget(null)
+
     try {
-      const sent = await sendAdminChatMessage(token, Number(selectedUserId), text, replyToId)
+      const uploadFile = fileToSend ? await prepareChatUploadFile(fileToSend) : null
+      const sent = uploadFile
+        ? await sendAdminChatMessageWithFile(
+            token,
+            Number(selectedUserId),
+            uploadFile,
+            textToSend || undefined,
+            replyToId,
+          )
+        : await sendAdminChatMessage(token, Number(selectedUserId), textToSend, replyToId)
+
+      pendingSendIdRef.current = null
+      if (pendingPreviewUrlRef.current) {
+        URL.revokeObjectURL(pendingPreviewUrlRef.current)
+        pendingPreviewUrlRef.current = null
+      }
+
       setMessagesByUser((prev) => {
         const existing = prev[selectedUserId] ?? []
-        if (existing.some((m) => m.id === String(sent.id))) return prev
+        const withoutPending = existing.filter((m) => !m.pending)
+        if (withoutPending.some((m) => m.id === String(sent.id))) {
+          return { ...prev, [selectedUserId]: withoutPending }
+        }
         return {
           ...prev,
-          [selectedUserId]: [...existing, mapApiChatMessage(sent)],
+          [selectedUserId]: [...withoutPending, mapApiChatMessage(sent)],
         }
       })
     } catch (err) {
-      setMessageInput(text)
+      setMessagesByUser((prev) => ({
+        ...prev,
+        [selectedUserId]: (prev[selectedUserId] ?? []).filter((m) => m.id !== tempId),
+      }))
+      pendingSendIdRef.current = null
+      if (pendingPreviewUrlRef.current) {
+        URL.revokeObjectURL(pendingPreviewUrlRef.current)
+        pendingPreviewUrlRef.current = null
+      }
+      setMessageInput(textToSend)
+      if (fileToSend) {
+        setSelectedFile(fileToSend)
+        if (fileToSend.type.startsWith('image/')) {
+          setFilePreviewUrl(URL.createObjectURL(fileToSend))
+        }
+      }
+      setReplyTarget(savedReplyTarget)
       toast.error(err instanceof Error ? err.message : 'Could not send message.')
     }
+  }
+
+  const resetFileSelection = () => {
+    setSelectedFile(null)
+    setFilePreviewUrl(null)
+  }
+
+  const clearSelectedFile = () => {
+    if (filePreviewUrl) URL.revokeObjectURL(filePreviewUrl)
+    resetFileSelection()
   }
 
   return (
@@ -894,6 +1030,7 @@ const AdminMessage = () => {
                       maxWidth: '70%',
                       padding: '12px 14px',
                       borderRadius: '12px',
+                      opacity: message.pending ? 0.7 : 1,
                       backgroundColor:
                         message.sender === 'admin' ? '#dbeafe' : message.sender === 'assistant' ? '#ede9fe' : '#ffffff',
                       border:
@@ -921,7 +1058,14 @@ const AdminMessage = () => {
                         ) : null}
                       </div>
                     ) : null}
-                    {message.imageUrl ? (
+                    {message.attachmentUrl && message.attachmentType ? (
+                      <ChatMessageAttachment
+                        attachmentUrl={message.attachmentUrl}
+                        attachmentType={message.attachmentType}
+                        attachmentName={message.attachmentName}
+                        onPreviewImage={setPreviewImageUrl}
+                      />
+                    ) : message.imageUrl ? (
                       <img
                         src={message.imageUrl}
                         alt="Message attachment"
@@ -990,7 +1134,12 @@ const AdminMessage = () => {
                       Replying to {replySenderLabel(replyTarget.sender, selectedUser?.name)}
                     </div>
                     <div style={{ fontSize: '13px', color: '#475569' }}>
-                      {replyTarget.text ?? (replyTarget.imageUrl ? 'Image' : 'Message')}
+                      {replyTarget.text ??
+                        (replyTarget.attachmentType === 'PDF'
+                          ? 'PDF'
+                          : replyTarget.imageUrl || replyTarget.attachmentUrl
+                            ? 'Image'
+                            : 'Message')}
                     </div>
                   </div>
                   <button
@@ -1012,22 +1161,40 @@ const AdminMessage = () => {
                 </div>
               ) : null}
 
-              {selectedImageUrl ? (
+              {selectedFile ? (
                 <div style={{ marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <img
-                    src={selectedImageUrl}
-                    alt="Selected attachment"
-                    style={{
-                      width: '60px',
-                      height: '60px',
-                      objectFit: 'cover',
-                      borderRadius: '8px',
-                      border: '1px solid #e2e8f0',
-                    }}
-                  />
+                  {filePreviewUrl ? (
+                    <img
+                      src={filePreviewUrl}
+                      alt="Selected attachment"
+                      style={{
+                        width: '60px',
+                        height: '60px',
+                        objectFit: 'cover',
+                        borderRadius: '8px',
+                        border: '1px solid #e2e8f0',
+                      }}
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        padding: '8px 10px',
+                        borderRadius: '8px',
+                        border: '1px solid #e2e8f0',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        color: '#475569',
+                      }}
+                    >
+                      PDF
+                    </div>
+                  )}
+                  <span style={{ flex: 1, fontSize: '12px', color: '#475569', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {selectedFile.name}
+                  </span>
                   <button
                     type="button"
-                    onClick={() => setSelectedImageUrl(null)}
+                    onClick={clearSelectedFile}
                     style={{
                       padding: '8px 10px',
                       borderRadius: '8px',
@@ -1039,7 +1206,7 @@ const AdminMessage = () => {
                       cursor: 'pointer',
                     }}
                   >
-                    Remove image
+                    Remove
                   </button>
                 </div>
               ) : null}
@@ -1063,8 +1230,8 @@ const AdminMessage = () => {
                   }}
                 />
                 <label
-                  aria-label="Upload image"
-                  title="Upload image"
+                  aria-label="Upload image or PDF"
+                  title="Upload image or PDF"
                   style={{
                     width: '44px',
                     height: '44px',
@@ -1082,12 +1249,21 @@ const AdminMessage = () => {
                   <FiImage size={18} />
                   <input
                     type="file"
-                    accept="image/*"
+                    accept="image/*,.pdf,application/pdf"
                     style={{ display: 'none' }}
                     onChange={(event) => {
                       const file = event.target.files?.[0]
                       if (!file) return
-                      setSelectedImageUrl(URL.createObjectURL(file))
+                      const isImage = file.type.startsWith('image/')
+                      const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
+                      if (!isImage && !isPdf) {
+                        toast.error('Use an image or PDF file.')
+                        event.currentTarget.value = ''
+                        return
+                      }
+                      clearSelectedFile()
+                      setSelectedFile(file)
+                      if (isImage) setFilePreviewUrl(URL.createObjectURL(file))
                       event.currentTarget.value = ''
                     }}
                   />

@@ -6,5 +6,8 @@ public record ChatMessageDto(
 		ChatSender sender,
 		String body,
 		Long replyToId,
+		String attachmentUrl,
+		ChatAttachmentType attachmentType,
+		String attachmentName,
 		String createdAt) {
 }

@@ -12,8 +12,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.gmw.General.Mechanical.Works.storage.ChatUploadedFile;
+import com.gmw.General.Mechanical.Works.storage.ImageStorageService;
 import com.gmw.General.Mechanical.Works.user.Role;
 import com.gmw.General.Mechanical.Works.user.User;
 import com.gmw.General.Mechanical.Works.user.UserRepository;
@@ -27,14 +30,17 @@ public class ChatService {
 	private final ChatMessageRepository chatMessageRepository;
 	private final UserRepository userRepository;
 	private final ChatWebSocketSessions chatWebSocketSessions;
+	private final ImageStorageService imageStorageService;
 
 	public ChatService(
 			ChatMessageRepository chatMessageRepository,
 			UserRepository userRepository,
-			ChatWebSocketSessions chatWebSocketSessions) {
+			ChatWebSocketSessions chatWebSocketSessions,
+			ImageStorageService imageStorageService) {
 		this.chatMessageRepository = chatMessageRepository;
 		this.userRepository = userRepository;
 		this.chatWebSocketSessions = chatWebSocketSessions;
+		this.imageStorageService = imageStorageService;
 	}
 
 	@Transactional(readOnly = true)
@@ -66,7 +72,7 @@ public class ChatService {
 						return null;
 					}
 					ChatMessage last = chatMessageRepository.findFirstByUserIdOrderByCreatedAtDesc(summary.getUserId());
-					String preview = last != null ? truncate(last.getBody(), 80) : "";
+					String preview = last != null ? messagePreview(last) : "";
 					String time = summary.getLastAt() != null ? DISPLAY_TIME.format(summary.getLastAt()) : "";
 					return new ChatConversationDto(
 							user.getId(),
@@ -83,7 +89,12 @@ public class ChatService {
 	@Transactional
 	public ChatMessageDto sendFromUser(String email, SendChatMessageRequest request) {
 		User user = requireUser(email);
-		return saveAndBroadcast(user.getId(), ChatSender.USER, request.text().trim(), request.replyToId());
+		return saveAndBroadcast(user.getId(), ChatSender.USER, request);
+	}
+
+	public ChatMessageDto sendFromUserWithFile(String email, String text, MultipartFile file, Long replyToId) {
+		SendChatMessageRequest request = buildRequestWithFile(text, file, replyToId, null);
+		return sendFromUser(email, request);
 	}
 
 	@Transactional
@@ -95,41 +106,115 @@ public class ChatService {
 		if (!userRepository.existsById(request.targetUserId())) {
 			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
 		}
-		return saveAndBroadcast(request.targetUserId(), ChatSender.ADMIN, request.text().trim(), request.replyToId());
+		return saveAndBroadcast(request.targetUserId(), ChatSender.ADMIN, request);
+	}
+
+	public ChatMessageDto sendFromAdminWithFile(
+			String email,
+			Long targetUserId,
+			String text,
+			MultipartFile file,
+			Long replyToId) {
+		requireAdmin(email);
+		if (!userRepository.existsById(targetUserId)) {
+			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
+		}
+		SendChatMessageRequest request = buildRequestWithFile(text, file, replyToId, targetUserId);
+		return sendFromAdmin(email, request);
 	}
 
 	@Transactional
 	public ChatMessageDto sendFromAdminByUserId(Long targetUserId, String text, Long replyToId) {
-		if (!StringUtils.hasText(text)) {
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Message text is required");
-		}
-		if (!userRepository.existsById(targetUserId)) {
-			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
-		}
-		return saveAndBroadcast(targetUserId, ChatSender.ADMIN, text.trim(), replyToId);
+		return sendFromAdminByUserId(
+				targetUserId,
+				new SendChatMessageRequest(text, replyToId, targetUserId, null, null, null));
 	}
 
 	@Transactional
 	public ChatMessageDto sendFromUserById(Long userId, String text, Long replyToId) {
-		if (!StringUtils.hasText(text)) {
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Message text is required");
+		return sendFromUserById(userId, new SendChatMessageRequest(text, replyToId, null, null, null, null));
+	}
+
+	@Transactional
+	public ChatMessageDto sendFromAdminByUserId(Long targetUserId, SendChatMessageRequest request) {
+		validateRequest(request);
+		if (!userRepository.existsById(targetUserId)) {
+			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
 		}
+		return saveAndBroadcast(
+				targetUserId,
+				ChatSender.ADMIN,
+				new SendChatMessageRequest(
+						normalizeText(request.text()),
+						request.replyToId(),
+						targetUserId,
+						request.attachmentUrl(),
+						request.attachmentType(),
+						request.attachmentName()));
+	}
+
+	@Transactional
+	public ChatMessageDto sendFromUserById(Long userId, SendChatMessageRequest request) {
+		validateRequest(request);
 		if (!userRepository.existsById(userId)) {
 			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
 		}
-		return saveAndBroadcast(userId, ChatSender.USER, text.trim(), replyToId);
+		return saveAndBroadcast(userId, ChatSender.USER, request);
 	}
 
-	private ChatMessageDto saveAndBroadcast(Long userId, ChatSender sender, String body, Long replyToId) {
+	private SendChatMessageRequest buildRequestWithFile(
+			String text,
+			MultipartFile file,
+			Long replyToId,
+			Long targetUserId) {
+		if (file == null || file.isEmpty()) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "File is required");
+		}
+		ChatUploadedFile uploaded = imageStorageService.uploadChatFile(file);
+		SendChatMessageRequest request = new SendChatMessageRequest(
+				normalizeText(text),
+				replyToId,
+				targetUserId,
+				uploaded.url(),
+				uploaded.type(),
+				uploaded.fileName());
+		validateRequest(request);
+		return request;
+	}
+
+	private ChatMessageDto saveAndBroadcast(Long userId, ChatSender sender, SendChatMessageRequest request) {
+		validateRequest(request);
 		ChatMessage message = new ChatMessage();
 		message.setUserId(userId);
 		message.setSender(sender);
-		message.setBody(body);
-		message.setReplyToId(replyToId);
+		message.setBody(normalizeText(request.text()));
+		message.setReplyToId(request.replyToId());
+		message.setAttachmentUrl(trimToNull(request.attachmentUrl()));
+		message.setAttachmentType(request.attachmentType());
+		message.setAttachmentName(trimToNull(request.attachmentName()));
 		ChatMessage saved = chatMessageRepository.save(message);
 		ChatMessageDto dto = ChatMapper.toDto(saved);
 		chatWebSocketSessions.broadcastMessage(dto);
 		return dto;
+	}
+
+	private static void validateRequest(SendChatMessageRequest request) {
+		boolean hasText = StringUtils.hasText(request.text());
+		boolean hasAttachment = StringUtils.hasText(request.attachmentUrl()) && request.attachmentType() != null;
+		if (!hasText && !hasAttachment) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Message text or file is required");
+		}
+	}
+
+	private static String normalizeText(String text) {
+		return text == null ? "" : text.trim();
+	}
+
+	private static String trimToNull(String value) {
+		if (!StringUtils.hasText(value)) {
+			return null;
+		}
+		return value.trim();
 	}
 
 	private User requireUser(String email) {
@@ -142,6 +227,19 @@ public class ChatService {
 		if (user.getRole() != Role.ADMIN) {
 			throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Admin access required");
 		}
+	}
+
+	private static String messagePreview(ChatMessage message) {
+		if (StringUtils.hasText(message.getBody())) {
+			return truncate(message.getBody(), 80);
+		}
+		if (message.getAttachmentType() == ChatAttachmentType.IMAGE) {
+			return "Photo";
+		}
+		if (message.getAttachmentType() == ChatAttachmentType.PDF) {
+			return "PDF file";
+		}
+		return "";
 	}
 
 	private static String truncate(String value, int max) {
@@ -167,6 +265,9 @@ public class ChatService {
 					message.getSender(),
 					message.getBody(),
 					message.getReplyToId(),
+					message.getAttachmentUrl(),
+					message.getAttachmentType(),
+					message.getAttachmentName(),
 					message.getCreatedAt().toString());
 		}
 	}

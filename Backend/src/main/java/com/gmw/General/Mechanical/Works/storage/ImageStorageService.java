@@ -15,7 +15,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
-import com.cloudinary.Cloudinary;
+import com.gmw.General.Mechanical.Works.chat.ChatAttachmentType;
 import com.cloudinary.utils.ObjectUtils;
 
 @Service
@@ -27,7 +27,8 @@ public class ImageStorageService {
 		OFFERS("gmw/offers", "/uploads/offers/"),
 		PROFILES("gmw/profiles", "/uploads/profiles/"),
 		COVERS("gmw/covers", "/uploads/covers/"),
-		REVIEWS("gmw/reviews", "/uploads/reviews/");
+		REVIEWS("gmw/reviews", "/uploads/reviews/"),
+		CHAT("gmw/chat", "/uploads/chat/");
 
 		private final String cloudFolder;
 		private final String localPrefix;
@@ -58,6 +59,15 @@ public class ImageStorageService {
 		}
 	}
 
+	private static final Set<String> CHAT_ALLOWED_TYPES = Set.of(
+			"image/jpeg",
+			"image/png",
+			"image/webp",
+			"image/gif",
+			"application/pdf");
+
+	private static final int CHAT_MAX_BYTES = 10 * 1024 * 1024;
+
 	private static final Set<String> DEFAULT_ALLOWED_TYPES = Set.of(
 			"image/jpeg",
 			"image/png",
@@ -65,11 +75,11 @@ public class ImageStorageService {
 			"image/gif");
 
 	private final CloudinaryProperties cloudinaryProperties;
-	private final Cloudinary cloudinary;
+	private final com.cloudinary.Cloudinary cloudinary;
 
 	public ImageStorageService(
 			CloudinaryProperties cloudinaryProperties,
-			ObjectProvider<Cloudinary> cloudinaryProvider) {
+			ObjectProvider<com.cloudinary.Cloudinary> cloudinaryProvider) {
 		this.cloudinaryProperties = cloudinaryProperties;
 		this.cloudinary = cloudinaryProvider.getIfAvailable();
 	}
@@ -99,6 +109,40 @@ public class ImageStorageService {
 			throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Could not read uploaded file");
 		} catch (Exception ex) {
 			throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Could not upload image to Cloudinary");
+		}
+	}
+
+	public ChatUploadedFile uploadChatFile(MultipartFile file) {
+		requireConfigured();
+		if (file == null || file.isEmpty()) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "File is required");
+		}
+		if (file.getSize() > CHAT_MAX_BYTES) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "File must be 10 MB or smaller");
+		}
+		String contentType = file.getContentType();
+		if (contentType == null) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unsupported file type");
+		}
+		String normalizedType = contentType.toLowerCase(Locale.ROOT);
+		if (!CHAT_ALLOWED_TYPES.contains(normalizedType)) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Use JPEG, PNG, WebP, GIF, or PDF");
+		}
+		boolean isPdf = "application/pdf".equals(normalizedType);
+		try {
+			@SuppressWarnings("unchecked")
+			Map<String, Object> result = cloudinary.uploader().upload(
+					file.getBytes(),
+					chatUploadParams(isPdf));
+			String url = String.valueOf(result.get("secure_url"));
+			String originalName = StringUtils.hasText(file.getOriginalFilename())
+					? file.getOriginalFilename().trim()
+					: isPdf ? "document.pdf" : "image";
+			return new ChatUploadedFile(url, isPdf ? ChatAttachmentType.PDF : ChatAttachmentType.IMAGE, originalName);
+		} catch (IOException ex) {
+			throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Could not read uploaded file");
+		} catch (Exception ex) {
+			throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Could not upload file");
 		}
 	}
 
@@ -160,6 +204,14 @@ public class ImageStorageService {
 				"public_id", UUID.randomUUID().toString(),
 				"overwrite", false,
 				"resource_type", "image");
+	}
+
+	private Map<?, ?> chatUploadParams(boolean pdf) {
+		return ObjectUtils.asMap(
+				"folder", Folder.CHAT.cloudFolder(),
+				"public_id", UUID.randomUUID().toString(),
+				"overwrite", false,
+				"resource_type", pdf ? "raw" : "image");
 	}
 
 	private void deleteFromCloudinary(String secureUrl) {

@@ -31,10 +31,20 @@ public class ChatMessage {
 	private ChatSender sender;
 
 	@Column(nullable = false, columnDefinition = "TEXT")
-	private String body;
+	private String body = "";
 
 	@Column(name = "reply_to_id")
 	private Long replyToId;
+
+	@Column(name = "attachment_url", length = 1024)
+	private String attachmentUrl;
+
+	@Enumerated(EnumType.STRING)
+	@Column(name = "attachment_type", length = 16)
+	private ChatAttachmentType attachmentType;
+
+	@Column(name = "attachment_name", length = 255)
+	private String attachmentName;
 
 	@Column(name = "created_at", nullable = false)
 	private Instant createdAt;
@@ -71,7 +81,7 @@ public class ChatMessage {
 	}
 
 	public void setBody(String body) {
-		this.body = body;
+		this.body = body == null ? "" : body;
 	}
 
 	public Long getReplyToId() {
@@ -80,6 +90,30 @@ public class ChatMessage {
 
 	public void setReplyToId(Long replyToId) {
 		this.replyToId = replyToId;
+	}
+
+	public String getAttachmentUrl() {
+		return attachmentUrl;
+	}
+
+	public void setAttachmentUrl(String attachmentUrl) {
+		this.attachmentUrl = attachmentUrl;
+	}
+
+	public ChatAttachmentType getAttachmentType() {
+		return attachmentType;
+	}
+
+	public void setAttachmentType(ChatAttachmentType attachmentType) {
+		this.attachmentType = attachmentType;
+	}
+
+	public String getAttachmentName() {
+		return attachmentName;
+	}
+
+	public void setAttachmentName(String attachmentName) {
+		this.attachmentName = attachmentName;
 	}
 
 	public Instant getCreatedAt() {

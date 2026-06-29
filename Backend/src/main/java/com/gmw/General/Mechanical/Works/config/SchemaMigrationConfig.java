@@ -619,12 +619,38 @@ public class SchemaMigrationConfig {
 						  `sender` VARCHAR(16) NOT NULL,
 						  `body` TEXT NOT NULL,
 						  `reply_to_id` BIGINT NULL,
+						  `attachment_url` VARCHAR(1024) NULL,
+						  `attachment_type` VARCHAR(16) NULL,
+						  `attachment_name` VARCHAR(255) NULL,
 						  `created_at` DATETIME(6) NOT NULL,
 						  PRIMARY KEY (`id`),
 						  KEY `idx_chat_message_user_created` (`user_id`, `created_at`)
 						)
 						""");
 			}
+			addChatAttachmentColumnsIfMissing(jdbcTemplate);
 		};
+	}
+
+	private void addChatAttachmentColumnsIfMissing(JdbcTemplate jdbcTemplate) {
+		addColumnIfMissing(jdbcTemplate, "chat_message", "attachment_url", "VARCHAR(1024) NULL");
+		addColumnIfMissing(jdbcTemplate, "chat_message", "attachment_type", "VARCHAR(16) NULL");
+		addColumnIfMissing(jdbcTemplate, "chat_message", "attachment_name", "VARCHAR(255) NULL");
+	}
+
+	private void addColumnIfMissing(JdbcTemplate jdbcTemplate, String table, String column, String definition) {
+		Integer exists = jdbcTemplate.queryForObject(
+				"""
+				SELECT COUNT(*) FROM information_schema.COLUMNS
+				WHERE TABLE_SCHEMA = DATABASE()
+				  AND TABLE_NAME = ?
+				  AND COLUMN_NAME = ?
+				""",
+				Integer.class,
+				table,
+				column);
+		if (exists == null || exists == 0) {
+			jdbcTemplate.execute("ALTER TABLE `" + table + "` ADD COLUMN `" + column + "` " + definition);
+		}
 	}
 }

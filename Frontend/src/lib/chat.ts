@@ -1,6 +1,7 @@
-import { getApiBase } from './api'
+import { getApiBase, toAbsoluteApiUrl } from './api'
 
 export type ApiChatSender = 'USER' | 'ADMIN'
+export type ApiChatAttachmentType = 'IMAGE' | 'PDF'
 
 export type ApiChatMessage = {
   id: number
@@ -8,6 +9,9 @@ export type ApiChatMessage = {
   sender: ApiChatSender
   body: string
   replyToId: number | null
+  attachmentUrl: string | null
+  attachmentType: ApiChatAttachmentType | null
+  attachmentName: string | null
   createdAt: string
 }
 
@@ -20,6 +24,8 @@ export type ApiChatConversation = {
   profilePicture: string | null
 }
 
+export { toAbsoluteApiUrl }
+
 export function getWsChatUrl(token: string): string {
   const base = getApiBase().replace(/^http/i, 'ws')
   return `${base.replace(/\/+$/, '')}/ws/chat?token=${encodeURIComponent(token)}`
@@ -29,6 +35,14 @@ export function formatChatTime(iso: string): string {
   const date = new Date(iso)
   if (Number.isNaN(date.getTime())) return ''
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+}
+
+export function chatMessagePreview(message: Pick<ApiChatMessage, 'body' | 'attachmentType'>): string {
+  const text = message.body?.trim()
+  if (text) return text.length > 80 ? `${text.slice(0, 80)}…` : text
+  if (message.attachmentType === 'IMAGE') return 'Photo'
+  if (message.attachmentType === 'PDF') return 'PDF file'
+  return ''
 }
 
 const AVATAR_COLORS = ['#dc2626', '#2563eb', '#7c3aed', '#059669', '#ea580c', '#0891b2', '#be123c']
@@ -89,6 +103,25 @@ export async function sendMyChatMessage(
   return res.json() as Promise<ApiChatMessage>
 }
 
+export async function sendMyChatMessageWithFile(
+  token: string,
+  file: File,
+  text?: string,
+  replyToId?: number | null,
+): Promise<ApiChatMessage> {
+  const form = new FormData()
+  form.append('file', file)
+  if (text?.trim()) form.append('text', text.trim())
+  if (replyToId != null) form.append('replyToId', String(replyToId))
+  const res = await fetch(`${getApiBase()}/api/chat/me/messages/with-file`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+    body: form,
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<ApiChatMessage>
+}
+
 export async function sendAdminChatMessage(
   token: string,
   userId: number,
@@ -108,16 +141,24 @@ export async function sendAdminChatMessage(
   return res.json() as Promise<ApiChatMessage>
 }
 
-export type ChatWsSendPayload = {
-  action: 'send'
-  text: string
-  replyToId?: number | null
-  targetUserId?: number
-}
-
-export function sendChatWsMessage(ws: WebSocket | null, payload: ChatWsSendPayload) {
-  if (!ws || ws.readyState !== WebSocket.OPEN) return
-  ws.send(JSON.stringify(payload))
+export async function sendAdminChatMessageWithFile(
+  token: string,
+  userId: number,
+  file: File,
+  text?: string,
+  replyToId?: number | null,
+): Promise<ApiChatMessage> {
+  const form = new FormData()
+  form.append('file', file)
+  if (text?.trim()) form.append('text', text.trim())
+  if (replyToId != null) form.append('replyToId', String(replyToId))
+  const res = await fetch(`${getApiBase()}/api/admin/chat/conversations/${userId}/messages/with-file`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+    body: form,
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<ApiChatMessage>
 }
 
 export type ChatWsEvent =

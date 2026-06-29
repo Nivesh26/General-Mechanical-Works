@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { FiImage, FiX } from 'react-icons/fi'
 import { HiOutlineChatBubbleBottomCenterText, HiXMark } from 'react-icons/hi2'
 import { Link, useLocation } from 'react-router-dom'
 import { toast } from 'react-toastify'
@@ -8,15 +9,23 @@ import {
   fetchMyChatMessages,
   formatChatTime,
   sendMyChatMessage,
+  sendMyChatMessageWithFile,
+  type ApiChatAttachmentType,
   type ApiChatMessage,
 } from '../lib/chat'
+import { prepareChatUploadFile } from '../lib/chatImage'
 import GMWLogo from '../assets/GMWlogo.png'
+import ChatMessageAttachment from './ChatMessageAttachment'
 
 type UiMessage = {
   id: string
   sender: 'user' | 'admin'
   text: string
   time: string
+  attachmentUrl?: string | null
+  attachmentType?: ApiChatAttachmentType | null
+  attachmentName?: string | null
+  pending?: boolean
 }
 
 function mapApiMessage(message: ApiChatMessage): UiMessage {
@@ -25,6 +34,9 @@ function mapApiMessage(message: ApiChatMessage): UiMessage {
     sender: message.sender === 'ADMIN' ? 'admin' : 'user',
     text: message.body,
     time: formatChatTime(message.createdAt),
+    attachmentUrl: message.attachmentUrl,
+    attachmentType: message.attachmentType,
+    attachmentName: message.attachmentName,
   }
 }
 
@@ -36,15 +48,44 @@ const ChatbotWidget = () => {
   const [messages, setMessages] = useState<UiMessage[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
-  const [sending, setSending] = useState(false)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null)
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null)
   const listRef = useRef<HTMLDivElement | null>(null)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const pendingSendIdRef = useRef<string | null>(null)
+  const pendingPreviewUrlRef = useRef<string | null>(null)
 
-  const appendMessage = useCallback((message: ApiChatMessage) => {
+  const finalizeSentMessage = useCallback((message: ApiChatMessage) => {
     setMessages((prev) => {
-      if (prev.some((m) => m.id === String(message.id))) return prev
-      return [...prev, mapApiMessage(message)]
+      const mapped = mapApiMessage(message)
+      const withoutOwnPending =
+        message.sender === 'USER' ? prev.filter((m) => !(m.pending && m.sender === 'user')) : prev
+
+      if (withoutOwnPending.some((m) => m.id === mapped.id)) {
+        pendingSendIdRef.current = null
+        if (pendingPreviewUrlRef.current) {
+          URL.revokeObjectURL(pendingPreviewUrlRef.current)
+          pendingPreviewUrlRef.current = null
+        }
+        return withoutOwnPending
+      }
+
+      pendingSendIdRef.current = null
+      if (pendingPreviewUrlRef.current) {
+        URL.revokeObjectURL(pendingPreviewUrlRef.current)
+        pendingPreviewUrlRef.current = null
+      }
+      return [...withoutOwnPending, mapped]
     })
   }, [])
+
+  const appendMessage = useCallback(
+    (message: ApiChatMessage) => {
+      finalizeSentMessage(message)
+    },
+    [finalizeSentMessage],
+  )
 
   useChatWebSocket(isLoggedIn ? token : null, appendMessage)
 
@@ -75,19 +116,83 @@ const ChatbotWidget = () => {
     list.scrollTop = list.scrollHeight
   }, [messages.length, open])
 
+  const resetFileSelection = () => {
+    setSelectedFile(null)
+    setFilePreviewUrl(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  const clearSelectedFile = () => {
+    if (filePreviewUrl) URL.revokeObjectURL(filePreviewUrl)
+    resetFileSelection()
+  }
+
+  const handleFilePick = (file: File | undefined) => {
+    if (!file) return
+    const isImage = file.type.startsWith('image/')
+    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
+    if (!isImage && !isPdf) {
+      toast.error('Use an image or PDF file.')
+      return
+    }
+    clearSelectedFile()
+    setSelectedFile(file)
+    if (isImage) setFilePreviewUrl(URL.createObjectURL(file))
+  }
+
   const handleSend = async () => {
     const text = input.trim()
-    if (!text || !token || sending) return
+    if ((!text && !selectedFile) || !token) return
+
+    const fileToSend = selectedFile
+    const textToSend = text
+    const isPdf =
+      fileToSend != null &&
+      (fileToSend.type === 'application/pdf' || fileToSend.name.toLowerCase().endsWith('.pdf'))
+    const localPreviewUrl =
+      filePreviewUrl ??
+      (fileToSend && fileToSend.type.startsWith('image/') ? URL.createObjectURL(fileToSend) : null)
+    const tempId = `pending-${Date.now()}`
+    pendingSendIdRef.current = tempId
+    pendingPreviewUrlRef.current = localPreviewUrl
+
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: tempId,
+        sender: 'user',
+        text: textToSend,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        attachmentUrl: localPreviewUrl,
+        attachmentType: fileToSend ? (isPdf ? 'PDF' : 'IMAGE') : null,
+        attachmentName: fileToSend?.name ?? null,
+        pending: true,
+      },
+    ])
     setInput('')
-    setSending(true)
+    resetFileSelection()
+
     try {
-      const sent = await sendMyChatMessage(token, text)
-      appendMessage(sent)
+      const uploadFile = fileToSend ? await prepareChatUploadFile(fileToSend) : null
+      const sent = uploadFile
+        ? await sendMyChatMessageWithFile(token, uploadFile, textToSend || undefined)
+        : await sendMyChatMessage(token, textToSend)
+      finalizeSentMessage(sent)
     } catch (err) {
-      setInput(text)
+      setMessages((prev) => prev.filter((m) => m.id !== tempId))
+      pendingSendIdRef.current = null
+      if (pendingPreviewUrlRef.current) {
+        URL.revokeObjectURL(pendingPreviewUrlRef.current)
+        pendingPreviewUrlRef.current = null
+      }
+      setInput(textToSend)
+      if (fileToSend) {
+        setSelectedFile(fileToSend)
+        if (fileToSend.type.startsWith('image/')) {
+          setFilePreviewUrl(URL.createObjectURL(fileToSend))
+        }
+      }
       toast.error(err instanceof Error ? err.message : 'Could not send message.')
-    } finally {
-      setSending(false)
     }
   }
 
@@ -100,11 +205,7 @@ const ChatbotWidget = () => {
         >
           <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-slate-200 bg-slate-50">
             <div className="flex items-center gap-3 min-w-0">
-              <img
-                src={GMWLogo}
-                alt=""
-                className="w-10 h-10 object-contain shrink-0"
-              />
+              <img src={GMWLogo} alt="" className="w-10 h-10 object-contain shrink-0" />
               <div className="min-w-0">
                 <div className="text-sm font-bold text-slate-900 truncate">General Mechanical Works</div>
                 {!isLoggedIn ? (
@@ -144,9 +245,18 @@ const ChatbotWidget = () => {
                             isUser
                               ? 'bg-primary text-white rounded-br-md'
                               : 'bg-white border border-slate-200 text-slate-800 rounded-bl-md'
-                          }`}
+                          } ${message.pending ? 'opacity-70' : ''}`}
                         >
-                          <div>{message.text}</div>
+                          {message.attachmentUrl && message.attachmentType ? (
+                            <ChatMessageAttachment
+                              attachmentUrl={message.attachmentUrl}
+                              attachmentType={message.attachmentType}
+                              attachmentName={message.attachmentName}
+                              onPreviewImage={setPreviewImageUrl}
+                              maxImageWidth={200}
+                            />
+                          ) : null}
+                          {message.text ? <div>{message.text}</div> : null}
                           <div
                             className={`text-[10px] mt-1 ${isUser ? 'text-red-100' : 'text-slate-400'}`}
                           >
@@ -159,25 +269,61 @@ const ChatbotWidget = () => {
                 )}
               </div>
 
-              <div className="p-3 border-t border-slate-200 bg-white flex gap-2">
-                <input
-                  type="text"
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleSend()
-                  }}
-                  placeholder="Type your message…"
-                  className="flex-1 px-3 py-2.5 border border-slate-300 rounded-lg text-sm outline-none focus:border-primary"
-                />
-                <button
-                  type="button"
-                  onClick={() => void handleSend()}
-                  disabled={sending}
-                  className="px-4 py-2.5 rounded-lg bg-primary text-white text-sm font-semibold border border-red-900 cursor-pointer disabled:opacity-70"
-                >
-                  {sending ? '…' : 'Send'}
-                </button>
+              <div className="p-3 border-t border-slate-200 bg-white">
+                {selectedFile ? (
+                  <div className="mb-2 flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2">
+                    {filePreviewUrl ? (
+                      <img src={filePreviewUrl} alt="" className="h-12 w-12 rounded object-cover" />
+                    ) : (
+                      <div className="text-xs font-semibold text-slate-600 px-2">PDF</div>
+                    )}
+                    <div className="min-w-0 flex-1 text-xs text-slate-700 truncate">{selectedFile.name}</div>
+                    <button
+                      type="button"
+                      onClick={clearSelectedFile}
+                      className="p-1 rounded cursor-pointer text-slate-500 hover:text-slate-800"
+                      aria-label="Remove file"
+                    >
+                      <FiX size={16} />
+                    </button>
+                  </div>
+                ) : null}
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') void handleSend()
+                    }}
+                    placeholder="Type your message…"
+                    className="flex-1 px-3 py-2.5 border border-slate-300 rounded-lg text-sm outline-none focus:border-primary"
+                  />
+                  <label
+                    className="w-11 h-11 flex items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-600 cursor-pointer shrink-0"
+                    aria-label="Attach image or PDF"
+                    title="Attach image or PDF"
+                  >
+                    <FiImage size={18} />
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*,.pdf,application/pdf"
+                      className="hidden"
+                      onChange={(e) => {
+                        handleFilePick(e.target.files?.[0])
+                        e.currentTarget.value = ''
+                      }}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => void handleSend()}
+                    className="px-4 py-2.5 rounded-lg bg-primary text-white text-sm font-semibold border border-red-900 cursor-pointer"
+                  >
+                    Send
+                  </button>
+                </div>
               </div>
             </>
           ) : (
@@ -202,6 +348,20 @@ const ChatbotWidget = () => {
               </Link>
             </div>
           )}
+        </div>
+      ) : null}
+
+      {previewImageUrl ? (
+        <div
+          className="fixed inset-0 z-[80] bg-slate-900/75 flex items-center justify-center p-4 cursor-zoom-out"
+          onClick={() => setPreviewImageUrl(null)}
+        >
+          <img
+            src={previewImageUrl}
+            alt="Preview"
+            className="max-w-[92vw] max-h-[88vh] rounded-xl bg-white"
+            onClick={(e) => e.stopPropagation()}
+          />
         </div>
       ) : null}
 
