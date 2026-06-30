@@ -29,4 +29,9 @@ public class ReviewLikeController {
 		String email = principal != null ? principal.getName() : null;
 		return productReviewService.unlike(id, email);
 	}
+
+	@DeleteMapping("/{id}")
+	public void delete(@PathVariable Long id, Principal principal) {
+		productReviewService.deleteForUser(id, principal.getName());
+	}
 }

@@ -898,6 +898,7 @@ export interface ProductReviewItem {
   likeCount: number
   likedByCurrentUser: boolean
   likedByGmw: boolean
+  ownedByCurrentUser: boolean
 }
 
 export interface ReviewEligibility {
@@ -972,6 +973,14 @@ export async function setAdminReviewReply(
   })
   if (!res.ok) throw new Error(await parseErrorMessage(res))
   return res.json() as Promise<ProductReviewItem>
+}
+
+export async function deleteProductReview(token: string, reviewId: number): Promise<void> {
+  const res = await fetch(`${getApiBase()}/api/reviews/${reviewId}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
 }
 
 export async function deleteAdminReview(token: string, reviewId: number): Promise<void> {

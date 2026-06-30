@@ -8,10 +8,11 @@ import Copyright from '../UserComponent/Copyright'
 import Productsuggestion from '../UserComponent/Productsuggestion'
 import { PAGE_GUTTER } from '../lib/layoutClasses'
 import GMWlogo from '../assets/GMWlogo.png'
-import { HiOutlineCheck, HiStar, HiOutlineHandThumbUp, HiHandThumbUp, HiPhoto, HiXMark } from 'react-icons/hi2'
+import { HiOutlineCheck, HiStar, HiOutlineHandThumbUp, HiHandThumbUp, HiPhoto, HiXMark, HiOutlineTrash } from 'react-icons/hi2'
 import { useProductReviewsState } from '../lib/useProductReviewsState'
 import {
   addToCart,
+  deleteProductReview,
   fetchProduct,
   fetchProductReviews,
   fetchReviewEligibility,
@@ -77,6 +78,7 @@ const Productdetail = () => {
   const [reviewEligibility, setReviewEligibility] = useState<ReviewEligibility | null>(null)
   const [submittingReview, setSubmittingReview] = useState(false)
   const [likingReviewId, setLikingReviewId] = useState<number | null>(null)
+  const [deletingReviewId, setDeletingReviewId] = useState<number | null>(null)
   const reviewImageInputRef = useRef<HTMLInputElement>(null)
   const {
     userLikedAdminReplyReviewIds,
@@ -164,6 +166,29 @@ const Productdetail = () => {
       toast.error(e instanceof Error ? e.message : 'Could not post review.')
     } finally {
       setSubmittingReview(false)
+    }
+  }
+
+  const handleDeleteReview = async (review: ProductReviewItem) => {
+    if (deletingReviewId === review.id) return
+    if (!token) {
+      toast.info('Please sign in to manage your review.')
+      navigate('/login', { state: { from: `/productdetail/${productId}` } })
+      return
+    }
+    if (!window.confirm('Delete your review? You can post a new one after delivery.')) return
+    setDeletingReviewId(review.id)
+    try {
+      await deleteProductReview(token, review.id)
+      setProductReviews((prev) => prev.filter((r) => r.id !== review.id))
+      if (reviewEligibility?.hasDeliveredPurchase) {
+        setReviewEligibility({ canReview: true, alreadyReviewed: false, hasDeliveredPurchase: true })
+      }
+      toast.success('Review deleted.')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not delete review.')
+    } finally {
+      setDeletingReviewId(null)
     }
   }
 
@@ -639,7 +664,21 @@ const Productdetail = () => {
                           </div>
                         )}
                         <div className="min-w-0 flex-1">
-                          <p className="font-semibold text-gray-900">{review.userName}</p>
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="font-semibold text-gray-900">{review.userName}</p>
+                            {review.ownedByCurrentUser ? (
+                              <button
+                                type="button"
+                                onClick={() => void handleDeleteReview(review)}
+                                disabled={deletingReviewId === review.id}
+                                className="inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-gray-500 hover:bg-red-50 hover:text-red-600 transition-colors cursor-pointer disabled:opacity-50"
+                                aria-label="Delete your review"
+                              >
+                                <HiOutlineTrash className="h-4 w-4" aria-hidden />
+                                {deletingReviewId === review.id ? 'Deleting…' : 'Delete'}
+                              </button>
+                            ) : null}
+                          </div>
                           <div className="flex items-center gap-1 mt-0.5">
                             {[1, 2, 3, 4, 5].map((i) => (
                               <HiStar

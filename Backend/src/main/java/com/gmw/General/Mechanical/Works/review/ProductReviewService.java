@@ -153,11 +153,27 @@ public class ProductReviewService {
 	}
 
 	@Transactional
+	public void deleteForUser(Long reviewId, String email) {
+		User user = requireUser(email);
+		ProductReview review = productReviewRepository.findByIdWithDetails(reviewId)
+				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Review not found"));
+		if (!review.getUser().getId().equals(user.getId())) {
+			throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can delete only your own review");
+		}
+		removeReview(review);
+	}
+
+	@Transactional
 	public void deleteForAdmin(Long reviewId) {
 		ProductReview review = productReviewRepository.findById(reviewId)
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Review not found"));
+		removeReview(review);
+	}
+
+	private void removeReview(ProductReview review) {
 		ProductJson.readStringList(review.getImagePathsJson())
 				.forEach(imageStorageService::deleteIfStored);
+		productReviewLikeRepository.deleteByReviewId(review.getId());
 		productReviewRepository.delete(review);
 	}
 
@@ -230,7 +246,8 @@ public class ProductReviewService {
 				.map(review -> ProductReviewMapper.toDto(
 						review,
 						likedReviewIds.contains(review.getId()),
-						gmwLikedReviewIds.contains(review.getId())))
+						gmwLikedReviewIds.contains(review.getId()),
+						userId))
 				.toList();
 	}
 
@@ -238,7 +255,7 @@ public class ProductReviewService {
 		boolean likedByCurrentUser = userId != null
 				&& productReviewLikeRepository.existsByReviewIdAndUserId(review.getId(), userId);
 		boolean likedByGmw = productReviewLikeRepository.existsAdminLikeByReviewId(review.getId());
-		return ProductReviewMapper.toDto(review, likedByCurrentUser, likedByGmw);
+		return ProductReviewMapper.toDto(review, likedByCurrentUser, likedByGmw, userId);
 	}
 
 	static final class ProductReviewMapper {
@@ -246,10 +263,11 @@ public class ProductReviewService {
 		private ProductReviewMapper() {
 		}
 
-		static ProductReviewDto toDto(ProductReview review, boolean likedByCurrentUser, boolean likedByGmw) {
+		static ProductReviewDto toDto(ProductReview review, boolean likedByCurrentUser, boolean likedByGmw, Long currentUserId) {
 			Product product = review.getProduct();
 			User user = review.getUser();
 			List<String> productImages = product.getImagePathsList();
+			boolean ownedByCurrentUser = currentUserId != null && user.getId().equals(currentUserId);
 			return new ProductReviewDto(
 					review.getId(),
 					product.getId(),
@@ -266,7 +284,8 @@ public class ProductReviewService {
 							java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy", Locale.ENGLISH)),
 					review.getLikeCount(),
 					likedByCurrentUser,
-					likedByGmw);
+					likedByGmw,
+					ownedByCurrentUser);
 		}
 	}
 }

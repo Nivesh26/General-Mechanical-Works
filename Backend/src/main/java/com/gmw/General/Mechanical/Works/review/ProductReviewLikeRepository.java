@@ -13,6 +13,8 @@ public interface ProductReviewLikeRepository extends JpaRepository<ProductReview
 
 	void deleteByReviewIdAndUserId(Long reviewId, Long userId);
 
+	void deleteByReviewId(Long reviewId);
+
 	@Query("SELECT l.reviewId FROM ProductReviewLike l WHERE l.userId = :userId AND l.reviewId IN :reviewIds")
 	List<Long> findReviewIdsByUserIdAndReviewIdIn(
 			@Param("userId") Long userId,
