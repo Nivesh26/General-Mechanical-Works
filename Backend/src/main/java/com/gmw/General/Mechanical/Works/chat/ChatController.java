@@ -4,7 +4,9 @@ import java.security.Principal;
 import java.util.List;
 
 import org.springframework.http.MediaType;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -42,5 +44,20 @@ public class ChatController {
 			@RequestPart("file") MultipartFile file,
 			@RequestParam(value = "replyToId", required = false) Long replyToId) {
 		return chatService.sendFromUserWithFile(principal.getName(), text, file, replyToId);
+	}
+
+	@DeleteMapping("/messages/{messageId}")
+	public void delete(
+			Principal principal,
+			@PathVariable Long messageId,
+			@RequestParam(defaultValue = "self") String scope) {
+		chatService.deleteMessageForUser(principal.getName(), messageId, parseDeleteScope(scope));
+	}
+
+	private static ChatDeleteScope parseDeleteScope(String scope) {
+		if ("everyone".equalsIgnoreCase(scope)) {
+			return ChatDeleteScope.EVERYONE;
+		}
+		return ChatDeleteScope.SELF;
 	}
 }

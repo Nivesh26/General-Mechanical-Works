@@ -1,5 +1,13 @@
 import { getApiBase, toAbsoluteApiUrl } from './api'
 
+export type ChatDeleteScope = 'self' | 'everyone'
+
+export type ApiChatMessageDeleted = {
+  messageId: number
+  userId: number
+  scope: 'SELF' | 'EVERYONE'
+}
+
 export type ApiChatSender = 'USER' | 'ADMIN'
 export type ApiChatAttachmentType = 'IMAGE' | 'PDF'
 
@@ -187,14 +195,54 @@ export async function sendAdminChatMessageWithFile(
   return res.json() as Promise<ApiChatMessage>
 }
 
+export async function deleteMyChatMessage(
+  token: string,
+  messageId: number,
+  scope: ChatDeleteScope,
+): Promise<void> {
+  const res = await fetch(`${getApiBase()}/api/chat/me/messages/${messageId}?scope=${scope}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+}
+
+export async function deleteAdminChatMessage(
+  token: string,
+  userId: number,
+  messageId: number,
+  scope: ChatDeleteScope,
+): Promise<void> {
+  const res = await fetch(
+    `${getApiBase()}/api/admin/chat/conversations/${userId}/messages/${messageId}?scope=${scope}`,
+    {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    },
+  )
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+}
+
+export function canDeleteChatForEveryone(
+  sender: ApiChatSender | 'user' | 'admin',
+  viewer: 'user' | 'admin',
+): boolean {
+  const isUserMessage = sender === 'USER' || sender === 'user'
+  const isAdminMessage = sender === 'ADMIN' || sender === 'admin'
+  return viewer === 'user' ? isUserMessage : isAdminMessage
+}
+
 export type ChatWsEvent =
   | { event: 'connected' }
   | { event: 'message'; message: ApiChatMessage }
+  | { event: 'message_deleted'; deleted: ApiChatMessageDeleted }
 
 export function parseChatWsEvent(raw: string): ChatWsEvent | null {
   try {
     const data = JSON.parse(raw) as ChatWsEvent
-    if (data.event === 'connected' || data.event === 'message') return data
+    if (data.event === 'connected' || data.event === 'message' || data.event === 'message_deleted') {
+      return data
+    }
   } catch {
     /* ignore */
   }

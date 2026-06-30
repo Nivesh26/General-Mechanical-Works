@@ -629,7 +629,31 @@ public class SchemaMigrationConfig {
 						""");
 			}
 			addChatAttachmentColumnsIfMissing(jdbcTemplate);
+			addChatMessageHiddenTableIfMissing(jdbcTemplate);
 		};
+	}
+
+	private void addChatMessageHiddenTableIfMissing(JdbcTemplate jdbcTemplate) {
+		Integer tableExists = jdbcTemplate.queryForObject(
+				"""
+				SELECT COUNT(*) FROM information_schema.TABLES
+				WHERE TABLE_SCHEMA = DATABASE()
+				  AND TABLE_NAME = 'chat_message_hidden'
+				""",
+				Integer.class);
+		if (tableExists == null || tableExists == 0) {
+			jdbcTemplate.execute("""
+					CREATE TABLE `chat_message_hidden` (
+					  `id` BIGINT NOT NULL AUTO_INCREMENT,
+					  `message_id` BIGINT NOT NULL,
+					  `hidden_by_user_id` BIGINT NOT NULL,
+					  `hidden_at` DATETIME(6) NOT NULL,
+					  PRIMARY KEY (`id`),
+					  UNIQUE KEY `uk_chat_message_hidden` (`message_id`, `hidden_by_user_id`),
+					  KEY `idx_chat_message_hidden_viewer` (`hidden_by_user_id`)
+					)
+					""");
+		}
 	}
 
 	private void addChatAttachmentColumnsIfMissing(JdbcTemplate jdbcTemplate) {

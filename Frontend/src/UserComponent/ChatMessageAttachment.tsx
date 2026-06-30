@@ -39,7 +39,7 @@ export default function ChatMessageAttachment({
           borderRadius: '8px',
           display: 'block',
           marginBottom: '8px',
-          cursor: onPreviewImage ? 'zoom-in' : 'default',
+          cursor: onPreviewImage ? 'pointer' : 'default',
         }}
       />
     )

@@ -3,9 +3,11 @@ package com.gmw.General.Mechanical.Works.chat;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
@@ -28,16 +30,19 @@ public class ChatService {
 			DateTimeFormatter.ofPattern("h:mm a", Locale.US).withZone(ZoneId.systemDefault());
 
 	private final ChatMessageRepository chatMessageRepository;
+	private final ChatMessageHiddenRepository chatMessageHiddenRepository;
 	private final UserRepository userRepository;
 	private final ChatWebSocketSessions chatWebSocketSessions;
 	private final ImageStorageService imageStorageService;
 
 	public ChatService(
 			ChatMessageRepository chatMessageRepository,
+			ChatMessageHiddenRepository chatMessageHiddenRepository,
 			UserRepository userRepository,
 			ChatWebSocketSessions chatWebSocketSessions,
 			ImageStorageService imageStorageService) {
 		this.chatMessageRepository = chatMessageRepository;
+		this.chatMessageHiddenRepository = chatMessageHiddenRepository;
 		this.userRepository = userRepository;
 		this.chatWebSocketSessions = chatWebSocketSessions;
 		this.imageStorageService = imageStorageService;
@@ -46,19 +51,17 @@ public class ChatService {
 	@Transactional(readOnly = true)
 	public List<ChatMessageDto> listMessagesForUser(String email) {
 		User user = requireUser(email);
-		return chatMessageRepository.findByUserIdOrderByCreatedAtAsc(user.getId()).stream()
-				.map(ChatMapper::toDto)
-				.toList();
+		return visibleMessagesForViewer(user.getId(), chatMessageRepository.findByUserIdOrderByCreatedAtAsc(user.getId()));
 	}
 
 	@Transactional(readOnly = true)
-	public List<ChatMessageDto> listMessagesForAdmin(Long userId) {
+	public List<ChatMessageDto> listMessagesForAdmin(String email, Long userId) {
+		requireAdmin(email);
+		User admin = requireUser(email);
 		if (!userRepository.existsById(userId)) {
 			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
 		}
-		return chatMessageRepository.findByUserIdOrderByCreatedAtAsc(userId).stream()
-				.map(ChatMapper::toDto)
-				.toList();
+		return visibleMessagesForViewer(admin.getId(), chatMessageRepository.findByUserIdOrderByCreatedAtAsc(userId));
 	}
 
 	@Transactional(readOnly = true)
@@ -160,6 +163,87 @@ public class ChatService {
 			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
 		}
 		return saveAndBroadcast(userId, ChatSender.USER, request);
+	}
+
+	@Transactional
+	public void deleteMessageForUser(String email, Long messageId, ChatDeleteScope scope) {
+		User user = requireUser(email);
+		ChatMessage message = requireMessageInConversation(messageId, user.getId());
+		deleteMessage(user, message, scope);
+	}
+
+	@Transactional
+	public void deleteMessageForAdmin(String email, Long conversationUserId, Long messageId, ChatDeleteScope scope) {
+		requireAdmin(email);
+		User admin = requireUser(email);
+		if (!userRepository.existsById(conversationUserId)) {
+			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
+		}
+		ChatMessage message = requireMessageInConversation(messageId, conversationUserId);
+		deleteMessage(admin, message, scope);
+	}
+
+	private void deleteMessage(User actor, ChatMessage message, ChatDeleteScope scope) {
+		if (scope == ChatDeleteScope.SELF) {
+			hideMessageForViewer(actor.getId(), message);
+			return;
+		}
+		requireCanDeleteForEveryone(actor, message);
+		removeMessageForEveryone(message);
+	}
+
+	private void hideMessageForViewer(Long viewerUserId, ChatMessage message) {
+		if (!chatMessageHiddenRepository.existsByMessageIdAndHiddenByUserId(message.getId(), viewerUserId)) {
+			ChatMessageHidden hidden = new ChatMessageHidden();
+			hidden.setMessageId(message.getId());
+			hidden.setHiddenByUserId(viewerUserId);
+			chatMessageHiddenRepository.save(hidden);
+		}
+	}
+
+	private void requireCanDeleteForEveryone(User actor, ChatMessage message) {
+		boolean isAdmin = actor.getRole() == Role.ADMIN;
+		if (isAdmin) {
+			if (message.getSender() != ChatSender.ADMIN) {
+				throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can delete only your own messages for everyone");
+			}
+			return;
+		}
+		if (message.getSender() != ChatSender.USER || !message.getUserId().equals(actor.getId())) {
+			throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can delete only your own messages for everyone");
+		}
+	}
+
+	private void removeMessageForEveryone(ChatMessage message) {
+		if (StringUtils.hasText(message.getAttachmentUrl())) {
+			imageStorageService.deleteIfStored(message.getAttachmentUrl());
+		}
+		chatMessageHiddenRepository.deleteByMessageId(message.getId());
+		chatMessageRepository.delete(message);
+		chatWebSocketSessions.broadcastMessageDeleted(
+				new ChatMessageDeletedDto(message.getId(), message.getUserId(), ChatDeleteScope.EVERYONE));
+	}
+
+	private ChatMessage requireMessageInConversation(Long messageId, Long conversationUserId) {
+		ChatMessage message = chatMessageRepository.findById(messageId)
+				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Message not found"));
+		if (!message.getUserId().equals(conversationUserId)) {
+			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Message not found");
+		}
+		return message;
+	}
+
+	private List<ChatMessageDto> visibleMessagesForViewer(Long viewerUserId, List<ChatMessage> messages) {
+		if (messages.isEmpty()) {
+			return List.of();
+		}
+		List<Long> messageIds = messages.stream().map(ChatMessage::getId).toList();
+		Set<Long> hiddenIds = new HashSet<>(
+				chatMessageHiddenRepository.findHiddenMessageIdsForViewer(viewerUserId, messageIds));
+		return messages.stream()
+				.filter(message -> !hiddenIds.contains(message.getId()))
+				.map(ChatMapper::toDto)
+				.toList();
 	}
 
 	private SendChatMessageRequest buildRequestWithFile(

@@ -3,6 +3,7 @@ package com.gmw.General.Mechanical.Works.chat;
 import java.util.List;
 
 import org.springframework.http.MediaType;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -31,8 +32,10 @@ public class AdminChatController {
 	}
 
 	@GetMapping("/conversations/{userId}/messages")
-	public List<ChatMessageDto> messages(@PathVariable Long userId) {
-		return chatService.listMessagesForAdmin(userId);
+	public List<ChatMessageDto> messages(
+			java.security.Principal principal,
+			@PathVariable Long userId) {
+		return chatService.listMessagesForAdmin(principal.getName(), userId);
 	}
 
 	@PostMapping("/conversations/{userId}/messages")
@@ -59,5 +62,18 @@ public class AdminChatController {
 			@RequestPart("file") MultipartFile file,
 			@RequestParam(value = "replyToId", required = false) Long replyToId) {
 		return chatService.sendFromAdminWithFile(principal.getName(), userId, text, file, replyToId);
+	}
+
+	@DeleteMapping("/conversations/{userId}/messages/{messageId}")
+	public void delete(
+			java.security.Principal principal,
+			@PathVariable Long userId,
+			@PathVariable Long messageId,
+			@RequestParam(defaultValue = "self") String scope) {
+		chatService.deleteMessageForAdmin(
+				principal.getName(),
+				userId,
+				messageId,
+				"everyone".equalsIgnoreCase(scope) ? ChatDeleteScope.EVERYONE : ChatDeleteScope.SELF);
 	}
 }

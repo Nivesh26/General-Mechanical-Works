@@ -1,14 +1,22 @@
 import { useEffect, useRef } from 'react'
-import { getWsChatUrl, parseChatWsEvent, type ApiChatMessage } from '../lib/chat'
+import {
+  getWsChatUrl,
+  parseChatWsEvent,
+  type ApiChatMessage,
+  type ApiChatMessageDeleted,
+} from '../lib/chat'
 
 /** WebSocket is only for receiving live messages — sending uses REST for instant delivery. */
 export function useChatWebSocket(
   token: string | null,
   onMessage: (message: ApiChatMessage) => void,
+  onMessageDeleted?: (deleted: ApiChatMessageDeleted) => void,
 ) {
   const wsRef = useRef<WebSocket | null>(null)
   const onMessageRef = useRef(onMessage)
+  const onMessageDeletedRef = useRef(onMessageDeleted)
   onMessageRef.current = onMessage
+  onMessageDeletedRef.current = onMessageDeleted
 
   useEffect(() => {
     if (!token) {
@@ -29,6 +37,8 @@ export function useChatWebSocket(
         const parsed = parseChatWsEvent(String(event.data))
         if (parsed?.event === 'message') {
           onMessageRef.current(parsed.message)
+        } else if (parsed?.event === 'message_deleted') {
+          onMessageDeletedRef.current?.(parsed.deleted)
         }
       }
 

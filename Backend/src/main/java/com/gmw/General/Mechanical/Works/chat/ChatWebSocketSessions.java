@@ -59,6 +59,24 @@ public class ChatWebSocketSessions {
 		return ids != null && !ids.isEmpty();
 	}
 
+	public void broadcastMessageDeleted(ChatMessageDeletedDto deleted) {
+		Map<String, Object> payload = new HashMap<>();
+		payload.put("event", "message_deleted");
+		payload.put("deleted", deleted);
+		String json = writeJson(payload);
+		for (String adminSessionId : adminSessionIds) {
+			sendToSession(adminSessionId, json);
+		}
+		if (deleted.userId() != null) {
+			Set<String> ids = userSessionIds.get(deleted.userId());
+			if (ids != null) {
+				for (String sessionId : ids) {
+					sendToSession(sessionId, json);
+				}
+			}
+		}
+	}
+
 	public void broadcastMessage(ChatMessageDto message) {
 		Map<String, Object> payload = new HashMap<>();
 		payload.put("event", "message");

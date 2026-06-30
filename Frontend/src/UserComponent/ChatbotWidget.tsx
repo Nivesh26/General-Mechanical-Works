@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { FiImage, FiX } from 'react-icons/fi'
+import { FiCornerUpLeft, FiImage, FiTrash2, FiX } from 'react-icons/fi'
 import { HiOutlineChatBubbleBottomCenterText, HiXMark } from 'react-icons/hi2'
 import { Link, useLocation } from 'react-router-dom'
 import { toast } from 'react-toastify'
@@ -7,6 +7,8 @@ import { useAuth } from '../context/AuthContext'
 import { useChatWebSocket } from '../hooks/useChatWebSocket'
 import {
   countUnreadAdminChatMessages,
+  canDeleteChatForEveryone,
+  deleteMyChatMessage,
   fetchMyChatMessages,
   formatChatTime,
   maxChatMessageId,
@@ -16,11 +18,20 @@ import {
   writeChatLastSeenMessageId,
   type ApiChatAttachmentType,
   type ApiChatMessage,
+  type ApiChatMessageDeleted,
+  type ChatDeleteScope,
 } from '../lib/chat'
 import { prepareChatUploadFile } from '../lib/chatImage'
 import { scrollChatToBottom } from '../lib/chatScroll'
 import GMWLogo from '../assets/GMWlogo.png'
 import ChatMessageAttachment from './ChatMessageAttachment'
+
+type ChatReplyPreview = {
+  sender: 'user' | 'admin'
+  text?: string
+  attachmentType?: ApiChatAttachmentType | null
+  attachmentUrl?: string | null
+}
 
 type UiMessage = {
   id: string
@@ -30,7 +41,75 @@ type UiMessage = {
   attachmentUrl?: string | null
   attachmentType?: ApiChatAttachmentType | null
   attachmentName?: string | null
+  replyToId?: number | null
+  replyTo?: ChatReplyPreview
   pending?: boolean
+}
+
+function replyPreviewFromApi(message: ApiChatMessage): ChatReplyPreview {
+  return {
+    sender: message.sender === 'ADMIN' ? 'admin' : 'user',
+    text: message.body || undefined,
+    attachmentType: message.attachmentType,
+    attachmentUrl: message.attachmentUrl,
+  }
+}
+
+function replyPreviewFromUi(message: UiMessage): ChatReplyPreview {
+  return {
+    sender: message.sender,
+    text: message.text || undefined,
+    attachmentType: message.attachmentType,
+    attachmentUrl: message.attachmentUrl,
+  }
+}
+
+function replyPreviewLabel(reply: ChatReplyPreview): string {
+  if (reply.text?.trim()) {
+    const text = reply.text.trim()
+    return text.length > 72 ? `${text.slice(0, 72)}…` : text
+  }
+  if (reply.attachmentType === 'PDF') return 'PDF file'
+  if (reply.attachmentType === 'IMAGE' || reply.attachmentUrl) return 'Photo'
+  return 'Message'
+}
+
+function replySenderLabel(sender: 'user' | 'admin'): string {
+  return sender === 'admin' ? 'General Mechanical Works' : 'You'
+}
+
+function mapApiMessagesToUi(messages: ApiChatMessage[]): UiMessage[] {
+  const byId = new Map(messages.map((message) => [message.id, message]))
+  return messages.map((message) => {
+    const ui: UiMessage = {
+      id: String(message.id),
+      sender: message.sender === 'ADMIN' ? 'admin' : 'user',
+      text: message.body,
+      time: formatChatTime(message.createdAt),
+      attachmentUrl: message.attachmentUrl,
+      attachmentType: message.attachmentType,
+      attachmentName: message.attachmentName,
+      replyToId: message.replyToId,
+    }
+    if (message.replyToId != null) {
+      const parent = byId.get(message.replyToId)
+      if (parent) ui.replyTo = replyPreviewFromApi(parent)
+    }
+    return ui
+  })
+}
+
+function attachReplyPreviewsToUi(messages: UiMessage[]): UiMessage[] {
+  const byId = new Map<number, UiMessage>()
+  for (const message of messages) {
+    const id = Number(message.id)
+    if (Number.isFinite(id)) byId.set(id, message)
+  }
+  return messages.map((message) => {
+    if (message.replyToId == null) return message
+    const parent = byId.get(message.replyToId)
+    return parent ? { ...message, replyTo: replyPreviewFromUi(parent) } : message
+  })
 }
 
 function mapApiMessage(message: ApiChatMessage): UiMessage {
@@ -42,6 +121,7 @@ function mapApiMessage(message: ApiChatMessage): UiMessage {
     attachmentUrl: message.attachmentUrl,
     attachmentType: message.attachmentType,
     attachmentName: message.attachmentName,
+    replyToId: message.replyToId,
   }
 }
 
@@ -57,7 +137,11 @@ const ChatbotWidget = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null)
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null)
+  const [replyTarget, setReplyTarget] = useState<UiMessage | null>(null)
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; message: UiMessage } | null>(null)
+  const [deletingMessageId, setDeletingMessageId] = useState<string | null>(null)
   const listRef = useRef<HTMLDivElement | null>(null)
+  const inputRef = useRef<HTMLInputElement | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const pendingSendIdRef = useRef<string | null>(null)
   const pendingPreviewUrlRef = useRef<string | null>(null)
@@ -84,21 +168,23 @@ const ChatbotWidget = () => {
       const withoutOwnPending =
         message.sender === 'USER' ? prev.filter((m) => !(m.pending && m.sender === 'user')) : prev
 
+      let next: UiMessage[]
       if (withoutOwnPending.some((m) => m.id === mapped.id)) {
         pendingSendIdRef.current = null
         if (pendingPreviewUrlRef.current) {
           URL.revokeObjectURL(pendingPreviewUrlRef.current)
           pendingPreviewUrlRef.current = null
         }
-        return withoutOwnPending
+        next = withoutOwnPending
+      } else {
+        pendingSendIdRef.current = null
+        if (pendingPreviewUrlRef.current) {
+          URL.revokeObjectURL(pendingPreviewUrlRef.current)
+          pendingPreviewUrlRef.current = null
+        }
+        next = [...withoutOwnPending, mapped]
       }
-
-      pendingSendIdRef.current = null
-      if (pendingPreviewUrlRef.current) {
-        URL.revokeObjectURL(pendingPreviewUrlRef.current)
-        pendingPreviewUrlRef.current = null
-      }
-      return [...withoutOwnPending, mapped]
+      return attachReplyPreviewsToUi(next)
     })
   }, [])
 
@@ -120,7 +206,12 @@ const ChatbotWidget = () => {
     [finalizeSentMessage, user?.id],
   )
 
-  useChatWebSocket(isLoggedIn ? token : null, appendMessage)
+  const handleMessageDeleted = useCallback((deleted: ApiChatMessageDeleted) => {
+    if (deleted.scope !== 'EVERYONE') return
+    setMessages((prev) => prev.filter((m) => m.id !== String(deleted.messageId)))
+  }, [])
+
+  useChatWebSocket(isLoggedIn ? token : null, appendMessage, handleMessageDeleted)
 
   useEffect(() => {
     if (!isLoggedIn || !token || !user?.id) {
@@ -151,7 +242,7 @@ const ChatbotWidget = () => {
     fetchMyChatMessages(token)
       .then((data) => {
         if (cancelled) return
-        setMessages(data.map(mapApiMessage))
+        setMessages(mapApiMessagesToUi(data))
         markChatAsRead(data)
       })
       .catch((err) => {
@@ -175,9 +266,18 @@ const ChatbotWidget = () => {
   }, [open, loading, messages, markChatAsRead, user?.id])
 
   useEffect(() => {
-    if (!open || loading) return
-    scrollChatToBottom(listRef.current)
-  }, [open, loading, messages])
+    if (!contextMenu) return
+    const closeMenu = () => setContextMenu(null)
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') closeMenu()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    window.addEventListener('scroll', closeMenu, true)
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+      window.removeEventListener('scroll', closeMenu, true)
+    }
+  }, [contextMenu])
 
   const resetFileSelection = () => {
     setSelectedFile(null)
@@ -203,12 +303,52 @@ const ChatbotWidget = () => {
     if (isImage) setFilePreviewUrl(URL.createObjectURL(file))
   }
 
+  useEffect(() => {
+    if (!open || loading) return
+    scrollChatToBottom(listRef.current)
+  }, [open, loading, messages])
+
+  useEffect(() => {
+    const list = listRef.current
+    if (!list || !open) return
+
+    const trapScroll = (event: WheelEvent) => {
+      const { scrollTop, scrollHeight, clientHeight } = list
+      const atTop = scrollTop <= 0
+      const atBottom = scrollTop + clientHeight >= scrollHeight - 1
+      if ((atTop && event.deltaY < 0) || (atBottom && event.deltaY > 0)) {
+        event.preventDefault()
+      }
+    }
+
+    list.addEventListener('wheel', trapScroll, { passive: false })
+    return () => list.removeEventListener('wheel', trapScroll)
+  }, [open, messages.length])
+
+  const handleDeleteMessage = async (message: UiMessage, scope: ChatDeleteScope) => {
+    if (message.pending || !token || !/^\d+$/.test(message.id)) return
+    setContextMenu(null)
+    setDeletingMessageId(message.id)
+    try {
+      await deleteMyChatMessage(token, Number(message.id), scope)
+      setMessages((prev) => prev.filter((m) => m.id !== message.id))
+      if (replyTarget?.id === message.id) setReplyTarget(null)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not delete message.')
+    } finally {
+      setDeletingMessageId(null)
+    }
+  }
+
   const handleSend = async () => {
     const text = input.trim()
     if ((!text && !selectedFile) || !token) return
 
     const fileToSend = selectedFile
     const textToSend = text
+    const savedReplyTarget = replyTarget
+    const replyToId =
+      savedReplyTarget && /^\d+$/.test(savedReplyTarget.id) ? Number(savedReplyTarget.id) : null
     const isPdf =
       fileToSend != null &&
       (fileToSend.type === 'application/pdf' || fileToSend.name.toLowerCase().endsWith('.pdf'))
@@ -229,17 +369,20 @@ const ChatbotWidget = () => {
         attachmentUrl: localPreviewUrl,
         attachmentType: fileToSend ? (isPdf ? 'PDF' : 'IMAGE') : null,
         attachmentName: fileToSend?.name ?? null,
+        replyToId,
+        replyTo: savedReplyTarget ? replyPreviewFromUi(savedReplyTarget) : undefined,
         pending: true,
       },
     ])
     setInput('')
     resetFileSelection()
+    setReplyTarget(null)
 
     try {
       const uploadFile = fileToSend ? await prepareChatUploadFile(fileToSend) : null
       const sent = uploadFile
-        ? await sendMyChatMessageWithFile(token, uploadFile, textToSend || undefined)
-        : await sendMyChatMessage(token, textToSend)
+        ? await sendMyChatMessageWithFile(token, uploadFile, textToSend || undefined, replyToId)
+        : await sendMyChatMessage(token, textToSend, replyToId)
       finalizeSentMessage(sent)
     } catch (err) {
       setMessages((prev) => prev.filter((m) => m.id !== tempId))
@@ -249,6 +392,7 @@ const ChatbotWidget = () => {
         pendingPreviewUrlRef.current = null
       }
       setInput(textToSend)
+      setReplyTarget(savedReplyTarget)
       if (fileToSend) {
         setSelectedFile(fileToSend)
         if (fileToSend.type.startsWith('image/')) {
@@ -288,7 +432,10 @@ const ChatbotWidget = () => {
 
           {isLoggedIn ? (
             <>
-              <div ref={listRef} className="flex-1 min-h-0 overflow-y-auto p-4 bg-slate-50 space-y-3">
+              <div
+                ref={listRef}
+                className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain p-4 bg-slate-50 space-y-3"
+              >
                 {loading ? (
                   <p className="text-sm text-slate-500 text-center">Loading messages…</p>
                 ) : messages.length === 0 ? (
@@ -304,12 +451,41 @@ const ChatbotWidget = () => {
                         className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}
                       >
                         <div
+                          onContextMenu={(event) => {
+                            if (message.pending) return
+                            event.preventDefault()
+                            setContextMenu({ x: event.clientX, y: event.clientY, message })
+                          }}
                           className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm ${
                             isUser
                               ? 'bg-primary text-white rounded-br-md'
                               : 'bg-white border border-slate-200 text-slate-800 rounded-bl-md'
                           } ${message.pending ? 'opacity-70' : ''}`}
                         >
+                          {message.replyTo ? (
+                            <div
+                              className={`mb-2 rounded-lg border-l-[3px] px-2 py-1.5 ${
+                                isUser
+                                  ? 'border-white/70 bg-white/10'
+                                  : 'border-primary/40 bg-slate-50'
+                              }`}
+                            >
+                              <div
+                                className={`text-[10px] font-semibold ${
+                                  isUser ? 'text-red-100' : 'text-slate-500'
+                                }`}
+                              >
+                                {replySenderLabel(message.replyTo.sender)}
+                              </div>
+                              <div
+                                className={`text-xs truncate ${
+                                  isUser ? 'text-white/90' : 'text-slate-600'
+                                }`}
+                              >
+                                {replyPreviewLabel(message.replyTo)}
+                              </div>
+                            </div>
+                          ) : null}
                           {message.attachmentUrl && message.attachmentType ? (
                             <ChatMessageAttachment
                               attachmentUrl={message.attachmentUrl}
@@ -333,6 +509,27 @@ const ChatbotWidget = () => {
               </div>
 
               <div className="p-3 border-t border-slate-200 bg-white">
+                {replyTarget ? (
+                  <div className="mb-2 flex items-start justify-between gap-2 rounded-lg border border-primary/15 bg-primary/5 px-3 py-2">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
+                        <FiCornerUpLeft className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                        Replying to {replySenderLabel(replyTarget.sender)}
+                      </div>
+                      <div className="mt-0.5 truncate text-xs text-slate-600">
+                        {replyPreviewLabel(replyPreviewFromUi(replyTarget))}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setReplyTarget(null)}
+                      className="rounded-md p-1 text-slate-500 hover:bg-white hover:text-slate-800 cursor-pointer"
+                      aria-label="Cancel reply"
+                    >
+                      <FiX size={16} />
+                    </button>
+                  </div>
+                ) : null}
                 {selectedFile ? (
                   <div className="mb-2 flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2">
                     {filePreviewUrl ? (
@@ -353,13 +550,15 @@ const ChatbotWidget = () => {
                 ) : null}
                 <div className="flex gap-2">
                   <input
+                    ref={inputRef}
                     type="text"
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') void handleSend()
+                      if (e.key === 'Escape' && replyTarget) setReplyTarget(null)
                     }}
-                    placeholder="Type your message…"
+                    placeholder={replyTarget ? 'Write your reply…' : 'Type your message…'}
                     className="flex-1 px-3 py-2.5 border border-slate-300 rounded-lg text-sm outline-none focus:border-primary"
                   />
                   <label
@@ -416,7 +615,7 @@ const ChatbotWidget = () => {
 
       {previewImageUrl ? (
         <div
-          className="fixed inset-0 z-[80] bg-slate-900/75 flex items-center justify-center p-4 cursor-zoom-out"
+          className="fixed inset-0 z-[80] bg-slate-900/75 flex items-center justify-center p-4"
           onClick={() => setPreviewImageUrl(null)}
         >
           <img
@@ -428,25 +627,92 @@ const ChatbotWidget = () => {
         </div>
       ) : null}
 
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="fixed right-4 bottom-4 sm:right-6 sm:bottom-6 z-[70] w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-primary text-white flex items-center justify-center shadow-lg shadow-red-900/30 cursor-pointer"
-        aria-label={
-          unreadCount > 0 && !open
-            ? `Open support chat, ${unreadCount} unread ${unreadCount === 1 ? 'message' : 'messages'}`
-            : open
-              ? 'Close support chat'
-              : 'Open support chat'
-        }
-      >
-        <HiOutlineChatBubbleBottomCenterText className="w-6 h-6 sm:w-7 sm:h-7" />
-        {unreadCount > 0 && !open ? (
-          <span className="absolute -top-0.5 -right-0.5 min-w-[1.125rem] h-[1.125rem] px-0.5 flex items-center justify-center rounded-full bg-white text-primary text-[10px] font-bold leading-none tabular-nums pointer-events-none border-2 border-primary">
-            {unreadCount > 99 ? '99+' : unreadCount}
+      {contextMenu ? (
+        <>
+          <button
+            type="button"
+            className="fixed inset-0 z-[80] cursor-default bg-transparent"
+            aria-label="Close message menu"
+            onClick={() => setContextMenu(null)}
+          />
+          <div
+            className="fixed z-[81] min-w-[148px] overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-xl"
+            style={{ left: contextMenu.x, top: contextMenu.y }}
+            role="menu"
+          >
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setReplyTarget(contextMenu.message)
+                setContextMenu(null)
+                window.setTimeout(() => inputRef.current?.focus(), 0)
+              }}
+              className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 cursor-pointer"
+            >
+              <FiCornerUpLeft className="h-4 w-4 text-primary" aria-hidden />
+              Reply
+            </button>
+            <div className="my-1 border-t border-slate-100" role="separator" />
+            <button
+              type="button"
+              role="menuitem"
+              disabled={deletingMessageId === contextMenu.message.id}
+              onClick={() => void handleDeleteMessage(contextMenu.message, 'self')}
+              className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 cursor-pointer disabled:opacity-50"
+            >
+              <FiTrash2 className="h-4 w-4 text-slate-500" aria-hidden />
+              Delete for me
+            </button>
+            {canDeleteChatForEveryone(contextMenu.message.sender, 'user') ? (
+              <button
+                type="button"
+                role="menuitem"
+                disabled={deletingMessageId === contextMenu.message.id}
+                onClick={() => void handleDeleteMessage(contextMenu.message, 'everyone')}
+                className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 cursor-pointer disabled:opacity-50"
+              >
+                <FiTrash2 className="h-4 w-4" aria-hidden />
+                Delete for everyone
+              </button>
+            ) : null}
+          </div>
+        </>
+      ) : null}
+
+      <div className="fixed right-4 bottom-4 sm:right-6 sm:bottom-6 z-[70]">
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="group relative flex h-14 w-14 items-center justify-center rounded-full bg-primary text-white cursor-pointer shadow-[0_10px_28px_rgba(189,22,44,0.42)] ring-1 ring-white/25 transition-all duration-200 ease-out hover:scale-[1.04] hover:shadow-[0_14px_32px_rgba(189,22,44,0.48)] active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+          aria-label={
+            unreadCount > 0 && !open
+              ? `Open support chat, ${unreadCount} unread ${unreadCount === 1 ? 'message' : 'messages'}`
+              : open
+                ? 'Close support chat'
+                : 'Open support chat'
+          }
+        >
+          {unreadCount > 0 && !open ? (
+            <span
+              className="absolute inset-0 rounded-full bg-primary/25 animate-ping pointer-events-none"
+              aria-hidden
+            />
+          ) : null}
+          <span className="relative flex items-center justify-center">
+            {open ? (
+              <HiXMark className="w-7 h-7" strokeWidth={2} aria-hidden />
+            ) : (
+              <HiOutlineChatBubbleBottomCenterText className="w-7 h-7" strokeWidth={1.75} aria-hidden />
+            )}
           </span>
-        ) : null}
-      </button>
+          {unreadCount > 0 && !open ? (
+            <span className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-white px-1 text-[11px] font-semibold leading-none text-primary shadow-[0_2px_10px_rgba(15,23,42,0.18)] ring-2 ring-primary pointer-events-none tabular-nums">
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </span>
+          ) : null}
+        </button>
+      </div>
     </>
   )
 }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
-import { FiImage, FiMoreHorizontal, FiTrash2 } from 'react-icons/fi'
+import { FiCornerUpLeft, FiImage, FiMoreHorizontal, FiTrash2 } from 'react-icons/fi'
 import { HiOutlineMagnifyingGlass, HiOutlineShieldCheck } from 'react-icons/hi2'
 import { LuBan, LuBell, LuBellOff, LuMailOpen, LuPin, LuPinOff } from 'react-icons/lu'
 import { toast } from 'react-toastify'
@@ -10,6 +10,8 @@ import { useChatWebSocket } from '../hooks/useChatWebSocket'
 import { toAbsoluteApiUrl } from '../lib/api'
 import {
   avatarColorForUserId,
+  canDeleteChatForEveryone,
+  deleteAdminChatMessage,
   fetchAdminChatConversations,
   fetchAdminChatMessages,
   formatChatTime,
@@ -18,6 +20,8 @@ import {
   sendAdminChatMessageWithFile,
   type ApiChatAttachmentType,
   type ApiChatMessage,
+  type ApiChatMessageDeleted,
+  type ChatDeleteScope,
 } from '../lib/chat'
 import GMWLogo from '../assets/GMWlogo.png'
 import ChatMessageAttachment from '../UserComponent/ChatMessageAttachment'
@@ -218,6 +222,8 @@ const AdminMessage = () => {
   const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null)
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null)
   const [replyTarget, setReplyTarget] = useState<ChatMessage | null>(null)
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; message: ChatMessage } | null>(null)
+  const [deletingMessageId, setDeletingMessageId] = useState<string | null>(null)
   const messageListRef = useRef<HTMLDivElement | null>(null)
   const pendingSendIdRef = useRef<string | null>(null)
   const pendingPreviewUrlRef = useRef<string | null>(null)
@@ -351,7 +357,16 @@ const AdminMessage = () => {
     [selectedUserId],
   )
 
-  useChatWebSocket(token, handleIncomingMessage)
+  const handleMessageDeleted = useCallback((deleted: ApiChatMessageDeleted) => {
+    if (deleted.scope !== 'EVERYONE') return
+    const userKey = String(deleted.userId)
+    setMessagesByUser((prev) => ({
+      ...prev,
+      [userKey]: (prev[userKey] ?? []).filter((m) => m.id !== String(deleted.messageId)),
+    }))
+  }, [])
+
+  useChatWebSocket(token, handleIncomingMessage, handleMessageDeleted)
 
   useEffect(() => {
     if (orderedUsers.length === 0) return
@@ -375,6 +390,38 @@ const AdminMessage = () => {
   useEffect(() => {
     scrollChatToBottom(messageListRef.current)
   }, [selectedUserId, selectedMessages.length, lastSelectedMessageId])
+
+  useEffect(() => {
+    if (!contextMenu) return
+    const closeMenu = () => setContextMenu(null)
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') closeMenu()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    window.addEventListener('scroll', closeMenu, true)
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+      window.removeEventListener('scroll', closeMenu, true)
+    }
+  }, [contextMenu])
+
+  const handleDeleteMessage = async (message: ChatMessage, scope: ChatDeleteScope) => {
+    if (message.pending || !token || selectedUserId === CHATBOT_USER_ID || !/^\d+$/.test(message.id)) return
+    setContextMenu(null)
+    setDeletingMessageId(message.id)
+    try {
+      await deleteAdminChatMessage(token, Number(selectedUserId), Number(message.id), scope)
+      setMessagesByUser((prev) => ({
+        ...prev,
+        [selectedUserId]: (prev[selectedUserId] ?? []).filter((m) => m.id !== message.id),
+      }))
+      if (replyTarget?.id === message.id) setReplyTarget(null)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not delete message.')
+    } finally {
+      setDeletingMessageId(null)
+    }
+  }
 
   const togglePinConversation = (userId: string) => {
     setPinnedUserIds((prev) =>
@@ -1023,8 +1070,9 @@ const AdminMessage = () => {
                   ) : null}
                   <div
                     onContextMenu={(event) => {
+                      if (message.pending || selectedUserId === CHATBOT_USER_ID) return
                       event.preventDefault()
-                      setReplyTarget(message)
+                      setContextMenu({ x: event.clientX, y: event.clientY, message })
                     }}
                     style={{
                       maxWidth: '70%',
@@ -1078,7 +1126,7 @@ const AdminMessage = () => {
                           borderRadius: '8px',
                           display: 'block',
                           marginBottom: message.text ? '8px' : '0',
-                          cursor: 'zoom-in',
+                          cursor: 'pointer',
                         }}
                       />
                     ) : null}
@@ -1289,6 +1337,115 @@ const AdminMessage = () => {
           </section>
         </div>
       </main>
+
+      {contextMenu ? (
+        <>
+          <button
+            type="button"
+            aria-label="Close message menu"
+            onClick={() => setContextMenu(null)}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              zIndex: 1200,
+              border: 'none',
+              background: 'transparent',
+              cursor: 'default',
+            }}
+          />
+          <div
+            role="menu"
+            style={{
+              position: 'fixed',
+              zIndex: 1201,
+              left: contextMenu.x,
+              top: contextMenu.y,
+              minWidth: '180px',
+              overflow: 'hidden',
+              borderRadius: '12px',
+              border: '1px solid #e2e8f0',
+              backgroundColor: '#ffffff',
+              padding: '4px 0',
+              boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
+            }}
+          >
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setReplyTarget(contextMenu.message)
+                setContextMenu(null)
+              }}
+              style={{
+                display: 'flex',
+                width: '100%',
+                alignItems: 'center',
+                gap: '10px',
+                padding: '10px 14px',
+                border: 'none',
+                background: 'transparent',
+                color: '#334155',
+                fontSize: '14px',
+                fontWeight: 500,
+                cursor: 'pointer',
+                textAlign: 'left',
+              }}
+            >
+              <FiCornerUpLeft size={16} color="#bd162c" aria-hidden />
+              Reply
+            </button>
+            <div style={{ height: 1, backgroundColor: '#f1f5f9', margin: '4px 0' }} />
+            <button
+              type="button"
+              role="menuitem"
+              disabled={deletingMessageId === contextMenu.message.id}
+              onClick={() => void handleDeleteMessage(contextMenu.message, 'self')}
+              style={{
+                display: 'flex',
+                width: '100%',
+                alignItems: 'center',
+                gap: '10px',
+                padding: '10px 14px',
+                border: 'none',
+                background: 'transparent',
+                color: '#334155',
+                fontSize: '14px',
+                fontWeight: 500,
+                cursor: 'pointer',
+                textAlign: 'left',
+              }}
+            >
+              <FiTrash2 size={16} aria-hidden />
+              Delete for me
+            </button>
+            {canDeleteChatForEveryone(contextMenu.message.sender, 'admin') ? (
+              <button
+                type="button"
+                role="menuitem"
+                disabled={deletingMessageId === contextMenu.message.id}
+                onClick={() => void handleDeleteMessage(contextMenu.message, 'everyone')}
+                style={{
+                  display: 'flex',
+                  width: '100%',
+                  alignItems: 'center',
+                  gap: '10px',
+                  padding: '10px 14px',
+                  border: 'none',
+                  background: 'transparent',
+                  color: '#dc2626',
+                  fontSize: '14px',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                }}
+              >
+                <FiTrash2 size={16} aria-hidden />
+                Delete for everyone
+              </button>
+            ) : null}
+          </div>
+        </>
+      ) : null}
 
       {previewImageUrl ? (
         <div

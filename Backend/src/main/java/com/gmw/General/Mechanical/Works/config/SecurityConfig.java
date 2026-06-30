@@ -96,6 +96,7 @@ public class SecurityConfig {
 						.requestMatchers(HttpMethod.GET, "/api/admin/nav-badges").hasRole("ADMIN")
 						.requestMatchers("/api/admin/bills", "/api/admin/bills/**").hasRole("ADMIN")
 						.requestMatchers("/api/chat/me", "/api/chat/me/**").authenticated()
+						.requestMatchers(HttpMethod.DELETE, "/api/chat/me/messages/*").authenticated()
 						.requestMatchers("/api/admin/chat", "/api/admin/chat/**").hasRole("ADMIN")
 						.requestMatchers("/ws/chat").permitAll()
 						.anyRequest().denyAll())
