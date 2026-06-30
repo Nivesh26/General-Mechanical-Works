@@ -3,6 +3,7 @@ import { FiCornerUpLeft, FiImage, FiMoreHorizontal, FiTrash2 } from 'react-icons
 import { HiOutlineMagnifyingGlass, HiOutlineShieldCheck } from 'react-icons/hi2'
 import { LuBan, LuBell, LuBellOff, LuMailOpen, LuPin, LuPinOff } from 'react-icons/lu'
 import { toast } from 'react-toastify'
+import { useLocation, useSearchParams } from 'react-router-dom'
 import AdminNavbar from '../AdminComponent/AdminNavbar'
 import { ADMIN_MAIN_MESSAGES_CLASS, ADMIN_PAGE_HEADER_SPACING, ADMIN_PAGE_TITLE } from '../AdminComponent/adminMainStyles'
 import { useAuth } from '../context/AuthContext'
@@ -16,6 +17,7 @@ import {
   fetchAdminChatMessages,
   formatChatTime,
   chatMessagePreview,
+  maxChatMessageId,
   sendAdminChatMessage,
   sendAdminChatMessageWithFile,
   type ApiChatAttachmentType,
@@ -27,6 +29,7 @@ import GMWLogo from '../assets/GMWlogo.png'
 import ChatMessageAttachment from '../UserComponent/ChatMessageAttachment'
 import { prepareChatUploadFile } from '../lib/chatImage'
 import { scrollChatToBottom } from '../lib/chatScroll'
+import { writeAdminChatSeenForUser } from '../lib/adminChatUnread'
 
 const CHATBOT_USER_ID = 'chatbot'
 
@@ -206,9 +209,18 @@ const unreadConversationListDotStyle: CSSProperties = {
 }
 
 const AdminMessage = () => {
-  const { token } = useAuth()
+  const { token, user } = useAuth()
+  const location = useLocation()
+  const [searchParams] = useSearchParams()
+  const resolveInitialUserId = () => {
+    const fromQuery = searchParams.get('user')
+    if (fromQuery && fromQuery !== CHATBOT_USER_ID) return fromQuery
+    const fromState = (location.state as { selectUserId?: string } | null)?.selectUserId
+    if (fromState && fromState !== CHATBOT_USER_ID) return fromState
+    return CHATBOT_USER_ID
+  }
   const [liveUsers, setLiveUsers] = useState<ChatUser[]>([])
-  const [selectedUserId, setSelectedUserId] = useState(CHATBOT_USER_ID)
+  const [selectedUserId, setSelectedUserId] = useState(resolveInitialUserId)
   const [removedUserIds, setRemovedUserIds] = useState<Set<string>>(new Set())
   const [pinnedUserIds, setPinnedUserIds] = useState<string[]>([])
   const [unreadByUserId, setUnreadByUserId] = useState<Record<string, boolean>>({})
@@ -287,9 +299,35 @@ const AdminMessage = () => {
   }, [loadConversations])
 
   useEffect(() => {
+    const fromQuery = searchParams.get('user')
+    const fromState = (location.state as { selectUserId?: string } | null)?.selectUserId
+    const target = fromQuery || fromState
+    if (target && target !== CHATBOT_USER_ID) {
+      setSelectedUserId(target)
+    }
+  }, [location.state, searchParams])
+
+  useEffect(() => {
+    if (selectedUserId === CHATBOT_USER_ID) return
+    setUnreadByUserId((prev) => ({ ...prev, [selectedUserId]: false }))
+  }, [selectedUserId])
+
+  useEffect(() => {
     if (selectedUserId === CHATBOT_USER_ID) return
     void loadMessagesForUser(selectedUserId)
   }, [selectedUserId, loadMessagesForUser])
+
+  useEffect(() => {
+    if (selectedUserId === CHATBOT_USER_ID || !user?.id) return
+    const messages = messagesByUser[selectedUserId] ?? []
+    const numericIds = messages
+      .filter((message) => /^\d+$/.test(message.id))
+      .map((message) => ({ id: Number(message.id) }))
+    const maxId = maxChatMessageId(numericIds)
+    if (maxId > 0) {
+      writeAdminChatSeenForUser(user.id, selectedUserId, maxId)
+    }
+  }, [messagesByUser, selectedUserId, user?.id])
 
   const handleIncomingMessage = useCallback(
     (message: ApiChatMessage) => {
@@ -353,8 +391,11 @@ const AdminMessage = () => {
       if (selectedUserId !== userKey && message.sender === 'USER') {
         setUnreadByUserId((prev) => ({ ...prev, [userKey]: true }))
       }
+      if (selectedUserId === userKey && message.sender === 'USER' && user?.id) {
+        writeAdminChatSeenForUser(user.id, userKey, message.id)
+      }
     },
-    [selectedUserId],
+    [selectedUserId, user?.id],
   )
 
   const handleMessageDeleted = useCallback((deleted: ApiChatMessageDeleted) => {
@@ -370,9 +411,10 @@ const AdminMessage = () => {
 
   useEffect(() => {
     if (orderedUsers.length === 0) return
-    if (!orderedUsers.some((user) => user.id === selectedUserId)) {
-      setSelectedUserId(orderedUsers[0].id)
-    }
+    if (orderedUsers.some((user) => user.id === selectedUserId)) return
+    // Deep link from dashboard: keep selection until conversations finish loading.
+    if (/^\d+$/.test(selectedUserId)) return
+    setSelectedUserId(orderedUsers[0].id)
   }, [orderedUsers, selectedUserId])
 
   useEffect(() => {
@@ -1130,7 +1172,11 @@ const AdminMessage = () => {
                         }}
                       />
                     ) : null}
-                    {message.text ? <div style={{ fontSize: '15px', color: '#334155' }}>{message.text}</div> : null}
+                    {message.text ? (
+                      <div style={{ fontSize: '15px', color: '#334155', whiteSpace: 'pre-line', wordBreak: 'break-word', lineHeight: 1.5 }}>
+                        {message.text}
+                      </div>
+                    ) : null}
                     <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '5px' }}>{message.time}</div>
                   </div>
                   {message.sender === 'admin' && (

@@ -22,6 +22,8 @@ import com.gmw.General.Mechanical.Works.appointment.ServiceAppointment;
 import com.gmw.General.Mechanical.Works.appointment.ServiceAppointmentRepository;
 import com.gmw.General.Mechanical.Works.appointment.ServiceAvailabilityDto;
 import com.gmw.General.Mechanical.Works.appointment.ServiceAvailabilityService;
+import com.gmw.General.Mechanical.Works.chat.ChatSender;
+import com.gmw.General.Mechanical.Works.chat.ChatService;
 import com.gmw.General.Mechanical.Works.order.OrderStatus;
 import com.gmw.General.Mechanical.Works.order.ShopOrder;
 import com.gmw.General.Mechanical.Works.order.ShopOrderRepository;
@@ -34,6 +36,7 @@ public class AdminDashboardService {
 
 	private static final int RECENT_ORDER_LIMIT = 4;
 	private static final int UPCOMING_BOOKING_LIMIT = 4;
+	private static final int INBOX_CHAT_LIMIT = 4;
 	private static final int CHART_MONTHS = 6;
 	private static final DateTimeFormatter DATE_FORMAT =
 			DateTimeFormatter.ofPattern("yyyy-MM-dd", Locale.ROOT);
@@ -43,18 +46,21 @@ public class AdminDashboardService {
 	private final UserRepository userRepository;
 	private final ServiceAvailabilityService serviceAvailabilityService;
 	private final AdminNotificationService adminNotificationService;
+	private final ChatService chatService;
 
 	public AdminDashboardService(
 			ShopOrderRepository shopOrderRepository,
 			ServiceAppointmentRepository serviceAppointmentRepository,
 			UserRepository userRepository,
 			ServiceAvailabilityService serviceAvailabilityService,
-			AdminNotificationService adminNotificationService) {
+			AdminNotificationService adminNotificationService,
+			ChatService chatService) {
 		this.shopOrderRepository = shopOrderRepository;
 		this.serviceAppointmentRepository = serviceAppointmentRepository;
 		this.userRepository = userRepository;
 		this.serviceAvailabilityService = serviceAvailabilityService;
 		this.adminNotificationService = adminNotificationService;
+		this.chatService = chatService;
 	}
 
 	@Transactional(readOnly = true)
@@ -151,6 +157,18 @@ public class AdminDashboardService {
 						.map(this::toAvailabilityDto)
 						.toList();
 
+		List<AdminDashboardDto.DashboardInboxChatDto> inboxChats = chatService.listInboxPreview(INBOX_CHAT_LIMIT).stream()
+				.map(row -> new AdminDashboardDto.DashboardInboxChatDto(
+						row.userId(),
+						row.userName(),
+						row.snippet(),
+						row.lastMessageAt().toString(),
+						row.lastMessageId(),
+						row.lastMessageSender().name(),
+						row.online(),
+						row.profilePicture()))
+				.toList();
+
 		return new AdminDashboardDto(
 				stats,
 				monthLabels,
@@ -158,6 +176,7 @@ public class AdminDashboardService {
 				monthlyUsers,
 				recentOrders,
 				upcomingBookings,
+				inboxChats,
 				serviceAvailability,
 				notificationFeed.count(),
 				notificationFeed.notifications());

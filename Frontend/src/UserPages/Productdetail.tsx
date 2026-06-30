@@ -27,6 +27,7 @@ import {
 import { mapProductImages } from '../lib/products'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
+import { useChat } from '../context/ChatContext'
 
 const formatPrice = (n: number) => `Rs. ${n.toLocaleString('en-IN')}`
 const MAX_REVIEW_IMAGES = 2
@@ -61,6 +62,7 @@ const Productdetail = () => {
   const navigate = useNavigate()
   const { token } = useAuth()
   const { refreshCart } = useCart()
+  const { submitProductEnquiry } = useChat()
 
   const [product, setProduct] = useState<ProductItem | null>(null)
   const [loading, setLoading] = useState(true)
@@ -337,6 +339,19 @@ const Productdetail = () => {
     }
   }
 
+  const handleEnquireNow = () => {
+    if (!product) return
+    submitProductEnquiry({
+      productId: product.id,
+      name: product.name,
+      sku: product.sku,
+      category: product.category,
+      price: Number(product.price),
+      selectedSize,
+      imageUrl: mainImage,
+    })
+  }
+
   const reviewImageLightboxPortal =
     reviewImageLightbox &&
     createPortal(
@@ -527,12 +542,13 @@ const Productdetail = () => {
                           ? 'Adding…'
                           : 'Add to cart'}
                     </button>
-                    <Link
-                      to="/"
-                      className="flex-1 sm:flex-none px-8 py-3.5 rounded-lg border border-gray-300 text-gray-700 text-sm font-semibold text-center hover:bg-gray-50 transition-colors"
+                    <button
+                      type="button"
+                      onClick={handleEnquireNow}
+                      className="flex-1 sm:flex-none px-8 py-3.5 rounded-lg border border-gray-300 text-gray-700 text-sm font-semibold text-center hover:bg-gray-50 transition-colors cursor-pointer"
                     >
                       Enquire now
-                    </Link>
+                    </button>
                   </div>
                 </div>
               </div>

@@ -3,6 +3,7 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { useAuth } from '../context/AuthContext'
 import { useAdminNavBadges } from '../hooks/useAdminNavBadges'
+import { useAdminChatUnread } from '../hooks/useAdminChatUnread'
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
 import type { AdminNavBadgeKey } from '../lib/adminNavBadges'
 import {
@@ -43,6 +44,7 @@ const AdminNavbar = () => {
   const location = useLocation()
   const { logout } = useAuth()
   const { unreadOrders, unreadAppointments, unreadReviews, markSeen, badges } = useAdminNavBadges()
+  const { unreadCount: unreadMessages } = useAdminChatUnread()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const navScrollRef = useRef<HTMLElement | null>(null)
   const navScrollStorageKey = 'admin-navbar-scroll-top'
@@ -66,7 +68,8 @@ const AdminNavbar = () => {
     { label: 'Settings', to: '/adminsettings', icon: FiSettings },
   ]
 
-  const badgeCountFor = (key?: AdminNavBadgeKey) => {
+  const badgeCountFor = (key?: AdminNavBadgeKey, to?: string) => {
+    if (to === '/adminmessages') return unreadMessages
     if (key === 'orders') return unreadOrders
     if (key === 'appointments') return unreadAppointments
     if (key === 'reviews') return unreadReviews
@@ -139,7 +142,7 @@ const AdminNavbar = () => {
         aria-label="Admin"
       >
         {navItems.map((item) => {
-          const badgeCount = badgeCountFor(item.badgeKey)
+          const badgeCount = badgeCountFor(item.badgeKey, item.to)
           return (
             <NavLink
               key={item.to}

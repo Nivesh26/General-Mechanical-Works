@@ -89,6 +89,47 @@ public class ChatService {
 				.toList();
 	}
 
+	@Transactional(readOnly = true)
+	public List<ChatInboxPreviewRow> listInboxPreview(int limit) {
+		Map<Long, User> usersById = userRepository.findAllByRoleOrderByIdAsc(Role.USER).stream()
+				.collect(Collectors.toMap(User::getId, u -> u));
+		return chatMessageRepository.findConversationSummaries().stream()
+				.map(summary -> {
+					User user = usersById.get(summary.getUserId());
+					if (user == null) {
+						return null;
+					}
+					ChatMessage last = chatMessageRepository.findFirstByUserIdOrderByCreatedAtDesc(summary.getUserId());
+					if (last == null) {
+						return null;
+					}
+					Instant lastAt = summary.getLastAt() != null ? summary.getLastAt() : last.getCreatedAt();
+					return new ChatInboxPreviewRow(
+							user.getId(),
+							user.getName(),
+							messagePreview(last),
+							lastAt,
+							last.getId(),
+							last.getSender(),
+							chatWebSocketSessions.isUserOnline(user.getId()),
+							user.getProfilePicture());
+				})
+				.filter(java.util.Objects::nonNull)
+				.limit(Math.max(1, limit))
+				.toList();
+	}
+
+	public record ChatInboxPreviewRow(
+			Long userId,
+			String userName,
+			String snippet,
+			Instant lastMessageAt,
+			Long lastMessageId,
+			ChatSender lastMessageSender,
+			boolean online,
+			String profilePicture) {
+	}
+
 	@Transactional
 	public ChatMessageDto sendFromUser(String email, SendChatMessageRequest request) {
 		User user = requireUser(email);

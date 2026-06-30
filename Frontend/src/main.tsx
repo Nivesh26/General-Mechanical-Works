@@ -6,6 +6,7 @@ import './index.css'
 import App from './App.tsx'
 import { AuthProvider } from './context/AuthContext'
 import { CartProvider } from './context/CartContext'
+import { ChatProvider } from './context/ChatContext'
 import { GoogleAuthProvider } from './providers/GoogleAuthProvider'
 
 createRoot(document.getElementById('root')!).render(
@@ -13,7 +14,9 @@ createRoot(document.getElementById('root')!).render(
     <GoogleAuthProvider>
       <AuthProvider>
         <CartProvider>
-          <App />
+          <ChatProvider>
+            <App />
+          </ChatProvider>
         </CartProvider>
       <ToastContainer
         position="top-right"

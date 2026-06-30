@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import AdminNavbar from '../AdminComponent/AdminNavbar'
 import AdminNotificationBell from '../AdminComponent/AdminNotificationBell'
-import AdminNotificationsCard from '../AdminComponent/AdminNotificationsCard'
 import Dashboardtop from '../AdminComponent/Dashboardtop'
 import RecentOrder from '../AdminComponent/RecentOrder'
 import Upcomingbooking from '../AdminComponent/Upcomingbooking'
@@ -90,10 +89,6 @@ const AdminDashboard = () => {
               <Dashboardtop stats={dashboard?.stats} />
 
               <section style={{ marginBottom: '1rem' }}>
-                <AdminNotificationsCard count={notificationCount} notifications={notifications} />
-              </section>
-
-              <section style={{ marginBottom: '1rem' }}>
                 <SalesGraph
                   monthlySales={dashboard?.monthlySales}
                   monthlyUsers={dashboard?.monthlyUsers}
@@ -115,7 +110,7 @@ const AdminDashboard = () => {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
-                  <ChatInbox />
+                  <ChatInbox inboxChats={dashboard?.inboxChats ?? []} />
                   <ServiceAvailabilityCard availability={dashboard?.serviceAvailability ?? []} />
                 </div>
               </section>

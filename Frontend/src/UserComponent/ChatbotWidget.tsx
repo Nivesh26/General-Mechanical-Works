@@ -4,6 +4,7 @@ import { HiOutlineChatBubbleBottomCenterText, HiXMark } from 'react-icons/hi2'
 import { Link, useLocation } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { useAuth } from '../context/AuthContext'
+import { useChat } from '../context/ChatContext'
 import { useChatWebSocket } from '../hooks/useChatWebSocket'
 import {
   countUnreadAdminChatMessages,
@@ -23,6 +24,11 @@ import {
 } from '../lib/chat'
 import { prepareChatUploadFile } from '../lib/chatImage'
 import { scrollChatToBottom } from '../lib/chatScroll'
+import {
+  buildProductEnquiryMessage,
+  fetchProductImageAsFile,
+  type ProductEnquiryRequest,
+} from '../lib/productEnquiry'
 import GMWLogo from '../assets/GMWlogo.png'
 import ChatMessageAttachment from './ChatMessageAttachment'
 
@@ -127,6 +133,7 @@ function mapApiMessage(message: ApiChatMessage): UiMessage {
 
 const ChatbotWidget = () => {
   const { token, user } = useAuth()
+  const { registerProductEnquiryHandler } = useChat()
   const location = useLocation()
   const isLoggedIn = Boolean(token && user)
   const [open, setOpen] = useState(false)
@@ -145,6 +152,8 @@ const ChatbotWidget = () => {
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const pendingSendIdRef = useRef<string | null>(null)
   const pendingPreviewUrlRef = useRef<string | null>(null)
+  const pendingEnquiryRef = useRef<ProductEnquiryRequest | null>(null)
+  const sendingEnquiryRef = useRef(false)
   const openRef = useRef(open)
   const notifiedAdminMessageIdsRef = useRef<Set<number>>(new Set())
   openRef.current = open
@@ -403,6 +412,87 @@ const ChatbotWidget = () => {
     }
   }
 
+  const sendProductEnquiry = useCallback(
+    async (request: ProductEnquiryRequest, authToken: string) => {
+      if (sendingEnquiryRef.current) return
+      sendingEnquiryRef.current = true
+
+      const textToSend = buildProductEnquiryMessage(request)
+      let fileToSend: File | null = null
+      if (request.imageUrl) {
+        fileToSend = await fetchProductImageAsFile(request.imageUrl, request.name)
+      }
+
+      const tempId = `pending-enquiry-${Date.now()}`
+      const localPreviewUrl =
+        fileToSend && fileToSend.type.startsWith('image/')
+          ? URL.createObjectURL(fileToSend)
+          : request.imageUrl
+
+      pendingSendIdRef.current = tempId
+      pendingPreviewUrlRef.current =
+        localPreviewUrl && localPreviewUrl.startsWith('blob:') ? localPreviewUrl : null
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: tempId,
+          sender: 'user',
+          text: textToSend,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          attachmentUrl: localPreviewUrl,
+          attachmentType: fileToSend ? 'IMAGE' : null,
+          attachmentName: fileToSend?.name ?? null,
+          pending: true,
+        },
+      ])
+
+      try {
+        const uploadFile = fileToSend ? await prepareChatUploadFile(fileToSend) : null
+        const sent = uploadFile
+          ? await sendMyChatMessageWithFile(authToken, uploadFile, textToSend, undefined)
+          : await sendMyChatMessage(authToken, textToSend, null)
+        finalizeSentMessage(sent)
+        toast.success('Your product enquiry has been sent.')
+      } catch (err) {
+        setMessages((prev) => prev.filter((m) => m.id !== tempId))
+        pendingSendIdRef.current = null
+        if (pendingPreviewUrlRef.current) {
+          URL.revokeObjectURL(pendingPreviewUrlRef.current)
+          pendingPreviewUrlRef.current = null
+        }
+        toast.error(err instanceof Error ? err.message : 'Could not send your enquiry.')
+      } finally {
+        sendingEnquiryRef.current = false
+      }
+    },
+    [finalizeSentMessage],
+  )
+
+  const handleProductEnquiryRequest = useCallback(
+    (request: ProductEnquiryRequest) => {
+      setOpen(true)
+      if (!token) {
+        pendingEnquiryRef.current = request
+        toast.info('Please log in to send your product enquiry.')
+        return
+      }
+      void sendProductEnquiry(request, token)
+    },
+    [token, sendProductEnquiry],
+  )
+
+  useEffect(() => {
+    return registerProductEnquiryHandler(handleProductEnquiryRequest)
+  }, [registerProductEnquiryHandler, handleProductEnquiryRequest])
+
+  useEffect(() => {
+    if (!token || !pendingEnquiryRef.current) return
+    const request = pendingEnquiryRef.current
+    pendingEnquiryRef.current = null
+    void sendProductEnquiry(request, token)
+  }, [token, sendProductEnquiry])
+
   return (
     <>
       {open ? (
@@ -495,7 +585,9 @@ const ChatbotWidget = () => {
                               maxImageWidth={200}
                             />
                           ) : null}
-                          {message.text ? <div>{message.text}</div> : null}
+                          {message.text ? (
+                            <div className="whitespace-pre-line break-words leading-relaxed">{message.text}</div>
+                          ) : null}
                           <div
                             className={`text-[10px] mt-1 ${isUser ? 'text-red-100' : 'text-slate-400'}`}
                           >
@@ -700,11 +792,7 @@ const ChatbotWidget = () => {
             />
           ) : null}
           <span className="relative flex items-center justify-center">
-            {open ? (
-              <HiXMark className="w-7 h-7" strokeWidth={2} aria-hidden />
-            ) : (
-              <HiOutlineChatBubbleBottomCenterText className="w-7 h-7" strokeWidth={1.75} aria-hidden />
-            )}
+            <HiOutlineChatBubbleBottomCenterText className="w-7 h-7" strokeWidth={1.75} aria-hidden />
           </span>
           {unreadCount > 0 && !open ? (
             <span className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-white px-1 text-[11px] font-semibold leading-none text-primary shadow-[0_2px_10px_rgba(15,23,42,0.18)] ring-2 ring-primary pointer-events-none tabular-nums">

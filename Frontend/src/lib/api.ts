@@ -1121,6 +1121,17 @@ export type AdminDashboardUpcomingBooking = {
   status: string
 }
 
+export type AdminDashboardInboxChat = {
+  userId: number
+  userName: string
+  snippet: string
+  lastMessageAt: string
+  lastMessageId: number
+  lastMessageSender: 'USER' | 'ADMIN'
+  online: boolean
+  profilePicture: string | null
+}
+
 export type AdminDashboardAvailability = {
   date: string
   day: string
@@ -1148,6 +1159,7 @@ export type AdminDashboardData = {
   monthlyUsers: number[]
   recentOrders: AdminDashboardRecentOrder[]
   upcomingBookings: AdminDashboardUpcomingBooking[]
+  inboxChats: AdminDashboardInboxChat[]
   serviceAvailability: AdminDashboardAvailability[]
   notificationCount: number
   notifications: AdminNotificationItem[]

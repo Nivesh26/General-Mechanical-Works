@@ -35,11 +35,13 @@ export default function ChatMessageAttachment({
           maxWidth: `${maxImageWidth}px`,
           maxHeight: '180px',
           width: '100%',
-          objectFit: 'cover',
+          objectFit: 'contain',
           borderRadius: '8px',
           display: 'block',
           marginBottom: '8px',
           cursor: onPreviewImage ? 'pointer' : 'default',
+          backgroundColor: '#ffffff',
+          padding: '4px',
         }}
       />
     )
