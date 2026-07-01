@@ -3,6 +3,7 @@ import {
   fetchAdminChatMessages,
   type ApiChatMessage,
 } from './chat'
+import { readAdminConversationPrefs } from './adminConversationPrefs'
 
 export const ADMIN_CHAT_UNREAD_SYNC_EVENT = 'gmw-admin-chat-unread-sync'
 
@@ -35,6 +36,22 @@ export function writeAdminChatSeenForUser(
   window.dispatchEvent(new Event(ADMIN_CHAT_UNREAD_SYNC_EVENT))
 }
 
+export function resetAdminChatSeenForUser(
+  adminId: number,
+  userId: number | string,
+  lastMessageId: number,
+): void {
+  const map = readAdminChatSeenMap(adminId)
+  const key = String(userId)
+  if (lastMessageId <= 1) {
+    delete map[key]
+  } else {
+    map[key] = lastMessageId - 1
+  }
+  localStorage.setItem(adminChatSeenStorageKey(adminId), JSON.stringify(map))
+  window.dispatchEvent(new Event(ADMIN_CHAT_UNREAD_SYNC_EVENT))
+}
+
 export function countUnreadUserChatMessages(
   messages: ApiChatMessage[],
   lastSeenMessageId: number,
@@ -57,11 +74,13 @@ export async function fetchAdminChatUnreadCount(
   adminId: number,
 ): Promise<number> {
   const seenMap = readAdminChatSeenMap(adminId)
+  const mutedIds = new Set(readAdminConversationPrefs(adminId).mutedUserIds)
   const conversations = await fetchAdminChatConversations(token)
   if (conversations.length === 0) return 0
 
   const counts = await Promise.all(
     conversations.map(async (conversation) => {
+      if (mutedIds.has(String(conversation.userId))) return 0
       const messages = await fetchAdminChatMessages(token, conversation.userId)
       const lastSeen = seenMap[String(conversation.userId)] ?? 0
       return countUnreadUserChatMessages(messages, lastSeen)

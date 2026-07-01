@@ -59,12 +59,14 @@ export function useChatWebSocket(
       if (retryTimer) clearTimeout(retryTimer)
       const ws = wsRef.current
       wsRef.current = null
-      if (ws) {
-        ws.onmessage = null
-        ws.onclose = null
-        if (ws.readyState === WebSocket.CONNECTING || ws.readyState === WebSocket.OPEN) {
-          ws.close()
-        }
+      if (!ws) return
+      ws.onmessage = null
+      ws.onclose = null
+      ws.onerror = null
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.close()
+      } else if (ws.readyState === WebSocket.CONNECTING) {
+        ws.onopen = () => ws.close()
       }
     }
   }, [token])

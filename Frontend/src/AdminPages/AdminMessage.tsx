@@ -29,7 +29,15 @@ import GMWLogo from '../assets/GMWlogo.png'
 import ChatMessageAttachment from '../UserComponent/ChatMessageAttachment'
 import { prepareChatUploadFile } from '../lib/chatImage'
 import { scrollChatToBottom } from '../lib/chatScroll'
-import { writeAdminChatSeenForUser } from '../lib/adminChatUnread'
+import {
+  fromPrefSets,
+  readAdminConversationPrefs,
+  toPrefSets,
+  unreadIdsFromMap,
+  unreadMapFromIds,
+  writeAdminConversationPrefs,
+} from '../lib/adminConversationPrefs'
+import { resetAdminChatSeenForUser, writeAdminChatSeenForUser } from '../lib/adminChatUnread'
 
 const CHATBOT_USER_ID = 'chatbot'
 
@@ -239,6 +247,7 @@ const AdminMessage = () => {
   const messageListRef = useRef<HTMLDivElement | null>(null)
   const pendingSendIdRef = useRef<string | null>(null)
   const pendingPreviewUrlRef = useRef<string | null>(null)
+  const prefsLoadedForAdminRef = useRef<number | null>(null)
   const [messagesByUser, setMessagesByUser] = useState<Record<string, ChatMessage[]>>({
     [CHATBOT_USER_ID]: CHATBOT_MESSAGES,
   })
@@ -265,8 +274,33 @@ const AdminMessage = () => {
 
   const selectedUser = orderedUsers.find((user) => user.id === selectedUserId)
   const selectedMessages = messagesByUser[selectedUserId] ?? []
+  const isSelectedUserBlocked = blockedUserIds.has(selectedUserId)
   const lastSelectedMessageId = selectedMessages.at(-1)?.id
   const filteredUsers = orderedUsers.filter((user) => user.name.toLowerCase().includes(userSearch.toLowerCase()))
+
+  const saveConversationPrefs = useCallback(
+    (overrides?: {
+      pinnedUserIds?: string[]
+      mutedUserIds?: Set<string>
+      blockedUserIds?: Set<string>
+      removedUserIds?: Set<string>
+      unreadByUserId?: Record<string, boolean>
+    }) => {
+      if (!user?.id) return
+      const unreadMap = overrides?.unreadByUserId ?? unreadByUserId
+      writeAdminConversationPrefs(
+        user.id,
+        fromPrefSets(
+          overrides?.pinnedUserIds ?? pinnedUserIds,
+          overrides?.mutedUserIds ?? mutedUserIds,
+          overrides?.blockedUserIds ?? blockedUserIds,
+          overrides?.removedUserIds ?? removedUserIds,
+          unreadIdsFromMap(unreadMap),
+        ),
+      )
+    },
+    [user?.id, pinnedUserIds, mutedUserIds, blockedUserIds, removedUserIds, unreadByUserId],
+  )
 
   const loadConversations = useCallback(async () => {
     if (!token) return
@@ -299,6 +333,22 @@ const AdminMessage = () => {
   }, [loadConversations])
 
   useEffect(() => {
+    if (!user?.id) {
+      prefsLoadedForAdminRef.current = null
+      return
+    }
+    if (prefsLoadedForAdminRef.current === user.id) return
+    const prefs = readAdminConversationPrefs(user.id)
+    const loaded = toPrefSets(prefs)
+    setPinnedUserIds(loaded.pinnedUserIds)
+    setMutedUserIds(loaded.mutedUserIds)
+    setBlockedUserIds(loaded.blockedUserIds)
+    setRemovedUserIds(loaded.removedUserIds)
+    setUnreadByUserId(unreadMapFromIds(loaded.unreadUserIds))
+    prefsLoadedForAdminRef.current = user.id
+  }, [user?.id])
+
+  useEffect(() => {
     const fromQuery = searchParams.get('user')
     const fromState = (location.state as { selectUserId?: string } | null)?.selectUserId
     const target = fromQuery || fromState
@@ -309,8 +359,14 @@ const AdminMessage = () => {
 
   useEffect(() => {
     if (selectedUserId === CHATBOT_USER_ID) return
-    setUnreadByUserId((prev) => ({ ...prev, [selectedUserId]: false }))
-  }, [selectedUserId])
+    setUnreadByUserId((prev) => {
+      if (!prev[selectedUserId]) return prev
+      const next = { ...prev }
+      delete next[selectedUserId]
+      saveConversationPrefs({ unreadByUserId: next })
+      return next
+    })
+  }, [selectedUserId, saveConversationPrefs])
 
   useEffect(() => {
     if (selectedUserId === CHATBOT_USER_ID) return
@@ -388,14 +444,18 @@ const AdminMessage = () => {
         }
         return next
       })
-      if (selectedUserId !== userKey && message.sender === 'USER') {
-        setUnreadByUserId((prev) => ({ ...prev, [userKey]: true }))
+      if (selectedUserId !== userKey && message.sender === 'USER' && !mutedUserIds.has(userKey)) {
+        setUnreadByUserId((prev) => {
+          const next = { ...prev, [userKey]: true }
+          saveConversationPrefs({ unreadByUserId: next })
+          return next
+        })
       }
       if (selectedUserId === userKey && message.sender === 'USER' && user?.id) {
         writeAdminChatSeenForUser(user.id, userKey, message.id)
       }
     },
-    [selectedUserId, user?.id],
+    [selectedUserId, user?.id, mutedUserIds, saveConversationPrefs],
   )
 
   const handleMessageDeleted = useCallback((deleted: ApiChatMessageDeleted) => {
@@ -466,62 +526,85 @@ const AdminMessage = () => {
   }
 
   const togglePinConversation = (userId: string) => {
-    setPinnedUserIds((prev) =>
-      prev.includes(userId) ? prev.filter((id) => id !== userId) : [userId, ...prev.filter((id) => id !== userId)]
-    )
+    const nextPinned = pinnedUserIds.includes(userId)
+      ? pinnedUserIds.filter((id) => id !== userId)
+      : [userId, ...pinnedUserIds.filter((id) => id !== userId)]
+    setPinnedUserIds(nextPinned)
+    saveConversationPrefs({ pinnedUserIds: nextPinned })
     setConversationMenuUserId(null)
   }
 
   const deleteConversation = (userId: string) => {
     if (userId === CHATBOT_USER_ID) return
-    setRemovedUserIds((prev) => new Set(prev).add(userId))
+    const nextRemoved = new Set(removedUserIds).add(userId)
+    const nextPinned = pinnedUserIds.filter((id) => id !== userId)
+    const nextUnread = { ...unreadByUserId }
+    delete nextUnread[userId]
+    const nextBlocked = new Set(blockedUserIds)
+    nextBlocked.delete(userId)
+    const nextMuted = new Set(mutedUserIds)
+    nextMuted.delete(userId)
+    setRemovedUserIds(nextRemoved)
     setConversationMenuUserId(null)
-    setPinnedUserIds((prev) => prev.filter((id) => id !== userId))
-    setUnreadByUserId((prev) => {
-      const next = { ...prev }
-      delete next[userId]
-      return next
+    setPinnedUserIds(nextPinned)
+    setUnreadByUserId(nextUnread)
+    setBlockedUserIds(nextBlocked)
+    setMutedUserIds(nextMuted)
+    saveConversationPrefs({
+      removedUserIds: nextRemoved,
+      pinnedUserIds: nextPinned,
+      unreadByUserId: nextUnread,
+      blockedUserIds: nextBlocked,
+      mutedUserIds: nextMuted,
     })
-    setBlockedUserIds((prev) => {
-      const next = new Set(prev)
-      next.delete(userId)
-      return next
-    })
-    setMutedUserIds((prev) => {
-      const next = new Set(prev)
-      next.delete(userId)
-      return next
-    })
+    if (selectedUserId === userId) {
+      setSelectedUserId(CHATBOT_USER_ID)
+    }
   }
 
   const markConversationUnread = (userId: string) => {
-    setUnreadByUserId((prev) => ({ ...prev, [userId]: true }))
+    const nextUnread = { ...unreadByUserId, [userId]: true }
+    setUnreadByUserId(nextUnread)
+    saveConversationPrefs({ unreadByUserId: nextUnread })
+    if (user?.id) {
+      const messages = messagesByUser[userId] ?? []
+      const numericIds = messages
+        .filter((message) => /^\d+$/.test(message.id))
+        .map((message) => ({ id: Number(message.id) }))
+      const maxId = maxChatMessageId(numericIds)
+      if (maxId > 0) {
+        resetAdminChatSeenForUser(user.id, userId, maxId)
+      }
+    }
     setConversationMenuUserId(null)
   }
 
   const toggleBlockConversation = (userId: string) => {
-    setBlockedUserIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(userId)) next.delete(userId)
-      else next.add(userId)
-      return next
-    })
+    const nextBlocked = new Set(blockedUserIds)
+    if (nextBlocked.has(userId)) nextBlocked.delete(userId)
+    else nextBlocked.add(userId)
+    setBlockedUserIds(nextBlocked)
+    saveConversationPrefs({ blockedUserIds: nextBlocked })
     setConversationMenuUserId(null)
   }
 
   const toggleMuteConversation = (userId: string) => {
-    setMutedUserIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(userId)) next.delete(userId)
-      else next.add(userId)
-      return next
-    })
+    const nextMuted = new Set(mutedUserIds)
+    if (nextMuted.has(userId)) nextMuted.delete(userId)
+    else nextMuted.add(userId)
+    setMutedUserIds(nextMuted)
+    saveConversationPrefs({ mutedUserIds: nextMuted })
     setConversationMenuUserId(null)
   }
 
   const handleSendMessage = async () => {
     const text = messageInput.trim()
     if (!text && !selectedFile) return
+
+    if (isSelectedUserBlocked && selectedUserId !== CHATBOT_USER_ID) {
+      toast.info('Unblock this user before sending messages.')
+      return
+    }
 
     if (selectedUserId === CHATBOT_USER_ID) {
       const newMessage: ChatMessage = {
@@ -747,17 +830,12 @@ const AdminMessage = () => {
                 const isPinned = pinnedUserIds.includes(user.id)
                 const isBlocked = blockedUserIds.has(user.id)
                 const isMuted = mutedUserIds.has(user.id)
-                const hasUnread = Boolean(unreadByUserId[user.id])
+                const hasUnread = Boolean(unreadByUserId[user.id]) && !isMuted
                 const menuOpen = conversationMenuUserId === user.id
-                const showRightActionsColumn =
-                  isMuted ||
-                  hasUnread ||
-                  hoveredConversationUserId === user.id ||
-                  conversationMenuUserId === user.id
-                const showMuteIconInActionsSlot =
-                  isMuted && !menuOpen && hoveredConversationUserId !== user.id
+                const isHovered = hoveredConversationUserId === user.id
+                const showMuteIconInActionsSlot = isMuted && !menuOpen && !isHovered
                 const showThreeDotButton =
-                  isMuted ? !showMuteIconInActionsSlot : menuOpen || hoveredConversationUserId === user.id
+                  !user.isAiAssistant && !showMuteIconInActionsSlot && (isHovered || menuOpen)
 
                 return (
                   <div
@@ -780,7 +858,13 @@ const AdminMessage = () => {
                       type="button"
                       onClick={() => {
                         setSelectedUserId(user.id)
-                        setUnreadByUserId((prev) => ({ ...prev, [user.id]: false }))
+                        setUnreadByUserId((prev) => {
+                          if (!prev[user.id]) return prev
+                          const next = { ...prev }
+                          delete next[user.id]
+                          saveConversationPrefs({ unreadByUserId: next })
+                          return next
+                        })
                       }}
                       style={{
                         flex: 1,
@@ -869,9 +953,6 @@ const AdminMessage = () => {
                         justifyContent: 'flex-end',
                         gap: '8px',
                         position: 'relative',
-                        opacity: showRightActionsColumn ? 1 : 0,
-                        pointerEvents: showRightActionsColumn ? 'auto' : 'none',
-                        transition: 'opacity 120ms ease',
                       }}
                     >
                       <div
@@ -883,9 +964,15 @@ const AdminMessage = () => {
                         }}
                       >
                         {showMuteIconInActionsSlot ? (
-                          <span
-                            title="Muted — hover the row for options"
-                            aria-label="Muted. Hover the conversation row for options."
+                          <button
+                            type="button"
+                            aria-label="Muted conversation options"
+                            aria-expanded={menuOpen}
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              setConversationMenuUserId((current) => (current === user.id ? null : user.id))
+                            }}
+                            title="Muted — open options"
                             style={{
                               display: 'inline-flex',
                               alignItems: 'center',
@@ -894,10 +981,16 @@ const AdminMessage = () => {
                               flexShrink: 0,
                               minWidth: '30px',
                               minHeight: '30px',
+                              border: 'none',
+                              background: 'transparent',
+                              cursor: 'pointer',
+                              opacity: showMuteIconInActionsSlot ? 1 : 0,
+                              pointerEvents: showMuteIconInActionsSlot ? 'auto' : 'none',
+                              transition: 'opacity 120ms ease',
                             }}
                           >
                             <LuBellOff size={18} strokeWidth={2.25} aria-hidden />
-                          </span>
+                          </button>
                         ) : (
                           <button
                             type="button"
@@ -1209,6 +1302,22 @@ const AdminMessage = () => {
                 backgroundColor: '#ffffff',
               }}
             >
+              {isSelectedUserBlocked && selectedUserId !== CHATBOT_USER_ID ? (
+                <div
+                  style={{
+                    marginBottom: '8px',
+                    padding: '10px 12px',
+                    borderRadius: '8px',
+                    border: '1px solid #fecaca',
+                    backgroundColor: '#fef2f2',
+                    color: '#991b1b',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                  }}
+                >
+                  This user is blocked. Unblock them from the conversation menu to send messages.
+                </div>
+              ) : null}
               {replyTarget ? (
                 <div
                   style={{
@@ -1305,7 +1414,7 @@ const AdminMessage = () => {
                 </div>
               ) : null}
 
-              <div style={{ display: 'flex', gap: '8px' }}>
+              <div style={{ display: 'flex', gap: '8px', opacity: isSelectedUserBlocked ? 0.55 : 1 }}>
                 <input
                   type="text"
                   value={messageInput}
@@ -1313,7 +1422,10 @@ const AdminMessage = () => {
                   onKeyDown={(event) => {
                     if (event.key === 'Enter') handleSendMessage()
                   }}
-                  placeholder="Type your message..."
+                  placeholder={
+                    isSelectedUserBlocked ? 'Unblock user to send messages…' : 'Type your message...'
+                  }
+                  disabled={isSelectedUserBlocked}
                   style={{
                     flex: 1,
                     padding: '12px 14px',
@@ -1336,8 +1448,9 @@ const AdminMessage = () => {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    cursor: 'pointer',
+                    cursor: isSelectedUserBlocked ? 'not-allowed' : 'pointer',
                     flexShrink: 0,
+                    opacity: isSelectedUserBlocked ? 0.6 : 1,
                   }}
                 >
                   <FiImage size={18} />
@@ -1345,6 +1458,7 @@ const AdminMessage = () => {
                     type="file"
                     accept="image/*,.pdf,application/pdf"
                     style={{ display: 'none' }}
+                    disabled={isSelectedUserBlocked}
                     onChange={(event) => {
                       const file = event.target.files?.[0]
                       if (!file) return
@@ -1365,6 +1479,7 @@ const AdminMessage = () => {
                 <button
                   type="button"
                   onClick={handleSendMessage}
+                  disabled={isSelectedUserBlocked}
                   style={{
                     padding: '12px 16px',
                     borderRadius: '8px',
@@ -1373,7 +1488,8 @@ const AdminMessage = () => {
                     color: '#ffffff',
                     fontSize: '15px',
                     fontWeight: 600,
-                    cursor: 'pointer',
+                    cursor: isSelectedUserBlocked ? 'not-allowed' : 'pointer',
+                    opacity: isSelectedUserBlocked ? 0.6 : 1,
                   }}
                 >
                   Send
