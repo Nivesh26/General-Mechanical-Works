@@ -59,6 +59,8 @@ public class ChatAiAdminContext {
 		long pendingOrders = orders.stream().filter(order -> order.getStatus() == OrderStatus.PENDING).count();
 		long confirmedOrders = orders.stream().filter(order -> order.getStatus() == OrderStatus.CONFIRMED).count();
 		long shippedOrders = orders.stream().filter(order -> order.getStatus() == OrderStatus.SHIPPED).count();
+		long deliveredOrders = orders.stream().filter(order -> order.getStatus() == OrderStatus.DELIVERED).count();
+		long cancelledOrders = orders.stream().filter(order -> order.getStatus() == OrderStatus.CANCELLED).count();
 
 		long pendingBookings = appointments.stream()
 				.filter(appointment -> appointment.getStatus() == AppointmentStatus.PENDING)
@@ -89,6 +91,10 @@ public class ChatAiAdminContext {
 				.append(confirmedOrders)
 				.append(", Shipped: ")
 				.append(shippedOrders)
+				.append(", Delivered: ")
+				.append(deliveredOrders)
+				.append(", Cancelled: ")
+				.append(cancelledOrders)
 				.append('\n');
 		section.append("- Service bookings — Pending: ")
 				.append(pendingBookings)
@@ -201,6 +207,57 @@ public class ChatAiAdminContext {
 				.append(order.getPaymentMethod())
 				.append('\n'));
 
+		reply.append("\nOpen Admin → Orders to update status.");
+		return reply.toString();
+	}
+
+	@Transactional(readOnly = true)
+	public String buildAllOrdersDeliveredReply() {
+		List<ShopOrder> orders = shopOrderRepository.findAllWithLinesOrderByPlacedAtDesc();
+		List<ShopOrder> activeOrders = orders.stream()
+				.filter(order -> order.getStatus() != OrderStatus.CANCELLED)
+				.toList();
+
+		if (activeOrders.isEmpty()) {
+			return "There are no active shop orders yet (excluding cancelled).";
+		}
+
+		long deliveredCount = activeOrders.stream()
+				.filter(order -> order.getStatus() == OrderStatus.DELIVERED)
+				.count();
+		long totalActive = activeOrders.size();
+
+		if (deliveredCount == totalActive) {
+			return "Yes — all " + totalActive + " active shop order"
+					+ (totalActive == 1 ? " is" : "s are")
+					+ " delivered.";
+		}
+
+		List<ShopOrder> notDelivered = activeOrders.stream()
+				.filter(order -> order.getStatus() != OrderStatus.DELIVERED)
+				.toList();
+
+		StringBuilder reply = new StringBuilder();
+		reply.append("No — ")
+				.append(notDelivered.size())
+				.append(" of ")
+				.append(totalActive)
+				.append(" active orders are not delivered yet")
+				.append(" (")
+				.append(deliveredCount)
+				.append(" delivered).\n\n");
+		reply.append("Orders still in progress:\n");
+		notDelivered.stream().limit(10).forEach(order -> reply.append("• #")
+				.append(order.getOrderNumber())
+				.append(" — ")
+				.append(order.getCustomerName())
+				.append(" — ")
+				.append(formatStatus(order.getStatus()))
+				.append('\n'));
+
+		if (notDelivered.size() > 10) {
+			reply.append("… and ").append(notDelivered.size() - 10).append(" more.\n");
+		}
 		reply.append("\nOpen Admin → Orders to update status.");
 		return reply.toString();
 	}

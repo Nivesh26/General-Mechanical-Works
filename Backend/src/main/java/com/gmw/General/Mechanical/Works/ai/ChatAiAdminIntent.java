@@ -29,18 +29,36 @@ public final class ChatAiAdminIntent {
 				"summarize today", "summary today", "schedule today", "today schedule");
 	}
 
+	static boolean isAllOrdersDeliveredQuestion(String text) {
+		if (!StringUtils.hasText(text)) {
+			return false;
+		}
+		String normalized = normalize(text);
+		if (!normalized.contains("order")) {
+			return false;
+		}
+		return containsAny(normalized,
+				"all order", "all orders", "every order", "orders delivered", "order delivered",
+				"all delivered", "are they delivered", "everything delivered", "fully delivered",
+				"still pending", "still shipping", "not delivered", "any order not");
+	}
+
 	static boolean isOrdersOverviewQuestion(String text) {
 		if (!StringUtils.hasText(text)) {
 			return false;
 		}
 		String normalized = normalize(text);
-		if (containsAny(normalized, "my order", "customer order", "track order")) {
+		if (isAllOrdersDeliveredQuestion(text)) {
+			return true;
+		}
+		if (containsAny(normalized, "track my order", "where is my order", "customer order tracking")) {
 			return false;
 		}
 		return containsAny(normalized,
 				"order summary", "summarize order", "orders summary", "pending order",
 				"pending orders", "how many order", "shop order", "recent order", "order status",
-				"order overview", "total order");
+				"order overview", "total order", "delivered", "shipped", "confirmed order",
+				"my order", "our order", "any order");
 	}
 
 	static boolean isAppointmentsOverviewQuestion(String text) {

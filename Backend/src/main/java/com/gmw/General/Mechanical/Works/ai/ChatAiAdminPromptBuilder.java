@@ -59,6 +59,11 @@ public class ChatAiAdminPromptBuilder {
 		StringBuilder prompt = new StringBuilder(SYSTEM_RULES);
 		prompt.append("\n\n").append(knowledgeBase.buildProjectOverview());
 		prompt.append("\n").append(adminContext.buildLiveShopDataSection());
+		if (ChatAiAdminIntent.isOrdersOverviewQuestion(latestAdminText)
+				|| ChatAiAdminIntent.isAllOrdersDeliveredQuestion(latestAdminText)) {
+			prompt.append("\n\nORDER DATA NOTE: Use order counts and recent orders from LIVE SHOP DATA above. ")
+					.append("Cancelled orders are excluded when answering whether all orders are delivered.");
+		}
 		if (ChatAiIntent.isProductQuestion(latestAdminText)) {
 			prompt.append("\n\n").append(shopContext.buildCatalogSection(latestAdminText));
 		}

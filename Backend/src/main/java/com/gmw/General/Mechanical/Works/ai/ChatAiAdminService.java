@@ -64,6 +64,10 @@ public class ChatAiAdminService {
 				adminAssistantChatService.sendAssistantMessage(adminId, adminContext.buildTodayBookingsReply());
 				return;
 			}
+			if (ChatAiAdminIntent.isAllOrdersDeliveredQuestion(adminText)) {
+				adminAssistantChatService.sendAssistantMessage(adminId, adminContext.buildAllOrdersDeliveredReply());
+				return;
+			}
 			if (ChatAiAdminIntent.isOrdersOverviewQuestion(adminText)) {
 				adminAssistantChatService.sendAssistantMessage(adminId, adminContext.buildOrdersSummaryReply());
 				return;
