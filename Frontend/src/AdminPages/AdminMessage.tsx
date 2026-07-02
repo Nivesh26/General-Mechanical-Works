@@ -15,11 +15,13 @@ import {
   deleteAdminChatMessage,
   fetchAdminChatConversations,
   fetchAdminChatMessages,
+  fetchAdminConversationAi,
   formatChatTime,
   chatMessagePreview,
   maxChatMessageId,
   sendAdminChatMessage,
   sendAdminChatMessageWithFile,
+  setAdminConversationAi,
   type ApiChatAttachmentType,
   type ApiChatMessage,
   type ApiChatMessageDeleted,
@@ -129,9 +131,11 @@ const CHATBOT_MESSAGES: ChatMessage[] = [
 ]
 
 function mapApiChatMessage(message: ApiChatMessage): ChatMessage {
+  const sender: MessageSender =
+    message.sender === 'ADMIN' ? 'admin' : message.sender === 'ASSISTANT' ? 'assistant' : 'user'
   return {
     id: String(message.id),
-    sender: message.sender === 'ADMIN' ? 'admin' : 'user',
+    sender,
     text: message.body || undefined,
     attachmentUrl: message.attachmentUrl,
     attachmentType: message.attachmentType,
@@ -244,6 +248,8 @@ const AdminMessage = () => {
   const [replyTarget, setReplyTarget] = useState<ChatMessage | null>(null)
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; message: ChatMessage } | null>(null)
   const [deletingMessageId, setDeletingMessageId] = useState<string | null>(null)
+  const [aiEnabledByUserId, setAiEnabledByUserId] = useState<Record<string, boolean>>({})
+  const [aiToggleLoading, setAiToggleLoading] = useState(false)
   const messageListRef = useRef<HTMLDivElement | null>(null)
   const pendingSendIdRef = useRef<string | null>(null)
   const pendingPreviewUrlRef = useRef<string | null>(null)
@@ -275,6 +281,10 @@ const AdminMessage = () => {
   const selectedUser = orderedUsers.find((user) => user.id === selectedUserId)
   const selectedMessages = messagesByUser[selectedUserId] ?? []
   const isSelectedUserBlocked = blockedUserIds.has(selectedUserId)
+  const isRealUserConversation = selectedUserId !== CHATBOT_USER_ID
+  const selectedAiEnabled = isRealUserConversation
+    ? (aiEnabledByUserId[selectedUserId] ?? true)
+    : true
   const lastSelectedMessageId = selectedMessages.at(-1)?.id
   const filteredUsers = orderedUsers.filter((user) => user.name.toLowerCase().includes(userSearch.toLowerCase()))
 
@@ -372,6 +382,37 @@ const AdminMessage = () => {
     if (selectedUserId === CHATBOT_USER_ID) return
     void loadMessagesForUser(selectedUserId)
   }, [selectedUserId, loadMessagesForUser])
+
+  useEffect(() => {
+    if (!token || selectedUserId === CHATBOT_USER_ID) return
+    let cancelled = false
+    fetchAdminConversationAi(token, Number(selectedUserId))
+      .then((settings) => {
+        if (cancelled) return
+        setAiEnabledByUserId((prev) => ({ ...prev, [selectedUserId]: settings.aiEnabled }))
+      })
+      .catch(() => {
+        /* default AI on */
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [token, selectedUserId])
+
+  const handleAiToggle = async () => {
+    if (!token || selectedUserId === CHATBOT_USER_ID) return
+    const next = !selectedAiEnabled
+    setAiToggleLoading(true)
+    try {
+      const settings = await setAdminConversationAi(token, Number(selectedUserId), next)
+      setAiEnabledByUserId((prev) => ({ ...prev, [selectedUserId]: settings.aiEnabled }))
+      toast.success(settings.aiEnabled ? 'AI replies turned on' : 'You are replying — AI is off')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not update AI setting.')
+    } finally {
+      setAiToggleLoading(false)
+    }
+  }
 
   useEffect(() => {
     if (selectedUserId === CHATBOT_USER_ID || !user?.id) return
@@ -1148,7 +1189,7 @@ const AdminMessage = () => {
                   }}
                 />
               )}
-              <div>
+              <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: '15px', fontWeight: 600, color: '#1e293b' }}>
                   {selectedUser?.name ?? 'Select a user'}
                 </div>
@@ -1157,18 +1198,55 @@ const AdminMessage = () => {
                     style={{
                       fontSize: '12px',
                       marginTop: '2px',
-                      color: selectedUser.isAiAssistant ? '#6366f1' : selectedUser.isOnline ? '#059669' : '#94a3b8',
-                      fontWeight: selectedUser.isAiAssistant || selectedUser.isOnline ? 600 : 500,
+                      color: selectedUser.isAiAssistant
+                        ? '#6366f1'
+                        : isRealUserConversation
+                          ? selectedAiEnabled
+                            ? '#6366f1'
+                            : '#059669'
+                          : selectedUser.isOnline
+                            ? '#059669'
+                            : '#94a3b8',
+                      fontWeight:
+                        selectedUser.isAiAssistant ||
+                        selectedUser.isOnline ||
+                        (isRealUserConversation && !selectedAiEnabled)
+                          ? 600
+                          : 500,
                     }}
                   >
                     {selectedUser.isAiAssistant
                       ? 'AI assistant · Ready to help'
-                      : selectedUser.isOnline
-                        ? 'Online'
-                        : `Last online on ${selectedUser.lastOnline}`}
+                      : isRealUserConversation
+                        ? selectedAiEnabled
+                          ? 'AI handling replies'
+                          : 'Human reply mode'
+                        : selectedUser.isOnline
+                          ? 'Online'
+                          : `Last online on ${selectedUser.lastOnline}`}
                   </div>
                 ) : null}
               </div>
+              {isRealUserConversation ? (
+                <button
+                  type="button"
+                  onClick={() => void handleAiToggle()}
+                  disabled={aiToggleLoading}
+                  style={{
+                    flexShrink: 0,
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    border: selectedAiEnabled ? '1px solid #c4b5fd' : '1px solid #86efac',
+                    backgroundColor: selectedAiEnabled ? '#ede9fe' : '#dcfce7',
+                    color: selectedAiEnabled ? '#5b21b6' : '#166534',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    cursor: aiToggleLoading ? 'wait' : 'pointer',
+                  }}
+                >
+                  {aiToggleLoading ? 'Saving…' : selectedAiEnabled ? 'AI ON' : 'AI OFF'}
+                </button>
+              ) : null}
             </header>
 
             <div

@@ -13,6 +13,17 @@ import org.springframework.transaction.support.TransactionTemplate;
 @EnableAsync
 public class AsyncConfig {
 
+	@Bean(name = "chatAiTaskExecutor")
+	public Executor chatAiTaskExecutor() {
+		ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+		executor.setCorePoolSize(1);
+		executor.setMaxPoolSize(2);
+		executor.setQueueCapacity(25);
+		executor.setThreadNamePrefix("chat-ai-");
+		executor.initialize();
+		return executor;
+	}
+
 	@Bean(name = "mailTaskExecutor")
 	public Executor mailTaskExecutor() {
 		ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();

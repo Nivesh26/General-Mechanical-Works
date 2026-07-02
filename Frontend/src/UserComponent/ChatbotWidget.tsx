@@ -33,7 +33,7 @@ import GMWLogo from '../assets/GMWlogo.png'
 import ChatMessageAttachment from './ChatMessageAttachment'
 
 type ChatReplyPreview = {
-  sender: 'user' | 'admin'
+  sender: 'user' | 'admin' | 'assistant'
   text?: string
   attachmentType?: ApiChatAttachmentType | null
   attachmentUrl?: string | null
@@ -41,7 +41,7 @@ type ChatReplyPreview = {
 
 type UiMessage = {
   id: string
-  sender: 'user' | 'admin'
+  sender: 'user' | 'admin' | 'assistant'
   text: string
   time: string
   attachmentUrl?: string | null
@@ -52,9 +52,15 @@ type UiMessage = {
   pending?: boolean
 }
 
+function mapApiSenderToUi(sender: ApiChatMessage['sender']): UiMessage['sender'] {
+  if (sender === 'USER') return 'user'
+  if (sender === 'ASSISTANT') return 'assistant'
+  return 'admin'
+}
+
 function replyPreviewFromApi(message: ApiChatMessage): ChatReplyPreview {
   return {
-    sender: message.sender === 'ADMIN' ? 'admin' : 'user',
+    sender: mapApiSenderToUi(message.sender),
     text: message.body || undefined,
     attachmentType: message.attachmentType,
     attachmentUrl: message.attachmentUrl,
@@ -80,8 +86,10 @@ function replyPreviewLabel(reply: ChatReplyPreview): string {
   return 'Message'
 }
 
-function replySenderLabel(sender: 'user' | 'admin'): string {
-  return sender === 'admin' ? 'General Mechanical Works' : 'You'
+function replySenderLabel(sender: 'user' | 'admin' | 'assistant'): string {
+  if (sender === 'user') return 'You'
+  if (sender === 'assistant') return 'AI Assistant'
+  return 'General Mechanical Works'
 }
 
 function mapApiMessagesToUi(messages: ApiChatMessage[]): UiMessage[] {
@@ -89,7 +97,7 @@ function mapApiMessagesToUi(messages: ApiChatMessage[]): UiMessage[] {
   return messages.map((message) => {
     const ui: UiMessage = {
       id: String(message.id),
-      sender: message.sender === 'ADMIN' ? 'admin' : 'user',
+      sender: mapApiSenderToUi(message.sender),
       text: message.body,
       time: formatChatTime(message.createdAt),
       attachmentUrl: message.attachmentUrl,
@@ -121,7 +129,7 @@ function attachReplyPreviewsToUi(messages: UiMessage[]): UiMessage[] {
 function mapApiMessage(message: ApiChatMessage): UiMessage {
   return {
     id: String(message.id),
-    sender: message.sender === 'ADMIN' ? 'admin' : 'user',
+    sender: mapApiSenderToUi(message.sender),
     text: message.body,
     time: formatChatTime(message.createdAt),
     attachmentUrl: message.attachmentUrl,
@@ -147,6 +155,7 @@ const ChatbotWidget = () => {
   const [replyTarget, setReplyTarget] = useState<UiMessage | null>(null)
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; message: UiMessage } | null>(null)
   const [deletingMessageId, setDeletingMessageId] = useState<string | null>(null)
+  const [aiTyping, setAiTyping] = useState(false)
   const listRef = useRef<HTMLDivElement | null>(null)
   const inputRef = useRef<HTMLInputElement | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
@@ -199,7 +208,20 @@ const ChatbotWidget = () => {
 
   const appendMessage = useCallback(
     (message: ApiChatMessage) => {
+      const isShopReply = message.sender === 'ADMIN' || message.sender === 'ASSISTANT'
+      if (isShopReply) {
+        setAiTyping(false)
+      }
       if (message.sender === 'ADMIN' && !openRef.current && user?.id) {
+        if (!notifiedAdminMessageIdsRef.current.has(message.id)) {
+          notifiedAdminMessageIdsRef.current.add(message.id)
+          const lastSeen = readChatLastSeenMessageId(user.id)
+          if (message.id > lastSeen) {
+            setUnreadCount((count) => count + 1)
+          }
+        }
+      }
+      if (message.sender === 'ASSISTANT' && !openRef.current && user?.id) {
         if (!notifiedAdminMessageIdsRef.current.has(message.id)) {
           notifiedAdminMessageIdsRef.current.add(message.id)
           const lastSeen = readChatLastSeenMessageId(user.id)
@@ -313,9 +335,15 @@ const ChatbotWidget = () => {
   }
 
   useEffect(() => {
+    if (!aiTyping) return
+    const timer = window.setTimeout(() => setAiTyping(false), 90_000)
+    return () => window.clearTimeout(timer)
+  }, [aiTyping])
+
+  useEffect(() => {
     if (!open || loading) return
     scrollChatToBottom(listRef.current)
-  }, [open, loading, messages])
+  }, [open, loading, messages, aiTyping])
 
   useEffect(() => {
     const list = listRef.current
@@ -393,6 +421,7 @@ const ChatbotWidget = () => {
         ? await sendMyChatMessageWithFile(token, uploadFile, textToSend || undefined, replyToId)
         : await sendMyChatMessage(token, textToSend, replyToId)
       finalizeSentMessage(sent)
+      setAiTyping(true)
     } catch (err) {
       setMessages((prev) => prev.filter((m) => m.id !== tempId))
       pendingSendIdRef.current = null
@@ -453,6 +482,7 @@ const ChatbotWidget = () => {
           ? await sendMyChatMessageWithFile(authToken, uploadFile, textToSend, undefined)
           : await sendMyChatMessage(authToken, textToSend, null)
         finalizeSentMessage(sent)
+        setAiTyping(true)
         toast.success('Your product enquiry has been sent.')
       } catch (err) {
         setMessages((prev) => prev.filter((m) => m.id !== tempId))
@@ -530,11 +560,13 @@ const ChatbotWidget = () => {
                   <p className="text-sm text-slate-500 text-center">Loading messages…</p>
                 ) : messages.length === 0 ? (
                   <p className="text-sm text-slate-500 text-center">
-                    Type a message — our team will reply here.
+                    Say hello — our AI assistant will reply here.
                   </p>
                 ) : (
-                  messages.map((message) => {
+                  <>
+                  {messages.map((message) => {
                     const isUser = message.sender === 'user'
+                    const isAssistant = message.sender === 'assistant'
                     return (
                       <div
                         key={message.id}
@@ -549,9 +581,16 @@ const ChatbotWidget = () => {
                           className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm ${
                             isUser
                               ? 'bg-primary text-white rounded-br-md'
-                              : 'bg-white border border-slate-200 text-slate-800 rounded-bl-md'
+                              : isAssistant
+                                ? 'bg-violet-50 border border-violet-200 text-slate-800 rounded-bl-md'
+                                : 'bg-white border border-slate-200 text-slate-800 rounded-bl-md'
                           } ${message.pending ? 'opacity-70' : ''}`}
                         >
+                          {!isUser ? (
+                            <div className={`text-[10px] font-semibold mb-1 ${isAssistant ? 'text-violet-600' : 'text-slate-500'}`}>
+                              {isAssistant ? 'AI Assistant' : 'Team'}
+                            </div>
+                          ) : null}
                           {message.replyTo ? (
                             <div
                               className={`mb-2 rounded-lg border-l-[3px] px-2 py-1.5 ${
@@ -596,7 +635,16 @@ const ChatbotWidget = () => {
                         </div>
                       </div>
                     )
-                  })
+                  })}
+                  {aiTyping ? (
+                    <div className="flex justify-start">
+                      <div className="max-w-[85%] rounded-2xl rounded-bl-md px-3 py-2 text-sm bg-violet-50 border border-violet-200 text-violet-700">
+                        <div className="text-[10px] font-semibold mb-1 text-violet-600">AI Assistant</div>
+                        <div className="text-xs">Typing…</div>
+                      </div>
+                    </div>
+                  ) : null}
+                  </>
                 )}
               </div>
 

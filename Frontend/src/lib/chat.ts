@@ -8,7 +8,7 @@ export type ApiChatMessageDeleted = {
   scope: 'SELF' | 'EVERYONE'
 }
 
-export type ApiChatSender = 'USER' | 'ADMIN'
+export type ApiChatSender = 'USER' | 'ADMIN' | 'ASSISTANT'
 export type ApiChatAttachmentType = 'IMAGE' | 'PDF'
 
 export type ApiChatMessage = {
@@ -21,6 +21,10 @@ export type ApiChatMessage = {
   attachmentType: ApiChatAttachmentType | null
   attachmentName: string | null
   createdAt: string
+}
+
+export type ApiChatConversationAi = {
+  aiEnabled: boolean
 }
 
 export type ApiChatConversation = {
@@ -88,7 +92,7 @@ export function countUnreadAdminChatMessages(
   messages: ApiChatMessage[],
   lastSeenMessageId: number,
 ): number {
-  return messages.filter((m) => m.sender === 'ADMIN' && m.id > lastSeenMessageId).length
+  return messages.filter((m) => (m.sender === 'ADMIN' || m.sender === 'ASSISTANT') && m.id > lastSeenMessageId).length
 }
 
 export function maxChatMessageId(messages: Pick<ApiChatMessage, 'id'>[]): number {
@@ -223,6 +227,35 @@ export async function deleteMyChatMessage(
   if (!res.ok) throw new Error(await parseErrorMessage(res))
 }
 
+export async function fetchAdminConversationAi(
+  token: string,
+  userId: number,
+): Promise<ApiChatConversationAi> {
+  const res = await fetch(`${getApiBase()}/api/admin/chat/conversations/${userId}/ai`, {
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<ApiChatConversationAi>
+}
+
+export async function setAdminConversationAi(
+  token: string,
+  userId: number,
+  aiEnabled: boolean,
+): Promise<ApiChatConversationAi> {
+  const res = await fetch(`${getApiBase()}/api/admin/chat/conversations/${userId}/ai`, {
+    method: 'PUT',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({ aiEnabled }),
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<ApiChatConversationAi>
+}
+
 export async function deleteAdminChatMessage(
   token: string,
   userId: number,
@@ -240,7 +273,7 @@ export async function deleteAdminChatMessage(
 }
 
 export function canDeleteChatForEveryone(
-  sender: ApiChatSender | 'user' | 'admin',
+  sender: ApiChatSender | 'user' | 'admin' | 'assistant',
   viewer: 'user' | 'admin',
 ): boolean {
   const isUserMessage = sender === 'USER' || sender === 'user'

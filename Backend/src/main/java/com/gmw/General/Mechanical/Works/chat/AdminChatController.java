@@ -64,6 +64,21 @@ public class AdminChatController {
 		return chatService.sendFromAdminWithFile(principal.getName(), userId, text, file, replyToId);
 	}
 
+	@GetMapping("/conversations/{userId}/ai")
+	public ChatConversationAiDto getAiSettings(
+			java.security.Principal principal,
+			@PathVariable Long userId) {
+		return chatService.getAiSettingsForAdmin(principal.getName(), userId);
+	}
+
+	@org.springframework.web.bind.annotation.PutMapping("/conversations/{userId}/ai")
+	public ChatConversationAiDto setAiSettings(
+			java.security.Principal principal,
+			@PathVariable Long userId,
+			@Valid @RequestBody SetChatConversationAiRequest request) {
+		return chatService.setAiEnabledForAdmin(principal.getName(), userId, request.aiEnabled());
+	}
+
 	@DeleteMapping("/conversations/{userId}/messages/{messageId}")
 	public void delete(
 			java.security.Principal principal,

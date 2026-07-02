@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,6 +18,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.gmw.General.Mechanical.Works.ai.ChatAiService;
 import com.gmw.General.Mechanical.Works.storage.ChatUploadedFile;
 import com.gmw.General.Mechanical.Works.storage.ImageStorageService;
 import com.gmw.General.Mechanical.Works.user.Role;
@@ -31,21 +33,27 @@ public class ChatService {
 
 	private final ChatMessageRepository chatMessageRepository;
 	private final ChatMessageHiddenRepository chatMessageHiddenRepository;
+	private final ChatConversationSettingsRepository chatConversationSettingsRepository;
 	private final UserRepository userRepository;
 	private final ChatWebSocketSessions chatWebSocketSessions;
 	private final ImageStorageService imageStorageService;
+	private final ChatAiService chatAiService;
 
 	public ChatService(
 			ChatMessageRepository chatMessageRepository,
 			ChatMessageHiddenRepository chatMessageHiddenRepository,
+			ChatConversationSettingsRepository chatConversationSettingsRepository,
 			UserRepository userRepository,
 			ChatWebSocketSessions chatWebSocketSessions,
-			ImageStorageService imageStorageService) {
+			ImageStorageService imageStorageService,
+			@Lazy ChatAiService chatAiService) {
 		this.chatMessageRepository = chatMessageRepository;
 		this.chatMessageHiddenRepository = chatMessageHiddenRepository;
+		this.chatConversationSettingsRepository = chatConversationSettingsRepository;
 		this.userRepository = userRepository;
 		this.chatWebSocketSessions = chatWebSocketSessions;
 		this.imageStorageService = imageStorageService;
+		this.chatAiService = chatAiService;
 	}
 
 	@Transactional(readOnly = true)
@@ -128,6 +136,50 @@ public class ChatService {
 			ChatSender lastMessageSender,
 			boolean online,
 			String profilePicture) {
+	}
+
+	@Transactional
+	public ChatMessageDto sendFromAssistant(Long userId, String text) {
+		if (!userRepository.existsById(userId)) {
+			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
+		}
+		return saveAndBroadcast(
+				userId,
+				ChatSender.ASSISTANT,
+				new SendChatMessageRequest(text, null, null, null, null, null));
+	}
+
+	@Transactional(readOnly = true)
+	public ChatConversationAiDto getAiSettingsForAdmin(String email, Long userId) {
+		requireAdmin(email);
+		if (!userRepository.existsById(userId)) {
+			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
+		}
+		return new ChatConversationAiDto(isAiEnabledForUser(userId));
+	}
+
+	@Transactional
+	public ChatConversationAiDto setAiEnabledForAdmin(String email, Long userId, boolean aiEnabled) {
+		requireAdmin(email);
+		if (!userRepository.existsById(userId)) {
+			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
+		}
+		ChatConversationSettings settings = chatConversationSettingsRepository.findById(userId)
+				.orElseGet(() -> {
+					ChatConversationSettings created = new ChatConversationSettings();
+					created.setUserId(userId);
+					created.setAiEnabled(true);
+					return created;
+				});
+		settings.setAiEnabled(aiEnabled);
+		chatConversationSettingsRepository.save(settings);
+		return new ChatConversationAiDto(aiEnabled);
+	}
+
+	public boolean isAiEnabledForUser(Long userId) {
+		return chatConversationSettingsRepository.findById(userId)
+				.map(ChatConversationSettings::isAiEnabled)
+				.orElse(true);
 	}
 
 	@Transactional
@@ -320,6 +372,9 @@ public class ChatService {
 		ChatMessage saved = chatMessageRepository.save(message);
 		ChatMessageDto dto = ChatMapper.toDto(saved);
 		chatWebSocketSessions.broadcastMessage(dto);
+		if (sender == ChatSender.USER) {
+			chatAiService.maybeReplyAsync(userId);
+		}
 		return dto;
 	}
 
