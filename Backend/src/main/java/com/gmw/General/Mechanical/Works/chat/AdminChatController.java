@@ -21,9 +21,23 @@ import jakarta.validation.Valid;
 public class AdminChatController {
 
 	private final ChatService chatService;
+	private final AdminAssistantChatService adminAssistantChatService;
 
-	public AdminChatController(ChatService chatService) {
+	public AdminChatController(ChatService chatService, AdminAssistantChatService adminAssistantChatService) {
 		this.chatService = chatService;
+		this.adminAssistantChatService = adminAssistantChatService;
+	}
+
+	@GetMapping("/assistant/messages")
+	public List<AdminAssistantMessageDto> assistantMessages(java.security.Principal principal) {
+		return adminAssistantChatService.listMessages(principal.getName());
+	}
+
+	@PostMapping("/assistant/messages")
+	public AdminAssistantMessageDto sendAssistantMessage(
+			java.security.Principal principal,
+			@Valid @RequestBody SendAdminAssistantMessageRequest request) {
+		return adminAssistantChatService.sendFromAdmin(principal.getName(), request.text());
 	}
 
 	@GetMapping("/conversations")

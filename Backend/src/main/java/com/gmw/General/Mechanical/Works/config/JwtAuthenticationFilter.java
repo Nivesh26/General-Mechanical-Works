@@ -11,6 +11,9 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import com.gmw.General.Mechanical.Works.user.User;
+import com.gmw.General.Mechanical.Works.user.UserRepository;
+
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -20,9 +23,11 @@ import jakarta.servlet.http.HttpServletResponse;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
 	private final JwtService jwtService;
+	private final UserRepository userRepository;
 
-	public JwtAuthenticationFilter(JwtService jwtService) {
+	public JwtAuthenticationFilter(JwtService jwtService, UserRepository userRepository) {
 		this.jwtService = jwtService;
+		this.userRepository = userRepository;
 	}
 
 	/**
@@ -58,15 +63,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
 		if (token != null && jwtService.isTokenValid(token)) {
 			String email = jwtService.extractEmail(token);
-			String role = jwtService.extractRole(token);
-			String authority = "ROLE_" + role;
-			UsernamePasswordAuthenticationToken authentication =
-					new UsernamePasswordAuthenticationToken(
-							email,
-							null,
-							List.of(new SimpleGrantedAuthority(authority)));
-			authentication.setDetails(token);
-			SecurityContextHolder.getContext().setAuthentication(authentication);
+			User user = userRepository.findByEmailIgnoreCase(email.trim().toLowerCase()).orElse(null);
+			if (user != null) {
+				String authority = "ROLE_" + user.getRole().name();
+				UsernamePasswordAuthenticationToken authentication =
+						new UsernamePasswordAuthenticationToken(
+								email,
+								null,
+								List.of(new SimpleGrantedAuthority(authority)));
+				authentication.setDetails(token);
+				SecurityContextHolder.getContext().setAuthentication(authentication);
+			}
 		}
 		filterChain.doFilter(request, response);
 	}

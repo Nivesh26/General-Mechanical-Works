@@ -9,19 +9,23 @@ import { ADMIN_MAIN_MESSAGES_CLASS, ADMIN_PAGE_HEADER_SPACING, ADMIN_PAGE_TITLE 
 import { useAuth } from '../context/AuthContext'
 import { useChatWebSocket } from '../hooks/useChatWebSocket'
 import { toAbsoluteApiUrl } from '../lib/api'
+import { linkifyChatText } from '../lib/chatLinkify'
 import {
   avatarColorForUserId,
   canDeleteChatForEveryone,
   deleteAdminChatMessage,
+  fetchAdminAssistantMessages,
   fetchAdminChatConversations,
   fetchAdminChatMessages,
   fetchAdminConversationAi,
   formatChatTime,
   chatMessagePreview,
   maxChatMessageId,
+  sendAdminAssistantMessage,
   sendAdminChatMessage,
   sendAdminChatMessageWithFile,
   setAdminConversationAi,
+  type ApiAdminAssistantMessage,
   type ApiChatAttachmentType,
   type ApiChatMessage,
   type ApiChatMessageDeleted,
@@ -102,33 +106,42 @@ const conversationMenuIconProps = { size: 16, strokeWidth: 2.1 } as const
 const CHATBOT_USER: ChatUser = {
   id: CHATBOT_USER_ID,
   name: 'Chatbot',
-  lastMessage: 'Hi! I am your AI assistant. How can I help today?',
+  lastMessage: 'Ask about bookings, orders, or appointments',
   isOnline: true,
   lastOnline: 'Always available',
   avatarColor: '#6366f1',
   isAiAssistant: true,
 }
 
-const CHATBOT_MESSAGES: ChatMessage[] = [
-  {
-    id: 'cb-m1',
-    sender: 'assistant',
-    text: 'Hi! I am your AI assistant. Ask me about bookings, parts, or shop policies.',
-    time: '9:00 AM',
-  },
-  {
-    id: 'cb-m2',
-    sender: 'admin',
-    text: 'Summarize today’s bookings.',
-    time: '9:02 AM',
-  },
-  {
-    id: 'cb-m3',
-    sender: 'assistant',
-    text: 'You have 4 open bookings and 2 completed services today.',
-    time: '9:02 AM',
-  },
-]
+function mapAdminAssistantMessage(message: ApiAdminAssistantMessage): ChatMessage {
+  return {
+    id: String(message.id),
+    sender: message.sender === 'ADMIN' ? 'admin' : 'assistant',
+    text: message.body || undefined,
+    time: formatChatTime(message.createdAt),
+  }
+}
+
+function mergeAdminAssistantMessage(
+  existing: ChatMessage[],
+  message: ApiAdminAssistantMessage,
+  options?: { removePendingId?: string },
+): ChatMessage[] {
+  const mapped = mapAdminAssistantMessage(message)
+  let list = options?.removePendingId
+    ? existing.filter((m) => m.id !== options.removePendingId)
+    : existing
+
+  if (message.sender === 'ADMIN') {
+    list = list.filter((m) => !(m.pending && m.sender === 'admin'))
+  }
+
+  if (list.some((m) => m.id === mapped.id)) {
+    return list
+  }
+
+  return [...list, mapped]
+}
 
 function mapApiChatMessage(message: ApiChatMessage): ChatMessage {
   const sender: MessageSender =
@@ -250,15 +263,32 @@ const AdminMessage = () => {
   const [deletingMessageId, setDeletingMessageId] = useState<string | null>(null)
   const [aiEnabledByUserId, setAiEnabledByUserId] = useState<Record<string, boolean>>({})
   const [aiToggleLoading, setAiToggleLoading] = useState(false)
+  const [assistantTyping, setAssistantTyping] = useState(false)
+  const [assistantSending, setAssistantSending] = useState(false)
   const messageListRef = useRef<HTMLDivElement | null>(null)
   const pendingSendIdRef = useRef<string | null>(null)
   const pendingPreviewUrlRef = useRef<string | null>(null)
   const prefsLoadedForAdminRef = useRef<number | null>(null)
   const [messagesByUser, setMessagesByUser] = useState<Record<string, ChatMessage[]>>({
-    [CHATBOT_USER_ID]: CHATBOT_MESSAGES,
+    [CHATBOT_USER_ID]: [],
   })
 
-  const users = useMemo(() => [CHATBOT_USER, ...liveUsers], [liveUsers])
+  const chatbotUser = useMemo((): ChatUser => {
+    const messages = messagesByUser[CHATBOT_USER_ID] ?? []
+    const last = messages.at(-1)
+    const preview = last?.text?.trim()
+      ? last.text.length > 80
+        ? `${last.text.slice(0, 80)}…`
+        : last.text
+      : CHATBOT_USER.lastMessage
+    return {
+      ...CHATBOT_USER,
+      lastMessage: preview,
+      lastOnline: last?.time ?? CHATBOT_USER.lastOnline,
+    }
+  }, [messagesByUser])
+
+  const users = useMemo(() => [chatbotUser, ...liveUsers], [chatbotUser, liveUsers])
 
   const visibleUsers = useMemo(
     () => users.filter((user) => !removedUserIds.has(user.id)),
@@ -322,6 +352,19 @@ const AdminMessage = () => {
     }
   }, [token])
 
+  const loadAssistantMessages = useCallback(async () => {
+    if (!token) return
+    try {
+      const messages = await fetchAdminAssistantMessages(token)
+      setMessagesByUser((prev) => ({
+        ...prev,
+        [CHATBOT_USER_ID]: messages.map(mapAdminAssistantMessage),
+      }))
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not load AI assistant chat.')
+    }
+  }, [token])
+
   const loadMessagesForUser = useCallback(
     async (userId: string) => {
       if (!token || userId === CHATBOT_USER_ID) return
@@ -379,9 +422,12 @@ const AdminMessage = () => {
   }, [selectedUserId, saveConversationPrefs])
 
   useEffect(() => {
-    if (selectedUserId === CHATBOT_USER_ID) return
+    if (selectedUserId === CHATBOT_USER_ID) {
+      void loadAssistantMessages()
+      return
+    }
     void loadMessagesForUser(selectedUserId)
-  }, [selectedUserId, loadMessagesForUser])
+  }, [selectedUserId, loadAssistantMessages, loadMessagesForUser])
 
   useEffect(() => {
     if (!token || selectedUserId === CHATBOT_USER_ID) return
@@ -499,6 +545,16 @@ const AdminMessage = () => {
     [selectedUserId, user?.id, mutedUserIds, saveConversationPrefs],
   )
 
+  const handleIncomingAdminAssistantMessage = useCallback((message: ApiAdminAssistantMessage) => {
+    if (message.sender === 'ASSISTANT') {
+      setAssistantTyping(false)
+    }
+    setMessagesByUser((prev) => ({
+      ...prev,
+      [CHATBOT_USER_ID]: mergeAdminAssistantMessage(prev[CHATBOT_USER_ID] ?? [], message),
+    }))
+  }, [])
+
   const handleMessageDeleted = useCallback((deleted: ApiChatMessageDeleted) => {
     if (deleted.scope !== 'EVERYONE') return
     const userKey = String(deleted.userId)
@@ -508,7 +564,7 @@ const AdminMessage = () => {
     }))
   }, [])
 
-  useChatWebSocket(token, handleIncomingMessage, handleMessageDeleted)
+  useChatWebSocket(token, handleIncomingMessage, handleMessageDeleted, handleIncomingAdminAssistantMessage)
 
   useEffect(() => {
     if (orderedUsers.length === 0) return
@@ -532,7 +588,7 @@ const AdminMessage = () => {
 
   useEffect(() => {
     scrollChatToBottom(messageListRef.current)
-  }, [selectedUserId, selectedMessages.length, lastSelectedMessageId])
+  }, [selectedUserId, selectedMessages.length, lastSelectedMessageId, assistantTyping])
 
   useEffect(() => {
     if (!contextMenu) return
@@ -648,28 +704,47 @@ const AdminMessage = () => {
     }
 
     if (selectedUserId === CHATBOT_USER_ID) {
-      const newMessage: ChatMessage = {
-        id: `${selectedUserId}-${Date.now()}`,
-        sender: 'admin',
-        text: text || undefined,
-        imageUrl: filePreviewUrl || undefined,
-        replyTo: replyTarget
-          ? {
-              sender: replyTarget.sender,
-              text: replyTarget.text,
-              imageUrl: replyTarget.imageUrl,
-              attachmentType: replyTarget.attachmentType,
-            }
-          : undefined,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      if (!token || assistantSending) return
+      if (selectedFile) {
+        toast.info('File attachments are not supported in the AI assistant chat yet.')
+        return
       }
+      const textToSend = text
+      const tempId = `pending-assistant-${Date.now()}`
+      const optimistic: ChatMessage = {
+        id: tempId,
+        sender: 'admin',
+        text: textToSend || undefined,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        pending: true,
+      }
+      setAssistantSending(true)
       setMessagesByUser((prev) => ({
         ...prev,
-        [selectedUserId]: [...(prev[selectedUserId] ?? []), newMessage],
+        [selectedUserId]: [...(prev[selectedUserId] ?? []), optimistic],
       }))
       setMessageInput('')
       clearSelectedFile()
       setReplyTarget(null)
+      setAssistantTyping(true)
+      try {
+        const saved = await sendAdminAssistantMessage(token, textToSend)
+        setMessagesByUser((prev) => ({
+          ...prev,
+          [selectedUserId]: mergeAdminAssistantMessage(prev[selectedUserId] ?? [], saved, {
+            removePendingId: tempId,
+          }),
+        }))
+      } catch (err) {
+        setAssistantTyping(false)
+        setMessagesByUser((prev) => ({
+          ...prev,
+          [selectedUserId]: (prev[selectedUserId] ?? []).filter((m) => m.id !== tempId),
+        }))
+        toast.error(err instanceof Error ? err.message : 'Could not send message to AI assistant.')
+      } finally {
+        setAssistantSending(false)
+      }
       return
     }
 
@@ -1325,6 +1400,7 @@ const AdminMessage = () => {
                         attachmentType={message.attachmentType}
                         attachmentName={message.attachmentName}
                         onPreviewImage={setPreviewImageUrl}
+                        maxImageWidth={message.sender === 'assistant' ? 96 : 220}
                       />
                     ) : message.imageUrl ? (
                       <img
@@ -1345,7 +1421,12 @@ const AdminMessage = () => {
                     ) : null}
                     {message.text ? (
                       <div style={{ fontSize: '15px', color: '#334155', whiteSpace: 'pre-line', wordBreak: 'break-word', lineHeight: 1.5 }}>
-                        {message.text}
+                        {linkifyChatText(
+                          message.text,
+                          message.sender === 'assistant'
+                            ? 'underline text-violet-700 hover:text-violet-900'
+                            : 'underline text-primary hover:text-primary/80',
+                        )}
                       </div>
                     ) : null}
                     <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '5px' }}>{message.time}</div>
@@ -1370,6 +1451,25 @@ const AdminMessage = () => {
                   )}
                 </div>
               ))}
+              {selectedUserId === CHATBOT_USER_ID && assistantTyping ? (
+                <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: '10px' }}>
+                  <div
+                    style={{
+                      maxWidth: '75%',
+                      borderRadius: '12px',
+                      padding: '10px 12px',
+                      backgroundColor: '#ede9fe',
+                      border: '1px solid #c4b5fd',
+                      color: '#5b21b6',
+                    }}
+                  >
+                    <div style={{ fontSize: '11px', fontWeight: 600, marginBottom: '4px', color: '#6366f1' }}>
+                      AI Assistant
+                    </div>
+                    <div style={{ fontSize: '13px' }}>Typing…</div>
+                  </div>
+                </div>
+              ) : null}
             </div>
 
             <div
@@ -1492,18 +1592,29 @@ const AdminMessage = () => {
                 </div>
               ) : null}
 
-              <div style={{ display: 'flex', gap: '8px', opacity: isSelectedUserBlocked ? 0.55 : 1 }}>
+              <div
+                style={{
+                  display: 'flex',
+                  gap: '8px',
+                  opacity: isSelectedUserBlocked || (selectedUserId === CHATBOT_USER_ID && assistantSending)
+                    ? 0.55
+                    : 1,
+                }}
+              >
                 <input
                   type="text"
                   value={messageInput}
                   onChange={(event) => setMessageInput(event.target.value)}
                   onKeyDown={(event) => {
-                    if (event.key === 'Enter') handleSendMessage()
+                    if (event.key === 'Enter') void handleSendMessage()
                   }}
                   placeholder={
                     isSelectedUserBlocked ? 'Unblock user to send messages…' : 'Type your message...'
                   }
-                  disabled={isSelectedUserBlocked}
+                  disabled={
+                    isSelectedUserBlocked ||
+                    (selectedUserId === CHATBOT_USER_ID && assistantSending)
+                  }
                   style={{
                     flex: 1,
                     padding: '12px 14px',
@@ -1556,8 +1667,11 @@ const AdminMessage = () => {
                 </label>
                 <button
                   type="button"
-                  onClick={handleSendMessage}
-                  disabled={isSelectedUserBlocked}
+                  onClick={() => void handleSendMessage()}
+                  disabled={
+                    isSelectedUserBlocked ||
+                    (selectedUserId === CHATBOT_USER_ID && assistantSending)
+                  }
                   style={{
                     padding: '12px 16px',
                     borderRadius: '8px',

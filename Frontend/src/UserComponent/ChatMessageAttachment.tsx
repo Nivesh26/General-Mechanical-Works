@@ -26,6 +26,7 @@ export default function ChatMessageAttachment({
   if (!url) return null
 
   if (attachmentType === 'IMAGE') {
+    const compact = maxImageWidth <= 100
     return (
       <img
         src={url}
@@ -33,7 +34,7 @@ export default function ChatMessageAttachment({
         onClick={() => onPreviewImage?.(url)}
         style={{
           maxWidth: `${maxImageWidth}px`,
-          maxHeight: '180px',
+          maxHeight: compact ? '96px' : '180px',
           width: '100%',
           objectFit: 'contain',
           borderRadius: '8px',

@@ -1,6 +1,7 @@
 package com.gmw.General.Mechanical.Works.ai;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,16 +27,22 @@ public class ChatAiService {
 	private final ChatMessageRepository chatMessageRepository;
 	private final OllamaClient ollamaClient;
 	private final ChatAiPromptBuilder promptBuilder;
+	private final ChatAiProductReplyBuilder productReplyBuilder;
+	private final ChatAiCartAction cartAction;
 
 	public ChatAiService(
 			@Lazy ChatService chatService,
 			ChatMessageRepository chatMessageRepository,
 			OllamaClient ollamaClient,
-			ChatAiPromptBuilder promptBuilder) {
+			ChatAiPromptBuilder promptBuilder,
+			ChatAiProductReplyBuilder productReplyBuilder,
+			ChatAiCartAction cartAction) {
 		this.chatService = chatService;
 		this.chatMessageRepository = chatMessageRepository;
 		this.ollamaClient = ollamaClient;
 		this.promptBuilder = promptBuilder;
+		this.productReplyBuilder = productReplyBuilder;
+		this.cartAction = cartAction;
 	}
 
 	@Async("chatAiTaskExecutor")
@@ -63,7 +70,26 @@ public class ChatAiService {
 				chatService.sendFromAssistant(userId, ChatAiIntent.WELCOME_MESSAGE);
 				return;
 			}
-			String reply = ollamaClient.chat(promptBuilder.buildMessages(history, userText));
+			if (ChatAiIntent.isPaymentQuestion(userText)) {
+				chatService.sendFromAssistant(userId, ChatAiIntent.PAYMENT_MESSAGE);
+				return;
+			}
+			Optional<ChatAiReply> cartReply = cartAction.tryAddToCart(userId, userText, history);
+			if (cartReply.isPresent()) {
+				sendAssistantReply(userId, cartReply.get());
+				return;
+			}
+			Optional<ChatAiReply> productReply = productReplyBuilder.tryBuildReply(userText);
+			if (productReply.isPresent()) {
+				sendAssistantReply(userId, productReply.get());
+				return;
+			}
+			if (ChatAiIntent.isAddToCartIntent(userText)) {
+				chatService.sendFromAssistant(userId,
+						"I couldn't tell which product to add. Please say the product name or SKU, for example: add BCN-001 to cart.");
+				return;
+			}
+			String reply = ollamaClient.chat(promptBuilder.buildMessages(history, userText, userId));
 			if (!StringUtils.hasText(reply)) {
 				reply = FALLBACK_REPLY;
 			}
@@ -78,6 +104,10 @@ public class ChatAiService {
 				log.warn("Could not send AI fallback for user {}: {}", userId, sendEx.getMessage());
 			}
 		}
+	}
+
+	private void sendAssistantReply(Long userId, ChatAiReply reply) {
+		chatService.sendFromAssistant(userId, reply.text(), reply.attachmentUrl(), reply.attachmentName());
 	}
 
 	private List<ChatMessage> recentHistory(Long userId) {

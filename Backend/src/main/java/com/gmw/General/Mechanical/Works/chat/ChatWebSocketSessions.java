@@ -95,6 +95,19 @@ public class ChatWebSocketSessions {
 		}
 	}
 
+	public void broadcastAdminAssistantMessage(Long adminId, AdminAssistantMessageDto message) {
+		Map<String, Object> payload = new HashMap<>();
+		payload.put("event", "admin_assistant_message");
+		payload.put("message", message);
+		String json = writeJson(payload);
+		for (String adminSessionId : adminSessionIds) {
+			ChatSocketUser user = sessions.get(adminSessionId);
+			if (user != null && adminId.equals(user.userId())) {
+				sendToSession(adminSessionId, json);
+			}
+		}
+	}
+
 	public void sendEvent(WebSocketSession session, String event, Object data) {
 		Map<String, Object> payload = new HashMap<>();
 		payload.put("event", event);

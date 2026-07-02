@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import {
   getWsChatUrl,
   parseChatWsEvent,
+  type ApiAdminAssistantMessage,
   type ApiChatMessage,
   type ApiChatMessageDeleted,
 } from '../lib/chat'
@@ -11,12 +12,15 @@ export function useChatWebSocket(
   token: string | null,
   onMessage: (message: ApiChatMessage) => void,
   onMessageDeleted?: (deleted: ApiChatMessageDeleted) => void,
+  onAdminAssistantMessage?: (message: ApiAdminAssistantMessage) => void,
 ) {
   const wsRef = useRef<WebSocket | null>(null)
   const onMessageRef = useRef(onMessage)
   const onMessageDeletedRef = useRef(onMessageDeleted)
+  const onAdminAssistantMessageRef = useRef(onAdminAssistantMessage)
   onMessageRef.current = onMessage
   onMessageDeletedRef.current = onMessageDeleted
+  onAdminAssistantMessageRef.current = onAdminAssistantMessage
 
   useEffect(() => {
     if (!token) {
@@ -39,6 +43,8 @@ export function useChatWebSocket(
           onMessageRef.current(parsed.message)
         } else if (parsed?.event === 'message_deleted') {
           onMessageDeletedRef.current?.(parsed.deleted)
+        } else if (parsed?.event === 'admin_assistant_message') {
+          onAdminAssistantMessageRef.current?.(parsed.message)
         }
       }
 

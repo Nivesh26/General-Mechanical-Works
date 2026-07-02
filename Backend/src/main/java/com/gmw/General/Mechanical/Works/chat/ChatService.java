@@ -140,13 +140,19 @@ public class ChatService {
 
 	@Transactional
 	public ChatMessageDto sendFromAssistant(Long userId, String text) {
+		return sendFromAssistant(userId, text, null, null);
+	}
+
+	@Transactional
+	public ChatMessageDto sendFromAssistant(Long userId, String text, String attachmentUrl, String attachmentName) {
 		if (!userRepository.existsById(userId)) {
 			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
 		}
+		ChatAttachmentType attachmentType = StringUtils.hasText(attachmentUrl) ? ChatAttachmentType.IMAGE : null;
 		return saveAndBroadcast(
 				userId,
 				ChatSender.ASSISTANT,
-				new SendChatMessageRequest(text, null, null, null, null, null));
+				new SendChatMessageRequest(text, null, null, trimToNull(attachmentUrl), attachmentType, trimToNull(attachmentName)));
 	}
 
 	@Transactional(readOnly = true)
@@ -308,7 +314,7 @@ public class ChatService {
 	}
 
 	private void removeMessageForEveryone(ChatMessage message) {
-		if (StringUtils.hasText(message.getAttachmentUrl())) {
+		if (StringUtils.hasText(message.getAttachmentUrl()) && message.getSender() != ChatSender.ASSISTANT) {
 			imageStorageService.deleteIfStored(message.getAttachmentUrl());
 		}
 		chatMessageHiddenRepository.deleteByMessageId(message.getId());

@@ -24,6 +24,7 @@ import {
 } from '../lib/chat'
 import { prepareChatUploadFile } from '../lib/chatImage'
 import { scrollChatToBottom } from '../lib/chatScroll'
+import { linkifyChatText } from '../lib/chatLinkify'
 import {
   buildProductEnquiryMessage,
   fetchProductImageAsFile,
@@ -161,6 +162,7 @@ const ChatbotWidget = () => {
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const pendingSendIdRef = useRef<string | null>(null)
   const pendingPreviewUrlRef = useRef<string | null>(null)
+  const sendingRef = useRef(false)
   const pendingEnquiryRef = useRef<ProductEnquiryRequest | null>(null)
   const sendingEnquiryRef = useRef(false)
   const openRef = useRef(open)
@@ -379,8 +381,9 @@ const ChatbotWidget = () => {
 
   const handleSend = async () => {
     const text = input.trim()
-    if ((!text && !selectedFile) || !token) return
+    if ((!text && !selectedFile) || !token || sendingRef.current) return
 
+    sendingRef.current = true
     const fileToSend = selectedFile
     const textToSend = text
     const savedReplyTarget = replyTarget
@@ -438,6 +441,8 @@ const ChatbotWidget = () => {
         }
       }
       toast.error(err instanceof Error ? err.message : 'Could not send message.')
+    } finally {
+      sendingRef.current = false
     }
   }
 
@@ -567,6 +572,11 @@ const ChatbotWidget = () => {
                   {messages.map((message) => {
                     const isUser = message.sender === 'user'
                     const isAssistant = message.sender === 'assistant'
+                    const linkClass = isUser
+                      ? 'underline text-white hover:text-red-100'
+                      : isAssistant
+                        ? 'underline text-violet-700 hover:text-violet-900'
+                        : 'underline text-primary hover:text-primary/80'
                     return (
                       <div
                         key={message.id}
@@ -621,11 +631,13 @@ const ChatbotWidget = () => {
                               attachmentType={message.attachmentType}
                               attachmentName={message.attachmentName}
                               onPreviewImage={setPreviewImageUrl}
-                              maxImageWidth={200}
+                              maxImageWidth={message.sender === 'assistant' ? 96 : 200}
                             />
                           ) : null}
                           {message.text ? (
-                            <div className="whitespace-pre-line break-words leading-relaxed">{message.text}</div>
+                            <div className="whitespace-pre-line break-words leading-relaxed">
+                              {linkifyChatText(message.text, linkClass)}
+                            </div>
                           ) : null}
                           <div
                             className={`text-[10px] mt-1 ${isUser ? 'text-red-100' : 'text-slate-400'}`}

@@ -631,7 +631,32 @@ public class SchemaMigrationConfig {
 			addChatAttachmentColumnsIfMissing(jdbcTemplate);
 			addChatMessageHiddenTableIfMissing(jdbcTemplate);
 			addChatConversationSettingsTableIfMissing(jdbcTemplate);
+			addAdminAssistantMessageTableIfMissing(jdbcTemplate);
 		};
+	}
+
+	private void addAdminAssistantMessageTableIfMissing(JdbcTemplate jdbcTemplate) {
+		Integer tableExists = jdbcTemplate.queryForObject(
+				"""
+				SELECT COUNT(*) FROM information_schema.TABLES
+				WHERE TABLE_SCHEMA = DATABASE()
+				  AND TABLE_NAME = 'admin_assistant_message'
+				""",
+				Integer.class);
+		if (tableExists == null || tableExists == 0) {
+			jdbcTemplate.execute("""
+					CREATE TABLE `admin_assistant_message` (
+					  `id` BIGINT NOT NULL AUTO_INCREMENT,
+					  `admin_id` BIGINT NOT NULL,
+					  `sender` VARCHAR(16) NOT NULL,
+					  `body` TEXT NOT NULL,
+					  `created_at` DATETIME(6) NOT NULL,
+					  PRIMARY KEY (`id`),
+					  KEY `idx_admin_assistant_admin_created` (`admin_id`, `created_at`),
+					  CONSTRAINT `fk_admin_assistant_admin` FOREIGN KEY (`admin_id`) REFERENCES `user` (`id`) ON DELETE CASCADE
+					) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+					""");
+		}
 	}
 
 	private void addChatConversationSettingsTableIfMissing(JdbcTemplate jdbcTemplate) {

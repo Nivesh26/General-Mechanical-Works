@@ -27,6 +27,14 @@ export type ApiChatConversationAi = {
   aiEnabled: boolean
 }
 
+export type ApiAdminAssistantMessage = {
+  id: number
+  adminId: number
+  sender: 'ADMIN' | 'ASSISTANT'
+  body: string
+  createdAt: string
+}
+
 export type ApiChatConversation = {
   userId: number
   userName: string
@@ -272,6 +280,31 @@ export async function deleteAdminChatMessage(
   if (!res.ok) throw new Error(await parseErrorMessage(res))
 }
 
+export async function fetchAdminAssistantMessages(token: string): Promise<ApiAdminAssistantMessage[]> {
+  const res = await fetch(`${getApiBase()}/api/admin/chat/assistant/messages`, {
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<ApiAdminAssistantMessage[]>
+}
+
+export async function sendAdminAssistantMessage(
+  token: string,
+  text: string,
+): Promise<ApiAdminAssistantMessage> {
+  const res = await fetch(`${getApiBase()}/api/admin/chat/assistant/messages`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({ text }),
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<ApiAdminAssistantMessage>
+}
+
 export function canDeleteChatForEveryone(
   sender: ApiChatSender | 'user' | 'admin' | 'assistant',
   viewer: 'user' | 'admin',
@@ -285,11 +318,17 @@ export type ChatWsEvent =
   | { event: 'connected' }
   | { event: 'message'; message: ApiChatMessage }
   | { event: 'message_deleted'; deleted: ApiChatMessageDeleted }
+  | { event: 'admin_assistant_message'; message: ApiAdminAssistantMessage }
 
 export function parseChatWsEvent(raw: string): ChatWsEvent | null {
   try {
     const data = JSON.parse(raw) as ChatWsEvent
-    if (data.event === 'connected' || data.event === 'message' || data.event === 'message_deleted') {
+    if (
+      data.event === 'connected' ||
+      data.event === 'message' ||
+      data.event === 'message_deleted' ||
+      data.event === 'admin_assistant_message'
+    ) {
       return data
     }
   } catch {
