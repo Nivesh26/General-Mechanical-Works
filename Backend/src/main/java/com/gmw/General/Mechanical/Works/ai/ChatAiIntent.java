@@ -1,5 +1,7 @@
 package com.gmw.General.Mechanical.Works.ai;
 
+import java.util.Locale;
+
 import org.springframework.util.StringUtils;
 
 final class ChatAiIntent {
@@ -121,11 +123,92 @@ final class ChatAiIntent {
 		if (!StringUtils.hasText(text)) {
 			return false;
 		}
+		if (isBikeCustomizationQuestion(text)) {
+			return true;
+		}
 		String normalized = normalize(text);
 		return containsAny(normalized,
 				"book", "booking", "appointment", "service", "repair", "fix", "wash",
 				"tyre", "tire", "engine", "schedule", "slot", "workshop", "maintain",
 				"maintenance", "pickup", "dent", "paint", "battery service", "chain");
+	}
+
+	static boolean isBikeCustomizationQuestion(String text) {
+		if (!StringUtils.hasText(text)) {
+			return false;
+		}
+		if (isBikeDamageOrDiagnosisQuestion(text) && ChatAiColorParser.extractTargetColor(text).isEmpty()) {
+			return false;
+		}
+		if (ChatAiColorParser.extractTargetColor(text).isPresent() && looksLikePaintOrColorEdit(text)) {
+			return true;
+		}
+		String normalized = normalizeForIntent(text);
+		if (containsAny(normalized,
+				"change color", "change colour", "change the color", "change the colour",
+				"change bike color", "change bike colour",
+				"color in image", "colour in image", "color in photo", "colour in photo",
+				"colour in this image", "color in this image",
+				"repaint", "paint job", "new color", "new colour", "color change", "colour change",
+				"different color", "different colour", "customize", "customise", "customization",
+				"customisation", "modify my bike", "modification",
+				"dent and paint", "dent & paint",
+				"want to change", "paint my bike", "paint the bike", "paint this bike")) {
+			return true;
+		}
+		return (normalized.contains("change") || normalized.contains("modify") || normalized.contains("modif"))
+				&& (normalized.contains("color") || normalized.contains("colour")
+						|| normalized.contains("paint") || normalized.contains("look"));
+	}
+
+	static boolean isBikeDamageOrDiagnosisQuestion(String text) {
+		if (!StringUtils.hasText(text)) {
+			return false;
+		}
+		String normalized = normalizeForIntent(text);
+		return containsAny(normalized,
+				"crash", "crashed", "accident", "collision", "collided", "hit a", "got hit",
+				"fell", "fall", "flip", "flipped",
+				"damage", "damaged", "broken", "bent", "smashed", "cracked", "snapped",
+				"what wrong", "what s wrong", "whats wrong", "what is wrong",
+				"what happened", "looks wrong", "look wrong", "seems wrong",
+				"issue with", "problem with", "trouble with",
+				"not working", "won t start", "wont start", "doesn t start", "doesnt start",
+				"leaking", "leak", "oil leak",
+				"scratch", "wobble", "vibrat", "strange noise", "weird noise", "funny noise",
+				"can you see", "what do you see", "what is this");
+	}
+
+	static boolean looksLikePaintOrColorEdit(String text) {
+		if (!StringUtils.hasText(text)) {
+			return false;
+		}
+		if (isBikeDamageOrDiagnosisQuestion(text) && ChatAiColorParser.extractTargetColor(text).isEmpty()) {
+			return false;
+		}
+		String normalized = normalizeForIntent(text);
+		if (containsAny(normalized,
+				"change color", "change colour", "repaint", "paint job", "color change", "colour change",
+				"paint my bike", "paint the bike", "paint this bike", "new color", "new colour",
+				"customize", "customise", "color in image", "colour in image", "color in photo", "colour in photo")) {
+			return true;
+		}
+		return (containsAny(normalized, "change", "modify", "repaint")
+				&& containsAny(normalized, "color", "colour", "paint"))
+				|| (ChatAiColorParser.extractTargetColor(text).isPresent()
+						&& containsAny(normalized, "change", "paint", "repaint", "color", "colour", "want", "make"));
+	}
+
+	static String normalizeForIntent(String text) {
+		return text.trim()
+				.toLowerCase(Locale.ROOT)
+				.replace("chnage", "change")
+				.replace("chnge", "change")
+				.replace("colur", "colour")
+				.replace("coulor", "colour")
+				.replaceAll("[!.?,]+", " ")
+				.replaceAll("\\s+", " ")
+				.trim();
 	}
 
 	static boolean isPaymentQuestion(String text) {
@@ -163,11 +246,7 @@ final class ChatAiIntent {
 	}
 
 	private static String normalize(String text) {
-		return text.trim()
-				.toLowerCase()
-				.replaceAll("[!.?,]+", " ")
-				.replaceAll("\\s+", " ")
-				.trim();
+		return normalizeForIntent(text);
 	}
 
 	private static boolean containsAny(String haystack, String... needles) {

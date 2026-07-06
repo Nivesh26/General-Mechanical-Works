@@ -40,6 +40,14 @@ public class AdminChatController {
 		return adminAssistantChatService.sendFromAdmin(principal.getName(), request.text());
 	}
 
+	@PostMapping(value = "/assistant/messages/with-file", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+	public AdminAssistantMessageDto sendAssistantMessageWithFile(
+			java.security.Principal principal,
+			@RequestParam(value = "text", required = false) String text,
+			@RequestPart("file") MultipartFile file) {
+		return adminAssistantChatService.sendFromAdminWithFile(principal.getName(), text, file);
+	}
+
 	@GetMapping("/conversations")
 	public List<ChatConversationDto> conversations() {
 		return chatService.listConversationsForAdmin();

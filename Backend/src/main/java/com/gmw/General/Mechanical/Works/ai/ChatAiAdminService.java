@@ -1,6 +1,7 @@
 package com.gmw.General.Mechanical.Works.ai;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -9,9 +10,10 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import com.gmw.General.Mechanical.Works.chat.AdminAssistantChatService;
 import com.gmw.General.Mechanical.Works.chat.AdminAssistantMessage;
 import com.gmw.General.Mechanical.Works.chat.AdminAssistantMessageRepository;
-import com.gmw.General.Mechanical.Works.chat.AdminAssistantChatService;
+import com.gmw.General.Mechanical.Works.chat.ChatAttachmentType;
 import com.gmw.General.Mechanical.Works.chat.ChatSender;
 
 @Service
@@ -27,18 +29,21 @@ public class ChatAiAdminService {
 	private final OllamaClient ollamaClient;
 	private final ChatAiAdminPromptBuilder promptBuilder;
 	private final ChatAiAdminContext adminContext;
+	private final ChatAiCustomizationReplyBuilder customizationReplyBuilder;
 
 	public ChatAiAdminService(
 			@Lazy AdminAssistantChatService adminAssistantChatService,
 			AdminAssistantMessageRepository adminAssistantMessageRepository,
 			OllamaClient ollamaClient,
 			ChatAiAdminPromptBuilder promptBuilder,
-			ChatAiAdminContext adminContext) {
+			ChatAiAdminContext adminContext,
+			ChatAiCustomizationReplyBuilder customizationReplyBuilder) {
 		this.adminAssistantChatService = adminAssistantChatService;
 		this.adminAssistantMessageRepository = adminAssistantMessageRepository;
 		this.ollamaClient = ollamaClient;
 		this.promptBuilder = promptBuilder;
 		this.adminContext = adminContext;
+		this.customizationReplyBuilder = customizationReplyBuilder;
 	}
 
 	@Async("chatAiTaskExecutor")
@@ -57,24 +62,64 @@ public class ChatAiAdminService {
 				return;
 			}
 			String adminText = StringUtils.hasText(latest.getBody()) ? latest.getBody().trim() : "";
-			if (ChatAiIntent.isSimpleGreeting(adminText) || ChatAiIntent.isHelpQuestion(adminText)) {
-				sendAssistantMessage(adminId, replyStartedAt, ChatAiAdminIntent.WELCOME_MESSAGE);
+			boolean hasAdminImage = latest.getAttachmentType() == ChatAttachmentType.IMAGE
+					&& StringUtils.hasText(latest.getAttachmentUrl());
+			boolean hasAdminPdf = latest.getAttachmentType() == ChatAttachmentType.PDF;
+
+			if (hasAdminPdf) {
+				sendTextReply(adminId, replyStartedAt,
+						"I can analyze photos of bikes or parts. PDF files need manual review — send a photo if you can.");
 				return;
 			}
-			if (ChatAiAdminIntent.isTodayBookingsQuestion(adminText)) {
-				sendAssistantMessage(adminId, replyStartedAt, adminContext.buildTodayBookingsReply());
+			if (hasAdminImage && ChatAiIntent.isBikeDamageOrDiagnosisQuestion(adminText)) {
+				try {
+					String reply = ollamaClient.chat(promptBuilder.buildMessages(history, adminText));
+					if (!StringUtils.hasText(reply)) {
+						reply = damageAnalysisFallbackReply();
+					}
+					sendTextReply(adminId, replyStartedAt, reply);
+				} catch (Exception visionEx) {
+					log.warn("Admin vision analysis failed for admin {}: {}", adminId, visionEx.getMessage());
+					sendTextReply(adminId, replyStartedAt, damageAnalysisFallbackReply());
+				}
 				return;
 			}
-			if (ChatAiAdminIntent.isAllOrdersDeliveredQuestion(adminText)) {
-				sendAssistantMessage(adminId, replyStartedAt, adminContext.buildAllOrdersDeliveredReply());
+			Optional<ChatAiReply> customizationReply =
+					customizationReplyBuilder.tryBuildAdminReply(adminText, latest.getAttachmentUrl());
+			if (customizationReply.isPresent()) {
+				sendAssistantReply(adminId, replyStartedAt, customizationReply.get());
 				return;
 			}
-			if (ChatAiAdminIntent.isOrdersOverviewQuestion(adminText)) {
-				sendAssistantMessage(adminId, replyStartedAt, adminContext.buildOrdersSummaryReply());
+			if (hasAdminImage && !promptBuilder.canAnalyzeLatestImage(history)) {
+				sendTextReply(adminId, replyStartedAt,
+						"I couldn't open that photo. Please try sending it again, or describe the issue in text.");
 				return;
 			}
-			if (ChatAiAdminIntent.isAppointmentsOverviewQuestion(adminText)) {
-				sendAssistantMessage(adminId, replyStartedAt, adminContext.buildAppointmentsSummaryReply());
+			if (!hasAdminImage) {
+				if (ChatAiIntent.isSimpleGreeting(adminText) || ChatAiIntent.isHelpQuestion(adminText)) {
+					sendAssistantMessage(adminId, replyStartedAt, ChatAiAdminIntent.WELCOME_MESSAGE);
+					return;
+				}
+				if (ChatAiAdminIntent.isTodayBookingsQuestion(adminText)) {
+					sendAssistantMessage(adminId, replyStartedAt, adminContext.buildTodayBookingsReply());
+					return;
+				}
+				if (ChatAiAdminIntent.isAllOrdersDeliveredQuestion(adminText)) {
+					sendAssistantMessage(adminId, replyStartedAt, adminContext.buildAllOrdersDeliveredReply());
+					return;
+				}
+				if (ChatAiAdminIntent.isOrdersOverviewQuestion(adminText)) {
+					sendAssistantMessage(adminId, replyStartedAt, adminContext.buildOrdersSummaryReply());
+					return;
+				}
+				if (ChatAiAdminIntent.isAppointmentsOverviewQuestion(adminText)) {
+					sendAssistantMessage(adminId, replyStartedAt, adminContext.buildAppointmentsSummaryReply());
+					return;
+				}
+			}
+			if (hasAdminImage && ChatAiIntent.isBikeCustomizationQuestion(adminText)
+					&& ChatAiColorParser.extractTargetColor(adminText).isEmpty()) {
+				sendTextReply(adminId, replyStartedAt, adminPaintPrompt());
 				return;
 			}
 			String reply = ollamaClient.chat(promptBuilder.buildMessages(history, adminText));
@@ -93,9 +138,36 @@ public class ChatAiAdminService {
 		}
 	}
 
+	private void sendTextReply(Long adminId, long replyStartedAt, String text) {
+		ChatAiReplyDelay.ensureMinimumDelay(replyStartedAt);
+		adminAssistantChatService.sendAssistantMessage(adminId, text);
+	}
+
 	private void sendAssistantMessage(Long adminId, long replyStartedAt, String text) {
 		ChatAiReplyDelay.ensureMinimumDelay(replyStartedAt);
 		adminAssistantChatService.sendAssistantMessage(adminId, text);
+	}
+
+	private void sendAssistantReply(Long adminId, long replyStartedAt, ChatAiReply reply) {
+		ChatAiReplyDelay.ensureMinimumDelay(replyStartedAt);
+		adminAssistantChatService.sendAssistantMessage(
+				adminId, reply.text(), reply.attachmentUrl(), reply.attachmentName());
+	}
+
+	private static String adminPaintPrompt() {
+		return """
+				Tell me which color to preview (for example: red, matte black, or blue) and I can generate a customer quote image.
+
+				Customers book Dent & painting at /services — check Appointments in the admin panel for requests."""
+				.trim();
+	}
+
+	private static String damageAnalysisFallbackReply() {
+		return """
+				I couldn't analyze that photo automatically. Inspect the bike in the workshop and check Appointments for related service requests.
+
+				For accidents, note fork, frame, brake, and fairing damage before quoting — Engine Repair or Dent & painting may apply."""
+				.trim();
 	}
 
 	private List<AdminAssistantMessage> recentHistory(Long adminId) {

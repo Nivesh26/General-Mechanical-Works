@@ -32,6 +32,9 @@ export type ApiAdminAssistantMessage = {
   adminId: number
   sender: 'ADMIN' | 'ASSISTANT'
   body: string
+  attachmentUrl: string | null
+  attachmentType: ApiChatAttachmentType | null
+  attachmentName: string | null
   createdAt: string
 }
 
@@ -308,6 +311,23 @@ export async function sendAdminAssistantMessage(
       Accept: 'application/json',
     },
     body: JSON.stringify({ text }),
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<ApiAdminAssistantMessage>
+}
+
+export async function sendAdminAssistantMessageWithFile(
+  token: string,
+  file: File,
+  text?: string,
+): Promise<ApiAdminAssistantMessage> {
+  const form = new FormData()
+  form.append('file', file)
+  if (text?.trim()) form.append('text', text.trim())
+  const res = await fetch(`${getApiBase()}/api/admin/chat/assistant/messages/with-file`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+    body: form,
   })
   if (!res.ok) throw new Error(await parseErrorMessage(res))
   return res.json() as Promise<ApiAdminAssistantMessage>

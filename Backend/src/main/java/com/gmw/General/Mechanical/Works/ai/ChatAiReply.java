@@ -17,4 +17,14 @@ public record ChatAiReply(String text, String attachmentUrl, String attachmentNa
 		}
 		return new ChatAiReply(text, imageUrl.trim(), product.getName());
 	}
+
+	public static ChatAiReply withGeneratedImage(String text, String imageUrl, String colorLabel) {
+		if (!StringUtils.hasText(imageUrl)) {
+			return textOnly(text);
+		}
+		String name = StringUtils.hasText(colorLabel)
+				? colorLabel.trim() + " preview"
+				: "Color preview";
+		return new ChatAiReply(text, imageUrl.trim(), name);
+	}
 }

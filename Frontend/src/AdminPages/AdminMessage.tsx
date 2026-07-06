@@ -22,6 +22,7 @@ import {
   chatMessagePreview,
   maxChatMessageId,
   sendAdminAssistantMessage,
+  sendAdminAssistantMessageWithFile,
   sendAdminChatMessage,
   sendAdminChatMessageWithFile,
   setAdminConversationAi,
@@ -113,11 +114,53 @@ const CHATBOT_USER: ChatUser = {
   isAiAssistant: true,
 }
 
+type AssistantActivity = 'typing' | 'generating_image'
+
+const BIKE_TARGET_COLOR =
+  /\b(red|blue|black|white|green|yellow|orange|silver|grey|gray|pink|purple|brown|gold|maroon|navy|beige|bronze|matte black|gloss black)\b/i
+
+function normalizeChatIntentText(text: string): string {
+  return text
+    .trim()
+    .toLowerCase()
+    .replaceAll('chnage', 'change')
+    .replaceAll('chnge', 'change')
+    .replaceAll('colur', 'colour')
+    .replaceAll('coulor', 'colour')
+}
+
+function isBikeDamageQuestion(text: string): boolean {
+  const normalized = normalizeChatIntentText(text)
+  return /crash|crashed|accident|collision|damage|damaged|broken|bent|smashed|what wrong|what s wrong|whats wrong|what happened|problem with|issue with|not working|won t start|wont start|leak/.test(
+    normalized,
+  )
+}
+
+function isBikeColorPreviewRequest(text: string, hasImage: boolean): boolean {
+  if (!hasImage || isBikeDamageQuestion(text)) return false
+  const normalized = normalizeChatIntentText(text)
+  if (!normalized) return false
+  const customization =
+    /change.*(color|colour)|colour change|color change|repaint|paint job|modify.*bike|change.*bike|color in image|colour in (image|photo)|want to change|paint (my|the|this) bike|on this bike|this bike|make it \w+|want \w+ (red|blue|black|white|green|yellow|orange|silver|grey|gray|pink|purple|gold|maroon|navy)/.test(
+      normalized,
+    )
+  if (!customization) return false
+  return BIKE_TARGET_COLOR.test(normalized) || /\bto [a-z]/.test(normalized) || /\b(color|colour) (of|to) /.test(normalized)
+}
+
+function assistantActivityForOutgoingMessage(text: string, hasImage: boolean): AssistantActivity {
+  return isBikeColorPreviewRequest(text, hasImage) ? 'generating_image' : 'typing'
+}
+
 function mapAdminAssistantMessage(message: ApiAdminAssistantMessage): ChatMessage {
   return {
     id: String(message.id),
     sender: message.sender === 'ADMIN' ? 'admin' : 'assistant',
     text: message.body || undefined,
+    attachmentUrl: message.attachmentUrl,
+    attachmentType: message.attachmentType,
+    attachmentName: message.attachmentName,
+    imageUrl: message.attachmentType === 'IMAGE' ? message.attachmentUrl ?? undefined : undefined,
     time: formatChatTime(message.createdAt),
   }
 }
@@ -281,7 +324,7 @@ const AdminMessage = () => {
   const [deletingMessageId, setDeletingMessageId] = useState<string | null>(null)
   const [aiEnabledByUserId, setAiEnabledByUserId] = useState<Record<string, boolean>>({})
   const [aiToggleLoading, setAiToggleLoading] = useState(false)
-  const [assistantTyping, setAssistantTyping] = useState(false)
+  const [assistantActivity, setAssistantActivity] = useState<AssistantActivity | null>(null)
   const [assistantSending, setAssistantSending] = useState(false)
   const messageListRef = useRef<HTMLDivElement | null>(null)
   const pendingSendIdRef = useRef<string | null>(null)
@@ -565,7 +608,7 @@ const AdminMessage = () => {
 
   const handleIncomingAdminAssistantMessage = useCallback((message: ApiAdminAssistantMessage) => {
     if (message.sender === 'ASSISTANT') {
-      setAssistantTyping(false)
+      setAssistantActivity(null)
     }
     setMessagesByUser((prev) => ({
       ...prev,
@@ -606,7 +649,14 @@ const AdminMessage = () => {
 
   useEffect(() => {
     scrollChatToBottom(messageListRef.current)
-  }, [selectedUserId, selectedMessages.length, lastSelectedMessageId, assistantTyping])
+  }, [selectedUserId, selectedMessages.length, lastSelectedMessageId, assistantActivity])
+
+  useEffect(() => {
+    if (!assistantActivity) return
+    const timeoutMs = assistantActivity === 'generating_image' ? 180_000 : 90_000
+    const timer = window.setTimeout(() => setAssistantActivity(null), timeoutMs)
+    return () => window.clearTimeout(timer)
+  }, [assistantActivity])
 
   useEffect(() => {
     if (!contextMenu) return
@@ -723,16 +773,24 @@ const AdminMessage = () => {
 
     if (selectedUserId === CHATBOT_USER_ID) {
       if (!token || assistantSending) return
-      if (selectedFile) {
-        toast.info('File attachments are not supported in the AI assistant chat yet.')
-        return
-      }
+      const fileToSend = selectedFile
       const textToSend = text
+      const isPdf =
+        fileToSend != null &&
+        (fileToSend.type === 'application/pdf' || fileToSend.name.toLowerCase().endsWith('.pdf'))
+      const localPreviewUrl =
+        filePreviewUrl ??
+        (fileToSend && fileToSend.type.startsWith('image/') ? URL.createObjectURL(fileToSend) : null)
       const tempId = `pending-assistant-${Date.now()}`
+      const outgoingHasImage = Boolean(fileToSend && !isPdf)
       const optimistic: ChatMessage = {
         id: tempId,
         sender: 'admin',
         text: textToSend || undefined,
+        attachmentUrl: localPreviewUrl,
+        attachmentType: fileToSend ? (isPdf ? 'PDF' : 'IMAGE') : null,
+        attachmentName: fileToSend?.name ?? null,
+        imageUrl: localPreviewUrl ?? undefined,
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         pending: true,
       }
@@ -744,9 +802,15 @@ const AdminMessage = () => {
       setMessageInput('')
       clearSelectedFile()
       setReplyTarget(null)
-      setAssistantTyping(true)
+      setAssistantActivity(assistantActivityForOutgoingMessage(textToSend, outgoingHasImage))
       try {
-        const saved = await sendAdminAssistantMessage(token, textToSend)
+        const uploadFile = fileToSend ? await prepareChatUploadFile(fileToSend) : null
+        const saved = uploadFile
+          ? await sendAdminAssistantMessageWithFile(token, uploadFile, textToSend || undefined)
+          : await sendAdminAssistantMessage(token, textToSend)
+        if (localPreviewUrl && localPreviewUrl !== filePreviewUrl) {
+          URL.revokeObjectURL(localPreviewUrl)
+        }
         setMessagesByUser((prev) => ({
           ...prev,
           [selectedUserId]: mergeAdminAssistantMessage(prev[selectedUserId] ?? [], saved, {
@@ -754,11 +818,21 @@ const AdminMessage = () => {
           }),
         }))
       } catch (err) {
-        setAssistantTyping(false)
+        setAssistantActivity(null)
         setMessagesByUser((prev) => ({
           ...prev,
           [selectedUserId]: (prev[selectedUserId] ?? []).filter((m) => m.id !== tempId),
         }))
+        if (localPreviewUrl && localPreviewUrl !== filePreviewUrl) {
+          URL.revokeObjectURL(localPreviewUrl)
+        }
+        setMessageInput(textToSend)
+        if (fileToSend) {
+          setSelectedFile(fileToSend)
+          if (fileToSend.type.startsWith('image/')) {
+            setFilePreviewUrl(URL.createObjectURL(fileToSend))
+          }
+        }
         toast.error(err instanceof Error ? err.message : 'Could not send message to AI assistant.')
       } finally {
         setAssistantSending(false)
@@ -1418,7 +1492,13 @@ const AdminMessage = () => {
                         attachmentType={message.attachmentType}
                         attachmentName={message.attachmentName}
                         onPreviewImage={setPreviewImageUrl}
-                        maxImageWidth={message.sender === 'assistant' ? 96 : 220}
+                        maxImageWidth={
+                          message.sender === 'assistant'
+                            ? message.attachmentName?.toLowerCase().includes('preview')
+                              ? 220
+                              : 96
+                            : 220
+                        }
                       />
                     ) : message.imageUrl ? (
                       <img
@@ -1469,7 +1549,7 @@ const AdminMessage = () => {
                   )}
                 </div>
               ))}
-              {selectedUserId === CHATBOT_USER_ID && assistantTyping ? (
+              {selectedUserId === CHATBOT_USER_ID && assistantActivity ? (
                 <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: '10px' }}>
                   <div
                     style={{
@@ -1484,7 +1564,9 @@ const AdminMessage = () => {
                     <div style={{ fontSize: '11px', fontWeight: 600, marginBottom: '4px', color: '#6366f1' }}>
                       AI Assistant
                     </div>
-                    <div style={{ fontSize: '13px' }}>Typing…</div>
+                    <div style={{ fontSize: '13px' }}>
+                      {assistantActivity === 'generating_image' ? 'Generating image…' : 'Typing…'}
+                    </div>
                   </div>
                 </div>
               ) : null}

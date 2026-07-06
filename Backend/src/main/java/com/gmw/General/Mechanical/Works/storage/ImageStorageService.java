@@ -112,6 +112,23 @@ public class ImageStorageService {
 		}
 	}
 
+	public String uploadChatImageBytes(byte[] imageBytes) {
+		requireConfigured();
+		if (imageBytes == null || imageBytes.length == 0) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Image is required");
+		}
+		if (imageBytes.length > CHAT_MAX_BYTES) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Generated image is too large");
+		}
+		try {
+			@SuppressWarnings("unchecked")
+			Map<String, Object> result = cloudinary.uploader().upload(imageBytes, chatUploadParams(false));
+			return String.valueOf(result.get("secure_url"));
+		} catch (Exception ex) {
+			throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Could not upload generated image");
+		}
+	}
+
 	public ChatUploadedFile uploadChatFile(MultipartFile file) {
 		requireConfigured();
 		if (file == null || file.isEmpty()) {

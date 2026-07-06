@@ -56,8 +56,12 @@ app.cloudinary.api-secret=
 # On startup, upload any remaining /uploads/... paths to Cloudinary and update the database.
 app.cloudinary.migrate-local-uploads=true
 
-# Ollama — local AI for chatbot (run: ollama pull llama3.2)
+# Ollama — local AI for chatbot (run: ollama pull llama3.2 && ollama pull llava && ollama pull x/flux2-klein:4b-fp8)
 ollama.enabled=true
 ollama.base-url=http://localhost:11434
 ollama.chat-model=llama3.2
+ollama.vision-model=llava
+ollama.image-model=x/flux2-klein:4b-fp8
+ollama.image-generation-enabled=true
 ollama.timeout-seconds=120
+ollama.image-timeout-seconds=180

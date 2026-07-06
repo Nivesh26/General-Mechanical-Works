@@ -2,7 +2,7 @@ package com.gmw.General.Mechanical.Works.ai;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
+import java.util.Optional;
 
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -13,6 +13,22 @@ import com.gmw.General.Mechanical.Works.chat.ChatSender;
 
 @Component
 public class ChatAiPromptBuilder {
+
+	private static final String DEFAULT_IMAGE_PROMPT = """
+			The customer sent a photo of their motorcycle or bike. \
+			Look at the photo and answer their question about this real bike — not about editing the image file.""";
+
+	private static final String VISION_SYSTEM_RULES = """
+			You are the AI assistant for General Mechanical Works (GMW) — a motorcycle workshop and parts shop in Nepal.
+
+			The customer attached a PHOTO of their real bike. You CAN see the image.
+			- Answer their question about the bike shown in the photo.
+			- NEVER say you cannot modify, edit, or change images — they are NOT asking for photo editing.
+			- NEVER claim the bike is a product from our online shop catalog unless they are clearly shopping for a listed part.
+			- You may describe brand, color, and condition based only on what you see — do not invent model names or catalog matches.
+			- For paint, color change, dents, or modifications: recommend booking at /services.
+			- Keep answers short, friendly, and practical (2-4 short paragraphs max).
+			""";
 
 	private static final String SYSTEM_RULES = """
 			You are the AI assistant for General Mechanical Works website and workshop.
@@ -55,79 +71,149 @@ public class ChatAiPromptBuilder {
 			- For complex or risky work, recommend booking the matching workshop service at /services (e.g. Battery Service).
 			- Do NOT reply that a product is missing from the shop unless they are clearly trying to buy a part.""";
 
+	private static final String IMAGE_VISION_FLOW = """
+			PHOTO ANALYSIS:
+			- Describe visible details: color, scratches, dents, rust, tyres, chain, leaks, or damage.
+			- Give practical advice and safety notes.
+			- Suggest the matching workshop service at /services when professional work is needed.
+			- Do not invent product prices or catalog listings.""";
+
+	private static final String DAMAGE_ANALYSIS_FLOW = """
+			CRASH / DAMAGE ANALYSIS: The customer sent a photo after an accident or damage.
+			- Describe visible damage you see (fairing, forks, handlebar, leaks, tyres, frame, etc.).
+			- Do NOT talk about changing paint color unless they explicitly asked for a color change.
+			- Recommend safety first — do not ride if forks, brakes, or frame may be damaged.
+			- Suggest booking Engine Repair, Dent & painting, or Service Work at /services as appropriate.
+			- Be empathetic and practical.""";
+
+	private static final String BIKE_CUSTOMIZATION_FLOW = """
+			PAINT / COLOR / MODIFY REQUEST:
+			- The customer wants to change their bike's look (paint, color, body work, or modifications).
+			- Briefly mention what you see in their photo (current color/condition).
+			- Book "Dent & painting" for paint and color changes, or "Modify bike" for custom mods.
+			- Guide them to /services — choose workshop visit or pickup, pick date and vehicle.
+			- Our team will inspect the bike and quote based on the finish they want.
+			- Be encouraging — GMW has done this for 70+ years. Do NOT refuse or say you cannot help.""";
+
 	private final ChatAiKnowledgeBase knowledgeBase;
 	private final ChatAiUserContext userContext;
 	private final ChatAiShopContext shopContext;
+	private final ChatAiImageLoader imageLoader;
 
 	public ChatAiPromptBuilder(
 			ChatAiKnowledgeBase knowledgeBase,
 			ChatAiUserContext userContext,
-			ChatAiShopContext shopContext) {
+			ChatAiShopContext shopContext,
+			ChatAiImageLoader imageLoader) {
 		this.knowledgeBase = knowledgeBase;
 		this.userContext = userContext;
 		this.shopContext = shopContext;
+		this.imageLoader = imageLoader;
 	}
 
-	public List<Map<String, String>> buildMessages(List<ChatMessage> history, Long userId) {
+	public List<OllamaChatMessage> buildMessages(List<ChatMessage> history, Long userId) {
 		String latestUserText = latestUserText(history);
 		return buildMessages(history, latestUserText, userId);
 	}
 
-	public List<Map<String, String>> buildMessages(List<ChatMessage> history, String latestUserText, Long userId) {
-		List<Map<String, String>> messages = new ArrayList<>();
-		messages.add(Map.of("role", "system", "content", buildSystemPrompt(latestUserText, userId)));
+	public List<OllamaChatMessage> buildMessages(List<ChatMessage> history, String latestUserText, Long userId) {
+		ChatMessage latestUserMessage = latestUserMessage(history);
+		boolean latestHasImage = hasImageAttachment(latestUserMessage);
+		Optional<String> latestImageBase64 = latestHasImage
+				? imageLoader.loadBase64(latestUserMessage.getAttachmentUrl())
+				: Optional.empty();
+
+		List<OllamaChatMessage> messages = new ArrayList<>();
+		messages.add(OllamaChatMessage.of("system", buildSystemPrompt(latestUserText, userId, latestHasImage)));
 		for (ChatMessage message : history) {
 			String role = toOllamaRole(message.getSender());
 			if (role == null) {
 				continue;
 			}
-			String content = formatMessageContent(message);
-			if (!StringUtils.hasText(content)) {
+			boolean isLatestUserImage = latestHasImage && message == latestUserMessage;
+			String content = formatMessageContent(message, isLatestUserImage && latestImageBase64.isPresent());
+			if (!StringUtils.hasText(content) && !isLatestUserImage) {
 				continue;
 			}
-			messages.add(Map.of("role", role, "content", content));
+			if (isLatestUserImage && latestImageBase64.isPresent()) {
+				messages.add(OllamaChatMessage.withImages(role, content, List.of(latestImageBase64.get())));
+			} else {
+				messages.add(OllamaChatMessage.of(role, content));
+			}
 		}
 		return messages;
 	}
 
-	private String buildSystemPrompt(String latestUserText, Long userId) {
-		StringBuilder prompt = new StringBuilder(SYSTEM_RULES);
+	public boolean canAnalyzeLatestImage(List<ChatMessage> history) {
+		ChatMessage latestUserMessage = latestUserMessage(history);
+		if (!hasImageAttachment(latestUserMessage)) {
+			return false;
+		}
+		return imageLoader.loadBase64(latestUserMessage.getAttachmentUrl()).isPresent();
+	}
+
+	private String buildSystemPrompt(String latestUserText, Long userId, boolean latestHasImage) {
+		StringBuilder prompt = new StringBuilder(latestHasImage ? VISION_SYSTEM_RULES : SYSTEM_RULES);
 		prompt.append("\n\n").append(knowledgeBase.buildProjectOverview());
 		prompt.append("\n").append(knowledgeBase.buildWorkshopServicesDetail());
-		prompt.append("\nLIVE SHOP DATA:\n").append(userContext.buildLiveShopStats());
-
-		String userSection = userContext.buildUserSection(userId);
-		if (StringUtils.hasText(userSection)) {
-			prompt.append('\n').append(userSection);
+		if (!latestHasImage) {
+			prompt.append("\nLIVE SHOP DATA:\n").append(userContext.buildLiveShopStats());
+			String userSection = userContext.buildUserSection(userId);
+			if (StringUtils.hasText(userSection)) {
+				prompt.append('\n').append(userSection);
+			}
 		}
 
+		if (latestHasImage) {
+			prompt.append("\n").append(IMAGE_VISION_FLOW);
+		}
+		if (ChatAiIntent.isBikeDamageOrDiagnosisQuestion(latestUserText)) {
+			prompt.append("\n").append(DAMAGE_ANALYSIS_FLOW);
+		}
+		if (ChatAiIntent.isBikeCustomizationQuestion(latestUserText)) {
+			prompt.append("\n").append(BIKE_CUSTOMIZATION_FLOW);
+		}
 		if (ChatAiIntent.isServiceQuestion(latestUserText)) {
 			prompt.append("\n").append(SERVICE_FLOW);
 		}
 		if (ChatAiIntent.isMechanicalAdviceQuestion(latestUserText)) {
 			prompt.append("\n").append(MECHANICAL_ADVICE_FLOW);
 		}
-		if (ChatAiIntent.isProductQuestion(latestUserText)) {
+		if (!latestHasImage && ChatAiIntent.isProductQuestion(latestUserText)) {
 			prompt.append("\n").append(PRODUCT_FLOW);
 			prompt.append("\n\n").append(shopContext.buildCatalogSection(latestUserText));
 		}
-		if (ChatAiIntent.isOrderQuestion(latestUserText)) {
+		if (!latestHasImage && ChatAiIntent.isOrderQuestion(latestUserText)) {
 			prompt.append("\n").append(ORDER_FLOW);
 		}
-		if (ChatAiIntent.isAppointmentStatusQuestion(latestUserText)) {
+		if (!latestHasImage && ChatAiIntent.isAppointmentStatusQuestion(latestUserText)) {
 			prompt.append("\n").append(APPOINTMENT_FLOW);
 		}
 		return prompt.toString();
 	}
 
-	private static String latestUserText(List<ChatMessage> history) {
+	private static ChatMessage latestUserMessage(List<ChatMessage> history) {
 		for (int i = history.size() - 1; i >= 0; i--) {
 			ChatMessage message = history.get(i);
-			if (message.getSender() == ChatSender.USER && StringUtils.hasText(message.getBody())) {
-				return message.getBody().trim();
+			if (message.getSender() == ChatSender.USER) {
+				return message;
 			}
 		}
-		return "";
+		return null;
+	}
+
+	private static boolean hasImageAttachment(ChatMessage message) {
+		return message != null
+				&& message.getAttachmentType() == ChatAttachmentType.IMAGE
+				&& StringUtils.hasText(message.getAttachmentUrl());
+	}
+
+	private static String latestUserText(List<ChatMessage> history) {
+		ChatMessage latest = latestUserMessage(history);
+		if (latest == null || !StringUtils.hasText(latest.getBody())) {
+			return "";
+		}
+		return latest.getBody().trim();
 	}
 
 	private static String toOllamaRole(ChatSender sender) {
@@ -137,12 +223,14 @@ public class ChatAiPromptBuilder {
 		};
 	}
 
-	private static String formatMessageContent(ChatMessage message) {
+	private static String formatMessageContent(ChatMessage message, boolean imageAttachedForVision) {
 		StringBuilder builder = new StringBuilder();
 		if (StringUtils.hasText(message.getBody())) {
 			builder.append(message.getBody().trim());
+		} else if (message.getAttachmentType() == ChatAttachmentType.IMAGE) {
+			builder.append(DEFAULT_IMAGE_PROMPT);
 		}
-		if (message.getAttachmentType() == ChatAttachmentType.IMAGE) {
+		if (!imageAttachedForVision && message.getAttachmentType() == ChatAttachmentType.IMAGE) {
 			if (!builder.isEmpty()) {
 				builder.append("\n\n");
 			}

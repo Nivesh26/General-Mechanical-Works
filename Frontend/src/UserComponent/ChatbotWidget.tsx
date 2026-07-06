@@ -141,6 +141,44 @@ function mapApiMessage(message: ApiChatMessage): UiMessage {
   }
 }
 
+type AiActivity = 'typing' | 'generating_image'
+
+const BIKE_TARGET_COLOR =
+  /\b(red|blue|black|white|green|yellow|orange|silver|grey|gray|pink|purple|brown|gold|maroon|navy|beige|bronze|matte black|gloss black)\b/i
+
+function normalizeChatIntentText(text: string): string {
+  return text
+    .trim()
+    .toLowerCase()
+    .replaceAll('chnage', 'change')
+    .replaceAll('chnge', 'change')
+    .replaceAll('colur', 'colour')
+    .replaceAll('coulor', 'colour')
+}
+
+function isBikeDamageQuestion(text: string): boolean {
+  const normalized = normalizeChatIntentText(text)
+  return /crash|crashed|accident|collision|damage|damaged|broken|bent|smashed|what wrong|what s wrong|whats wrong|what happened|problem with|issue with|not working|won t start|wont start|leak/.test(
+    normalized,
+  )
+}
+
+function isBikeColorPreviewRequest(text: string, hasImage: boolean): boolean {
+  if (!hasImage || isBikeDamageQuestion(text)) return false
+  const normalized = normalizeChatIntentText(text)
+  if (!normalized) return false
+  const customization =
+    /change.*(color|colour)|colour change|color change|repaint|paint job|modify.*bike|change.*bike|color in image|colour in (image|photo)|want to change|paint (my|the|this) bike|on this bike|this bike|make it \w+|want \w+ (red|blue|black|white|green|yellow|orange|silver|grey|gray|pink|purple|gold|maroon|navy)/.test(
+      normalized,
+    )
+  if (!customization) return false
+  return BIKE_TARGET_COLOR.test(normalized) || /\bto [a-z]/.test(normalized) || /\b(color|colour) (of|to) /.test(normalized)
+}
+
+function aiActivityForOutgoingMessage(text: string, hasImage: boolean): AiActivity {
+  return isBikeColorPreviewRequest(text, hasImage) ? 'generating_image' : 'typing'
+}
+
 const ChatbotWidget = () => {
   const { token, user } = useAuth()
   const { registerProductEnquiryHandler } = useChat()
@@ -157,7 +195,7 @@ const ChatbotWidget = () => {
   const [replyTarget, setReplyTarget] = useState<UiMessage | null>(null)
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; message: UiMessage } | null>(null)
   const [deletingMessageId, setDeletingMessageId] = useState<string | null>(null)
-  const [aiTyping, setAiTyping] = useState(false)
+  const [aiActivity, setAiActivity] = useState<AiActivity | null>(null)
   const [aiEnabled, setAiEnabled] = useState(true)
   const aiEnabledRef = useRef(true)
   const listRef = useRef<HTMLDivElement | null>(null)
@@ -175,7 +213,7 @@ const ChatbotWidget = () => {
 
   const handleAiSettings = useCallback((enabled: boolean) => {
     setAiEnabled(enabled)
-    if (!enabled) setAiTyping(false)
+    if (!enabled) setAiActivity(null)
   }, [])
 
   const markChatAsRead = useCallback(
@@ -221,7 +259,7 @@ const ChatbotWidget = () => {
     (message: ApiChatMessage) => {
       const isShopReply = message.sender === 'ADMIN' || message.sender === 'ASSISTANT'
       if (isShopReply) {
-        setAiTyping(false)
+        setAiActivity(null)
       }
       if (message.sender === 'ADMIN' && !openRef.current && user?.id) {
         if (!notifiedAdminMessageIdsRef.current.has(message.id)) {
@@ -258,7 +296,7 @@ const ChatbotWidget = () => {
   useEffect(() => {
     if (!isLoggedIn || !token) {
       setAiEnabled(true)
-      setAiTyping(false)
+      setAiActivity(null)
       return
     }
     let cancelled = false
@@ -266,7 +304,7 @@ const ChatbotWidget = () => {
       .then((settings) => {
         if (cancelled) return
         setAiEnabled(settings.aiEnabled)
-        if (!settings.aiEnabled) setAiTyping(false)
+        if (!settings.aiEnabled) setAiActivity(null)
       })
       .catch(() => {
         /* default AI on */
@@ -309,7 +347,7 @@ const ChatbotWidget = () => {
         markChatAsRead(data)
         const last = data.at(-1)
         if (last?.sender === 'ASSISTANT' || last?.sender === 'ADMIN') {
-          setAiTyping(false)
+          setAiActivity(null)
         }
       })
       .catch((err) => {
@@ -371,22 +409,23 @@ const ChatbotWidget = () => {
   }
 
   useEffect(() => {
-    if (!aiTyping) return
-    const timer = window.setTimeout(() => setAiTyping(false), 90_000)
+    if (!aiActivity) return
+    const timeoutMs = aiActivity === 'generating_image' ? 180_000 : 90_000
+    const timer = window.setTimeout(() => setAiActivity(null), timeoutMs)
     return () => window.clearTimeout(timer)
-  }, [aiTyping])
+  }, [aiActivity])
 
   useEffect(() => {
     const last = messages.at(-1)
     if (last?.sender === 'assistant' || last?.sender === 'admin') {
-      setAiTyping(false)
+      setAiActivity(null)
     }
   }, [messages])
 
   useEffect(() => {
     if (!open || loading) return
     scrollChatToBottom(listRef.current)
-  }, [open, loading, messages, aiTyping])
+  }, [open, loading, messages, aiActivity])
 
   useEffect(() => {
     const list = listRef.current
@@ -459,7 +498,8 @@ const ChatbotWidget = () => {
     resetFileSelection()
     setReplyTarget(null)
 
-    if (aiEnabled) setAiTyping(true)
+    const outgoingHasImage = Boolean(fileToSend && fileToSend.type.startsWith('image/'))
+    if (aiEnabled) setAiActivity(aiActivityForOutgoingMessage(textToSend, outgoingHasImage))
 
     try {
       const uploadFile = fileToSend ? await prepareChatUploadFile(fileToSend) : null
@@ -483,6 +523,7 @@ const ChatbotWidget = () => {
         }
       }
       toast.error(err instanceof Error ? err.message : 'Could not send message.')
+      setAiActivity(null)
     } finally {
       sendingRef.current = false
     }
@@ -523,7 +564,7 @@ const ChatbotWidget = () => {
         },
       ])
 
-      if (aiEnabledRef.current) setAiTyping(true)
+      if (aiEnabledRef.current) setAiActivity('typing')
 
       try {
         const uploadFile = fileToSend ? await prepareChatUploadFile(fileToSend) : null
@@ -674,7 +715,13 @@ const ChatbotWidget = () => {
                               attachmentType={message.attachmentType}
                               attachmentName={message.attachmentName}
                               onPreviewImage={setPreviewImageUrl}
-                              maxImageWidth={message.sender === 'assistant' ? 96 : 200}
+                              maxImageWidth={
+                                message.sender === 'assistant'
+                                  ? message.attachmentName?.toLowerCase().includes('preview')
+                                    ? 220
+                                    : 96
+                                  : 200
+                              }
                             />
                           ) : null}
                           {message.text ? (
@@ -691,11 +738,13 @@ const ChatbotWidget = () => {
                       </div>
                     )
                   })}
-                  {aiEnabled && aiTyping ? (
+                  {aiEnabled && aiActivity ? (
                     <div className="flex justify-start">
                       <div className="max-w-[85%] rounded-2xl rounded-bl-md px-3 py-2 text-sm bg-violet-50 border border-violet-200 text-violet-700">
                         <div className="text-[10px] font-semibold mb-1 text-violet-600">AI Assistant</div>
-                        <div className="text-xs">Typing…</div>
+                        <div className="text-xs">
+                          {aiActivity === 'generating_image' ? 'Generating image…' : 'Typing…'}
+                        </div>
                       </div>
                     </div>
                   ) : null}

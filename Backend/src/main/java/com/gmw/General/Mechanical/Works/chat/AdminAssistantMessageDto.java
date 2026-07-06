@@ -5,5 +5,8 @@ public record AdminAssistantMessageDto(
 		Long adminId,
 		ChatSender sender,
 		String body,
+		String attachmentUrl,
+		ChatAttachmentType attachmentType,
+		String attachmentName,
 		String createdAt) {
 }

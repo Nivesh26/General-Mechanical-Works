@@ -632,6 +632,7 @@ public class SchemaMigrationConfig {
 			addChatMessageHiddenTableIfMissing(jdbcTemplate);
 			addChatConversationSettingsTableIfMissing(jdbcTemplate);
 			addAdminAssistantMessageTableIfMissing(jdbcTemplate);
+			addAdminAssistantAttachmentColumnsIfMissing(jdbcTemplate);
 		};
 	}
 
@@ -657,6 +658,12 @@ public class SchemaMigrationConfig {
 					) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
 					""");
 		}
+	}
+
+	private void addAdminAssistantAttachmentColumnsIfMissing(JdbcTemplate jdbcTemplate) {
+		addColumnIfMissing(jdbcTemplate, "admin_assistant_message", "attachment_url", "VARCHAR(1024) NULL");
+		addColumnIfMissing(jdbcTemplate, "admin_assistant_message", "attachment_type", "VARCHAR(16) NULL");
+		addColumnIfMissing(jdbcTemplate, "admin_assistant_message", "attachment_name", "VARCHAR(255) NULL");
 	}
 
 	private void addChatConversationSettingsTableIfMissing(JdbcTemplate jdbcTemplate) {
