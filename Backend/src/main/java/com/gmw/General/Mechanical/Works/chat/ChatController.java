@@ -32,6 +32,11 @@ public class ChatController {
 		return chatService.listMessagesForUser(principal.getName());
 	}
 
+	@GetMapping("/ai")
+	public ChatConversationAiDto aiSettings(Principal principal) {
+		return chatService.getAiSettingsForUser(principal.getName());
+	}
+
 	@PostMapping("/messages")
 	public ChatMessageDto send(Principal principal, @Valid @RequestBody SendChatMessageRequest request) {
 		return chatService.sendFromUser(principal.getName(), request);

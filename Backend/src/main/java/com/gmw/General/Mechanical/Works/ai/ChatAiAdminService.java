@@ -46,6 +46,7 @@ public class ChatAiAdminService {
 		if (adminId == null) {
 			return;
 		}
+		long replyStartedAt = System.currentTimeMillis();
 		try {
 			List<AdminAssistantMessage> history = recentHistory(adminId);
 			if (history.isEmpty()) {
@@ -57,38 +58,44 @@ public class ChatAiAdminService {
 			}
 			String adminText = StringUtils.hasText(latest.getBody()) ? latest.getBody().trim() : "";
 			if (ChatAiIntent.isSimpleGreeting(adminText) || ChatAiIntent.isHelpQuestion(adminText)) {
-				adminAssistantChatService.sendAssistantMessage(adminId, ChatAiAdminIntent.WELCOME_MESSAGE);
+				sendAssistantMessage(adminId, replyStartedAt, ChatAiAdminIntent.WELCOME_MESSAGE);
 				return;
 			}
 			if (ChatAiAdminIntent.isTodayBookingsQuestion(adminText)) {
-				adminAssistantChatService.sendAssistantMessage(adminId, adminContext.buildTodayBookingsReply());
+				sendAssistantMessage(adminId, replyStartedAt, adminContext.buildTodayBookingsReply());
 				return;
 			}
 			if (ChatAiAdminIntent.isAllOrdersDeliveredQuestion(adminText)) {
-				adminAssistantChatService.sendAssistantMessage(adminId, adminContext.buildAllOrdersDeliveredReply());
+				sendAssistantMessage(adminId, replyStartedAt, adminContext.buildAllOrdersDeliveredReply());
 				return;
 			}
 			if (ChatAiAdminIntent.isOrdersOverviewQuestion(adminText)) {
-				adminAssistantChatService.sendAssistantMessage(adminId, adminContext.buildOrdersSummaryReply());
+				sendAssistantMessage(adminId, replyStartedAt, adminContext.buildOrdersSummaryReply());
 				return;
 			}
 			if (ChatAiAdminIntent.isAppointmentsOverviewQuestion(adminText)) {
-				adminAssistantChatService.sendAssistantMessage(adminId, adminContext.buildAppointmentsSummaryReply());
+				sendAssistantMessage(adminId, replyStartedAt, adminContext.buildAppointmentsSummaryReply());
 				return;
 			}
 			String reply = ollamaClient.chat(promptBuilder.buildMessages(history, adminText));
 			if (!StringUtils.hasText(reply)) {
 				reply = FALLBACK_REPLY;
 			}
-			adminAssistantChatService.sendAssistantMessage(adminId, reply);
+			sendAssistantMessage(adminId, replyStartedAt, reply);
 		} catch (Exception ex) {
 			log.warn("Admin AI reply failed for admin {}: {}", adminId, ex.getMessage());
 			try {
+				ChatAiReplyDelay.ensureMinimumDelay(replyStartedAt);
 				adminAssistantChatService.sendAssistantMessage(adminId, FALLBACK_REPLY);
 			} catch (Exception sendEx) {
 				log.warn("Could not send admin AI fallback for admin {}: {}", adminId, sendEx.getMessage());
 			}
 		}
+	}
+
+	private void sendAssistantMessage(Long adminId, long replyStartedAt, String text) {
+		ChatAiReplyDelay.ensureMinimumDelay(replyStartedAt);
+		adminAssistantChatService.sendAssistantMessage(adminId, text);
 	}
 
 	private List<AdminAssistantMessage> recentHistory(Long adminId) {

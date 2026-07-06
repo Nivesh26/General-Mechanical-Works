@@ -80,13 +80,32 @@ final class ChatAiIntent {
 		if (!StringUtils.hasText(text)) {
 			return false;
 		}
+		if (isMechanicalAdviceQuestion(text)) {
+			return false;
+		}
 		String normalized = normalize(text);
 		return containsAny(normalized,
 				"product", "buy", "purchase", "price", "cost", "part", "parts", "stock",
 				"sku", "catalog", "shop", "order", "available", "item", "spare", "accessory",
 				"do you have", "do you sell", "have you got", "got any", "have any", "any ",
-				"show me", "looking for", "want to buy", "need a", "need an", "sell ",
-				"battery", "batteries", "brake", "tyre", "tire", "oil", "helmet", "chain");
+				"show me", "looking for", "want to buy", "need a", "need an", "sell ");
+	}
+
+	static boolean isMechanicalAdviceQuestion(String text) {
+		if (!StringUtils.hasText(text)) {
+			return false;
+		}
+		String normalized = normalize(text);
+		if (containsAny(normalized,
+				"step by step", "teach me", "walk me through", "guide me through", "guide me to",
+				"instructions for", "instructions on", "how do i", "how can i", "how to",
+				"explain how", "show me how", "tips for", "advice on", "advice for",
+				"can you teach", "help me change", "help me fix", "help me repair",
+				"help me replace", "help me install", "diy", "do it myself")) {
+			return true;
+		}
+		return normalized.matches(".*\\b(change|replace|fix|repair|install|remove)\\b.*")
+				&& containsAny(normalized, "how", "teach", "step", "guide", "help", "explain", "tips", "advice");
 	}
 
 	static boolean isServiceBookingIntent(String text) {

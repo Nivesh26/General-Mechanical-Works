@@ -35,6 +35,9 @@ public class ChatAiProductReplyBuilder {
 		if (ChatAiIntent.isAddToCartIntent(userMessage)) {
 			return Optional.empty();
 		}
+		if (ChatAiIntent.isMechanicalAdviceQuestion(userMessage)) {
+			return Optional.empty();
+		}
 
 		List<Product> matches = shopContext.findMatchingProducts(userMessage);
 		if (!matches.isEmpty()) {

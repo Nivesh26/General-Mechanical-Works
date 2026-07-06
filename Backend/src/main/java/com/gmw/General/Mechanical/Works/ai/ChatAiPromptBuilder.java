@@ -48,6 +48,13 @@ public class ChatAiPromptBuilder {
 			APPOINTMENT HELP: Customer can view bookings at /bookings. \
 			Use RECENT SERVICE BOOKINGS from CUSTOMER section if asked about their appointment.""";
 
+	private static final String MECHANICAL_ADVICE_FLOW = """
+			MECHANICAL GUIDANCE: The customer wants how-to help (DIY or understanding a repair).
+			- Give clear, practical step-by-step guidance for motorcycle/bike maintenance when appropriate.
+			- Start with safety (engine off, proper tools, disconnect negative terminal first for batteries, etc.).
+			- For complex or risky work, recommend booking the matching workshop service at /services (e.g. Battery Service).
+			- Do NOT reply that a product is missing from the shop unless they are clearly trying to buy a part.""";
+
 	private final ChatAiKnowledgeBase knowledgeBase;
 	private final ChatAiUserContext userContext;
 	private final ChatAiShopContext shopContext;
@@ -96,6 +103,9 @@ public class ChatAiPromptBuilder {
 
 		if (ChatAiIntent.isServiceQuestion(latestUserText)) {
 			prompt.append("\n").append(SERVICE_FLOW);
+		}
+		if (ChatAiIntent.isMechanicalAdviceQuestion(latestUserText)) {
+			prompt.append("\n").append(MECHANICAL_ADVICE_FLOW);
 		}
 		if (ChatAiIntent.isProductQuestion(latestUserText)) {
 			prompt.append("\n").append(PRODUCT_FLOW);

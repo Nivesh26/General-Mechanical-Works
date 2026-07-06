@@ -108,6 +108,19 @@ public class ChatWebSocketSessions {
 		}
 	}
 
+	public void broadcastAiSettings(Long userId, boolean aiEnabled) {
+		Map<String, Object> payload = new HashMap<>();
+		payload.put("event", "ai_settings");
+		payload.put("aiEnabled", aiEnabled);
+		String json = writeJson(payload);
+		Set<String> ids = userSessionIds.get(userId);
+		if (ids != null) {
+			for (String sessionId : ids) {
+				sendToSession(sessionId, json);
+			}
+		}
+	}
+
 	public void sendEvent(WebSocketSession session, String event, Object data) {
 		Map<String, Object> payload = new HashMap<>();
 		payload.put("event", event);

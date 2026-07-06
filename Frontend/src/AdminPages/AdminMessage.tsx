@@ -188,7 +188,6 @@ function ChatUserAvatar({
   fontSize?: number
   marginRight?: number
 }) {
-  const label = user.isAiAssistant ? 'AI' : getInitials(user.name)
   const sharedStyle: CSSProperties = {
     width: `${size}px`,
     height: `${size}px`,
@@ -197,7 +196,26 @@ function ChatUserAvatar({
     ...(marginRight != null ? { marginRight: `${marginRight}px` } : {}),
   }
 
-  if (user.avatarUrl && !user.isAiAssistant) {
+  if (user.isAiAssistant) {
+    return (
+      <img
+        src={GMWLogo}
+        alt="AI Assistant"
+        style={{
+          ...sharedStyle,
+          objectFit: 'contain',
+          backgroundColor: '#ffffff',
+          padding: '2px',
+          boxSizing: 'border-box',
+          border: '1px solid #e2e8f0',
+        }}
+      />
+    )
+  }
+
+  const label = getInitials(user.name)
+
+  if (user.avatarUrl) {
     return (
       <img
         src={user.avatarUrl}

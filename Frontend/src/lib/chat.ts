@@ -131,6 +131,14 @@ export async function fetchMyChatMessages(token: string): Promise<ApiChatMessage
   return res.json() as Promise<ApiChatMessage[]>
 }
 
+export async function fetchMyConversationAi(token: string): Promise<ApiChatConversationAi> {
+  const res = await fetch(`${getApiBase()}/api/chat/me/ai`, {
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<ApiChatConversationAi>
+}
+
 export async function fetchAdminChatConversations(token: string): Promise<ApiChatConversation[]> {
   const res = await fetch(`${getApiBase()}/api/admin/chat/conversations`, {
     headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
@@ -319,6 +327,7 @@ export type ChatWsEvent =
   | { event: 'message'; message: ApiChatMessage }
   | { event: 'message_deleted'; deleted: ApiChatMessageDeleted }
   | { event: 'admin_assistant_message'; message: ApiAdminAssistantMessage }
+  | { event: 'ai_settings'; aiEnabled: boolean }
 
 export function parseChatWsEvent(raw: string): ChatWsEvent | null {
   try {
@@ -327,7 +336,8 @@ export function parseChatWsEvent(raw: string): ChatWsEvent | null {
       data.event === 'connected' ||
       data.event === 'message' ||
       data.event === 'message_deleted' ||
-      data.event === 'admin_assistant_message'
+      data.event === 'admin_assistant_message' ||
+      data.event === 'ai_settings'
     ) {
       return data
     }

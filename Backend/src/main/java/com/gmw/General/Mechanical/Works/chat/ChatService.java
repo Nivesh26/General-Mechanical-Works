@@ -164,6 +164,12 @@ public class ChatService {
 		return new ChatConversationAiDto(isAiEnabledForUser(userId));
 	}
 
+	@Transactional(readOnly = true)
+	public ChatConversationAiDto getAiSettingsForUser(String email) {
+		User user = requireUser(email);
+		return new ChatConversationAiDto(isAiEnabledForUser(user.getId()));
+	}
+
 	@Transactional
 	public ChatConversationAiDto setAiEnabledForAdmin(String email, Long userId, boolean aiEnabled) {
 		requireAdmin(email);
@@ -179,6 +185,7 @@ public class ChatService {
 				});
 		settings.setAiEnabled(aiEnabled);
 		chatConversationSettingsRepository.save(settings);
+		chatWebSocketSessions.broadcastAiSettings(userId, aiEnabled);
 		return new ChatConversationAiDto(aiEnabled);
 	}
 

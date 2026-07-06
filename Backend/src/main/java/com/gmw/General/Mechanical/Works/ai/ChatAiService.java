@@ -53,6 +53,7 @@ public class ChatAiService {
 		if (!chatService.isAiEnabledForUser(userId)) {
 			return;
 		}
+		long replyStartedAt = System.currentTimeMillis();
 		try {
 			List<ChatMessage> history = recentHistory(userId);
 			if (history.isEmpty()) {
@@ -67,25 +68,25 @@ public class ChatAiService {
 			}
 			String userText = StringUtils.hasText(latest.getBody()) ? latest.getBody().trim() : "";
 			if (ChatAiIntent.isSimpleGreeting(userText) || ChatAiIntent.isHelpQuestion(userText)) {
-				chatService.sendFromAssistant(userId, ChatAiIntent.WELCOME_MESSAGE);
+				sendTextReply(userId, replyStartedAt, ChatAiIntent.WELCOME_MESSAGE);
 				return;
 			}
 			if (ChatAiIntent.isPaymentQuestion(userText)) {
-				chatService.sendFromAssistant(userId, ChatAiIntent.PAYMENT_MESSAGE);
+				sendTextReply(userId, replyStartedAt, ChatAiIntent.PAYMENT_MESSAGE);
 				return;
 			}
 			Optional<ChatAiReply> cartReply = cartAction.tryAddToCart(userId, userText, history);
 			if (cartReply.isPresent()) {
-				sendAssistantReply(userId, cartReply.get());
+				sendAssistantReply(userId, replyStartedAt, cartReply.get());
 				return;
 			}
 			Optional<ChatAiReply> productReply = productReplyBuilder.tryBuildReply(userText);
 			if (productReply.isPresent()) {
-				sendAssistantReply(userId, productReply.get());
+				sendAssistantReply(userId, replyStartedAt, productReply.get());
 				return;
 			}
 			if (ChatAiIntent.isAddToCartIntent(userText)) {
-				chatService.sendFromAssistant(userId,
+				sendTextReply(userId, replyStartedAt,
 						"I couldn't tell which product to add. Please say the product name or SKU, for example: add BCN-001 to cart.");
 				return;
 			}
@@ -93,11 +94,12 @@ public class ChatAiService {
 			if (!StringUtils.hasText(reply)) {
 				reply = FALLBACK_REPLY;
 			}
-			chatService.sendFromAssistant(userId, reply);
+			sendTextReply(userId, replyStartedAt, reply);
 		} catch (Exception ex) {
 			log.warn("AI reply failed for user {}: {}", userId, ex.getMessage());
 			try {
 				if (chatService.isAiEnabledForUser(userId)) {
+					ChatAiReplyDelay.ensureMinimumDelay(replyStartedAt);
 					chatService.sendFromAssistant(userId, FALLBACK_REPLY);
 				}
 			} catch (Exception sendEx) {
@@ -106,7 +108,13 @@ public class ChatAiService {
 		}
 	}
 
-	private void sendAssistantReply(Long userId, ChatAiReply reply) {
+	private void sendTextReply(Long userId, long replyStartedAt, String text) {
+		ChatAiReplyDelay.ensureMinimumDelay(replyStartedAt);
+		chatService.sendFromAssistant(userId, text);
+	}
+
+	private void sendAssistantReply(Long userId, long replyStartedAt, ChatAiReply reply) {
+		ChatAiReplyDelay.ensureMinimumDelay(replyStartedAt);
 		chatService.sendFromAssistant(userId, reply.text(), reply.attachmentUrl(), reply.attachmentName());
 	}
 

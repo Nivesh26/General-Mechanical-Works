@@ -13,14 +13,17 @@ export function useChatWebSocket(
   onMessage: (message: ApiChatMessage) => void,
   onMessageDeleted?: (deleted: ApiChatMessageDeleted) => void,
   onAdminAssistantMessage?: (message: ApiAdminAssistantMessage) => void,
+  onAiSettings?: (aiEnabled: boolean) => void,
 ) {
   const wsRef = useRef<WebSocket | null>(null)
   const onMessageRef = useRef(onMessage)
   const onMessageDeletedRef = useRef(onMessageDeleted)
   const onAdminAssistantMessageRef = useRef(onAdminAssistantMessage)
+  const onAiSettingsRef = useRef(onAiSettings)
   onMessageRef.current = onMessage
   onMessageDeletedRef.current = onMessageDeleted
   onAdminAssistantMessageRef.current = onAdminAssistantMessage
+  onAiSettingsRef.current = onAiSettings
 
   useEffect(() => {
     if (!token) {
@@ -45,6 +48,8 @@ export function useChatWebSocket(
           onMessageDeletedRef.current?.(parsed.deleted)
         } else if (parsed?.event === 'admin_assistant_message') {
           onAdminAssistantMessageRef.current?.(parsed.message)
+        } else if (parsed?.event === 'ai_settings') {
+          onAiSettingsRef.current?.(parsed.aiEnabled)
         }
       }
 

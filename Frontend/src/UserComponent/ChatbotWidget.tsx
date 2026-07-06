@@ -11,6 +11,7 @@ import {
   canDeleteChatForEveryone,
   deleteMyChatMessage,
   fetchMyChatMessages,
+  fetchMyConversationAi,
   formatChatTime,
   maxChatMessageId,
   readChatLastSeenMessageId,
@@ -157,6 +158,8 @@ const ChatbotWidget = () => {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; message: UiMessage } | null>(null)
   const [deletingMessageId, setDeletingMessageId] = useState<string | null>(null)
   const [aiTyping, setAiTyping] = useState(false)
+  const [aiEnabled, setAiEnabled] = useState(true)
+  const aiEnabledRef = useRef(true)
   const listRef = useRef<HTMLDivElement | null>(null)
   const inputRef = useRef<HTMLInputElement | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
@@ -168,6 +171,12 @@ const ChatbotWidget = () => {
   const openRef = useRef(open)
   const notifiedAdminMessageIdsRef = useRef<Set<number>>(new Set())
   openRef.current = open
+  aiEnabledRef.current = aiEnabled
+
+  const handleAiSettings = useCallback((enabled: boolean) => {
+    setAiEnabled(enabled)
+    if (!enabled) setAiTyping(false)
+  }, [])
 
   const markChatAsRead = useCallback(
     (apiMessages: Pick<ApiChatMessage, 'id'>[]) => {
@@ -244,7 +253,28 @@ const ChatbotWidget = () => {
     setMessages((prev) => prev.filter((m) => m.id !== String(deleted.messageId)))
   }, [])
 
-  useChatWebSocket(isLoggedIn ? token : null, appendMessage, handleMessageDeleted)
+  useChatWebSocket(isLoggedIn ? token : null, appendMessage, handleMessageDeleted, undefined, handleAiSettings)
+
+  useEffect(() => {
+    if (!isLoggedIn || !token) {
+      setAiEnabled(true)
+      setAiTyping(false)
+      return
+    }
+    let cancelled = false
+    fetchMyConversationAi(token)
+      .then((settings) => {
+        if (cancelled) return
+        setAiEnabled(settings.aiEnabled)
+        if (!settings.aiEnabled) setAiTyping(false)
+      })
+      .catch(() => {
+        /* default AI on */
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [isLoggedIn, token])
 
   useEffect(() => {
     if (!isLoggedIn || !token || !user?.id) {
@@ -277,6 +307,10 @@ const ChatbotWidget = () => {
         if (cancelled) return
         setMessages(mapApiMessagesToUi(data))
         markChatAsRead(data)
+        const last = data.at(-1)
+        if (last?.sender === 'ASSISTANT' || last?.sender === 'ADMIN') {
+          setAiTyping(false)
+        }
       })
       .catch((err) => {
         if (cancelled) return
@@ -341,6 +375,13 @@ const ChatbotWidget = () => {
     const timer = window.setTimeout(() => setAiTyping(false), 90_000)
     return () => window.clearTimeout(timer)
   }, [aiTyping])
+
+  useEffect(() => {
+    const last = messages.at(-1)
+    if (last?.sender === 'assistant' || last?.sender === 'admin') {
+      setAiTyping(false)
+    }
+  }, [messages])
 
   useEffect(() => {
     if (!open || loading) return
@@ -418,13 +459,14 @@ const ChatbotWidget = () => {
     resetFileSelection()
     setReplyTarget(null)
 
+    if (aiEnabled) setAiTyping(true)
+
     try {
       const uploadFile = fileToSend ? await prepareChatUploadFile(fileToSend) : null
       const sent = uploadFile
         ? await sendMyChatMessageWithFile(token, uploadFile, textToSend || undefined, replyToId)
         : await sendMyChatMessage(token, textToSend, replyToId)
       finalizeSentMessage(sent)
-      setAiTyping(true)
     } catch (err) {
       setMessages((prev) => prev.filter((m) => m.id !== tempId))
       pendingSendIdRef.current = null
@@ -481,13 +523,14 @@ const ChatbotWidget = () => {
         },
       ])
 
+      if (aiEnabledRef.current) setAiTyping(true)
+
       try {
         const uploadFile = fileToSend ? await prepareChatUploadFile(fileToSend) : null
         const sent = uploadFile
           ? await sendMyChatMessageWithFile(authToken, uploadFile, textToSend, undefined)
           : await sendMyChatMessage(authToken, textToSend, null)
         finalizeSentMessage(sent)
-        setAiTyping(true)
         toast.success('Your product enquiry has been sent.')
       } catch (err) {
         setMessages((prev) => prev.filter((m) => m.id !== tempId))
@@ -648,7 +691,7 @@ const ChatbotWidget = () => {
                       </div>
                     )
                   })}
-                  {aiTyping ? (
+                  {aiEnabled && aiTyping ? (
                     <div className="flex justify-start">
                       <div className="max-w-[85%] rounded-2xl rounded-bl-md px-3 py-2 text-sm bg-violet-50 border border-violet-200 text-violet-700">
                         <div className="text-[10px] font-semibold mb-1 text-violet-600">AI Assistant</div>
