@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import Header from '../UserComponent/Header'
@@ -11,7 +11,8 @@ import EsewaLogo from '../assets/E-sewa.png'
 import KhaltiLogo from '../assets/Khalti.png'
 import { useAuth } from '../context/AuthContext'
 import CheckoutProcessingSpinner from '../UserComponent/CheckoutProcessingSpinner'
-import { esewaLaunchUrl, initEsewaPayment, initKhaltiPayment, placeOrder } from '../lib/api'
+import { esewaLaunchUrl, fetchMyCart, initEsewaPayment, initKhaltiPayment, placeOrder } from '../lib/api'
+import { isCartItemCheckoutBlocked } from '../lib/cartAvailability'
 import { productImageUrl } from '../lib/products'
 
 type CheckoutItem = {
@@ -51,6 +52,8 @@ const Checkout = () => {
   const state = (routerLocation.state as CheckoutState | null) ?? null
   const [submitting, setSubmitting] = useState(false)
   const [paymentMethod, setPaymentMethod] = useState<PaymentChoice>('COD')
+  const [cartValidated, setCartValidated] = useState(false)
+  const [cartValid, setCartValid] = useState(true)
 
   const hasDeliveryLocation = Boolean(user?.location?.trim())
 
@@ -80,8 +83,65 @@ const Checkout = () => {
   )
   const total = useMemo(() => state?.total ?? subtotal + taxAmount, [state?.total, subtotal, taxAmount])
 
+  useEffect(() => {
+    if (!token || cartLineIds.length === 0) {
+      setCartValidated(true)
+      setCartValid(cartLineIds.length > 0)
+      return
+    }
+
+    let cancelled = false
+    void (async () => {
+      try {
+        const rows = await fetchMyCart(token)
+        if (cancelled) return
+
+        const byId = new Map(rows.map((row) => [row.id, row]))
+        const missing = cartLineIds.filter((id) => !byId.has(id))
+        const blocked = cartLineIds.filter((id) => {
+          const row = byId.get(id)
+          if (!row) return false
+          return isCartItemCheckoutBlocked({
+            active: row.active,
+            stock: row.stock,
+            quantity: row.quantity,
+          })
+        })
+
+        if (missing.length > 0) {
+          toast.warn('Some items were removed from your cart.')
+          navigate('/cart', { replace: true })
+          return
+        }
+        if (blocked.length > 0) {
+          toast.error('Some items in your cart are unavailable. Please review your cart.')
+          navigate('/cart', { replace: true })
+          return
+        }
+
+        setCartValid(true)
+      } catch (err) {
+        if (!cancelled) {
+          setCartValid(false)
+          toast.error(err instanceof Error ? err.message : 'Could not verify cart.')
+        }
+      } finally {
+        if (!cancelled) setCartValidated(true)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [token, cartLineIds, navigate])
+
   const canPlaceOrder =
-    Boolean(token) && cartLineIds.length > 0 && selectedItems.length > 0 && hasDeliveryLocation
+    Boolean(token) &&
+    cartLineIds.length > 0 &&
+    selectedItems.length > 0 &&
+    hasDeliveryLocation &&
+    cartValidated &&
+    cartValid
 
   const handlePlaceOrder = async () => {
     if (!token) {
@@ -95,6 +155,11 @@ const Checkout = () => {
     }
     if (cartLineIds.length === 0) {
       toast.error('Add items from your cart before checkout.')
+      navigate('/cart')
+      return
+    }
+    if (!cartValid) {
+      toast.error('Some items in your cart are unavailable. Please review your cart.')
       navigate('/cart')
       return
     }
@@ -292,6 +357,23 @@ const Checkout = () => {
                   className="mt-3 w-full rounded-lg border border-primary bg-white py-2.5 text-sm font-semibold text-primary hover:bg-primary/5 transition-colors cursor-pointer"
                 >
                   Go to profile
+                </button>
+              </div>
+            ) : null}
+            {!cartValidated ? (
+              <p className="mt-5 text-sm text-gray-500">Verifying cart items…</p>
+            ) : null}
+            {cartValidated && !cartValid ? (
+              <div className="mt-5 rounded-lg border border-red-200 bg-red-50 p-4">
+                <p className="text-sm text-red-800">
+                  Some items are unavailable or out of stock. Return to your cart to fix them.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => navigate('/cart')}
+                  className="mt-3 w-full rounded-lg border border-red-300 bg-white py-2.5 text-sm font-semibold text-red-700 hover:bg-red-50 transition-colors cursor-pointer"
+                >
+                  Back to cart
                 </button>
               </div>
             ) : null}

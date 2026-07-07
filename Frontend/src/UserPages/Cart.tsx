@@ -16,6 +16,11 @@ import {
   type CartItemDto,
 } from '../lib/api'
 import { productImageUrl } from '../lib/products'
+import {
+  getCartItemIssue,
+  getCartItemIssueLabel,
+  isCartItemCheckoutBlocked,
+} from '../lib/cartAvailability'
 
 const formatRs = (n: number) => `Rs. ${n.toLocaleString('en-IN')}`
 
@@ -33,6 +38,8 @@ type DisplayCartItem = {
   priceValue: number
   image: string | null
   maxQuantity: number
+  stock: number
+  active: boolean
   size: string | null
 }
 
@@ -44,6 +51,8 @@ const toDisplayItem = (row: CartItemDto): DisplayCartItem => ({
   priceValue: Number(row.price),
   image: productImageUrl(row.imagePaths[0] ?? null),
   maxQuantity: row.maxQuantity,
+  stock: row.stock,
+  active: row.active,
   size: row.size,
 })
 
@@ -82,7 +91,40 @@ const Cart = () => {
     void loadCart()
   }, [loadCart])
 
+  useEffect(() => {
+    setSelectedIds((prev) =>
+      prev.filter((id) => {
+        const item = items.find((row) => row.id === id)
+        if (!item) return false
+        const qty = quantities[id] ?? 1
+        return !isCartItemCheckoutBlocked({ active: item.active, stock: item.stock, quantity: qty })
+      }),
+    )
+  }, [items, quantities])
+
+  const itemAvailability = (item: DisplayCartItem) => {
+    const qty = quantities[item.id] ?? 1
+    return getCartItemIssue({ active: item.active, stock: item.stock, quantity: qty })
+  }
+
+  const selectableItems = items.filter((item) => !isCartItemCheckoutBlocked({
+    active: item.active,
+    stock: item.stock,
+    quantity: quantities[item.id] ?? 1,
+  }))
+
   const toggleProduct = (id: number) => {
+    const item = items.find((row) => row.id === id)
+    if (
+      item &&
+      isCartItemCheckoutBlocked({
+        active: item.active,
+        stock: item.stock,
+        quantity: quantities[id] ?? 1,
+      })
+    ) {
+      return
+    }
     setSelectedIds((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     )
@@ -129,10 +171,11 @@ const Cart = () => {
     }
   }
 
-  const allSelected = items.length > 0 && selectedIds.length === items.length
+  const allSelected =
+    selectableItems.length > 0 && selectableItems.every((item) => selectedIds.includes(item.id))
 
   const toggleSelectAll = () => {
-    setSelectedIds(allSelected ? [] : items.map((p) => p.id))
+    setSelectedIds(allSelected ? [] : selectableItems.map((item) => item.id))
   }
 
   const deleteAllItems = async () => {
@@ -153,6 +196,14 @@ const Cart = () => {
   }
 
   const selectedItems = items.filter((p) => selectedIds.includes(p.id))
+  const selectedHasBlocked = selectedItems.some((item) =>
+    isCartItemCheckoutBlocked({
+      active: item.active,
+      stock: item.stock,
+      quantity: quantities[item.id] ?? 1,
+    }),
+  )
+  const unavailableCount = items.filter((item) => itemAvailability(item) !== null).length
   const lineTotal = (p: DisplayCartItem) => p.priceValue * (quantities[p.id] ?? 1)
   const subtotal = selectedItems.reduce((sum, p) => sum + lineTotal(p), 0)
   const taxAmount = Math.round(subtotal * TAX_RATE)
@@ -160,6 +211,10 @@ const Cart = () => {
 
   const goToCheckout = () => {
     if (selectedItems.length === 0) return
+    if (selectedHasBlocked) {
+      toast.error('Remove or fix unavailable items before checkout.')
+      return
+    }
 
     navigate('/checkout', {
       state: {
@@ -192,6 +247,11 @@ const Cart = () => {
             <p className="text-sm text-gray-500 whitespace-nowrap">
               Review items, then checkout.
             </p>
+            {unavailableCount > 0 ? (
+              <p className="text-sm text-red-600 font-medium mt-1">
+                {unavailableCount} {unavailableCount === 1 ? 'item needs' : 'items need'} attention before checkout.
+              </p>
+            ) : null}
           </div>
           <button
             type="button"
@@ -214,7 +274,7 @@ const Cart = () => {
                     type="checkbox"
                     checked={allSelected}
                     onChange={toggleSelectAll}
-                    disabled={items.length === 0}
+                    disabled={selectableItems.length === 0}
                     className="w-4 h-4 rounded text-primary border-gray-300 focus:ring-primary shrink-0 disabled:opacity-50"
                   />
                   Select all
@@ -246,23 +306,37 @@ const Cart = () => {
                   items.map((item) => {
                     const qty = quantities[item.id] ?? 1
                     const isBusy = busyId === item.id
+                    const issue = itemAvailability(item)
+                    const blocked = issue !== null
+                    const issueLabel = issue ? getCartItemIssueLabel(issue, item.stock) : ''
                     return (
                       <div
                         key={item.id}
                         className={`flex items-center gap-4 p-4 rounded-xl border-2 transition-colors ${
-                          selectedIds.includes(item.id)
-                            ? 'border-primary bg-primary/5'
-                            : 'border-gray-200 hover:border-gray-300 bg-white'
+                          blocked
+                            ? 'border-red-200 bg-red-50/60'
+                            : selectedIds.includes(item.id)
+                              ? 'border-primary bg-primary/5'
+                              : 'border-gray-200 hover:border-gray-300 bg-white'
                         }`}
                       >
-                        <label className="flex items-center gap-4 flex-1 min-w-0 cursor-pointer">
+                        <label
+                          className={`flex items-center gap-4 flex-1 min-w-0 ${
+                            blocked ? 'cursor-default' : 'cursor-pointer'
+                          }`}
+                        >
                           <input
                             type="checkbox"
                             checked={selectedIds.includes(item.id)}
                             onChange={() => toggleProduct(item.id)}
-                            className="w-4 h-4 rounded text-primary border-gray-300 focus:ring-primary shrink-0"
+                            disabled={blocked}
+                            className="w-4 h-4 rounded text-primary border-gray-300 focus:ring-primary shrink-0 disabled:opacity-40"
                           />
-                          <div className="w-20 h-20 rounded-lg bg-gray-50 flex items-center justify-center shrink-0 p-2">
+                          <div
+                            className={`w-20 h-20 rounded-lg bg-gray-50 flex items-center justify-center shrink-0 p-2 ${
+                              blocked ? 'opacity-60' : ''
+                            }`}
+                          >
                             {item.image ? (
                               <img
                                 src={item.image}
@@ -275,12 +349,18 @@ const Cart = () => {
                           </div>
                           <div className="flex flex-1 min-w-0 flex-col gap-2 sm:gap-3">
                             <div className="min-w-0">
-                              <p className="font-semibold text-gray-900">{item.name}</p>
+                              <p className={`font-semibold ${blocked ? 'text-gray-700' : 'text-gray-900'}`}>
+                                {item.name}
+                              </p>
+                              {issueLabel ? (
+                                <p className="text-xs font-semibold text-red-600 mt-0.5">{issueLabel}</p>
+                              ) : null}
                               {item.size ? (
                                 <p className="text-xs text-gray-500 mt-0.5">Size: {item.size}</p>
                               ) : null}
                               <p className="text-primary font-semibold mt-1">{item.priceLabel}</p>
                             </div>
+                            {!blocked ? (
                             <div
                               className="flex flex-col gap-1 shrink-0 w-fit max-w-full"
                               onClick={(e) => {
@@ -321,6 +401,9 @@ const Cart = () => {
                                 </button>
                               </div>
                             </div>
+                            ) : (
+                              <p className="text-xs text-gray-500">Qty: {qty}</p>
+                            )}
                           </div>
                         </label>
                         <button
@@ -379,11 +462,16 @@ const Cart = () => {
                     </span>
                   </div>
                 </div>
+                {selectedHasBlocked ? (
+                  <p className="mt-4 text-xs text-red-600">
+                    Unavailable or out-of-stock items cannot be checked out. Remove them or reduce quantity.
+                  </p>
+                ) : null}
                 <button
                   type="button"
                   onClick={goToCheckout}
                   className="w-full mt-6 py-3 rounded-lg bg-primary text-white font-semibold text-sm hover:opacity-90 transition-opacity cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={selectedItems.length === 0}
+                  disabled={selectedItems.length === 0 || selectedHasBlocked}
                 >
                   Proceed to checkout
                 </button>

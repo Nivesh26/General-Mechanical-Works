@@ -12,6 +12,7 @@ public record CartItemDto(
 		int quantity,
 		int stock,
 		int maxQuantity,
+		boolean active,
 		String size,
 		List<String> imagePaths) {
 }

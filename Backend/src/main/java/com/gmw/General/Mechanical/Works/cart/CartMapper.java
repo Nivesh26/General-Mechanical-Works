@@ -21,6 +21,7 @@ final class CartMapper {
 				cart.getQuantity(),
 				stock,
 				maxQuantity,
+				product.isActive(),
 				size.isEmpty() ? null : size,
 				product.getImagePathsList());
 	}

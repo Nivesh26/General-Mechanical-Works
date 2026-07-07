@@ -384,6 +384,7 @@ export type CartItemDto = {
   quantity: number
   stock: number
   maxQuantity: number
+  active: boolean
   size: string | null
   imagePaths: string[]
 }
