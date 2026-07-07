@@ -1,5 +1,7 @@
 package com.gmw.General.Mechanical.Works.config;
 
+import java.util.List;
+
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -315,6 +317,22 @@ public class SchemaMigrationConfig {
 					Integer.class);
 			if (orderLineCancelledAtExists == null || orderLineCancelledAtExists == 0) {
 				jdbcTemplate.execute("ALTER TABLE `order_line` ADD COLUMN `cancelled_at` DATETIME NULL");
+			}
+
+			List<String> orderLineProductFkNames = jdbcTemplate.queryForList(
+					"""
+					SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE
+					WHERE TABLE_SCHEMA = DATABASE()
+					  AND TABLE_NAME = 'order_line'
+					  AND COLUMN_NAME = 'product_id'
+					  AND REFERENCED_TABLE_NAME = 'product'
+					""",
+					String.class);
+			for (String constraintName : orderLineProductFkNames) {
+				if (constraintName != null && !constraintName.isBlank()) {
+					jdbcTemplate.execute(
+							"ALTER TABLE `order_line` DROP FOREIGN KEY `" + constraintName.replace("`", "") + "`");
+				}
 			}
 
 			Integer shopOrderPaidExists = jdbcTemplate.queryForObject(

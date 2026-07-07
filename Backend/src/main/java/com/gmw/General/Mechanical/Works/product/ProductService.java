@@ -3,8 +3,10 @@ package com.gmw.General.Mechanical.Works.product;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -14,6 +16,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.gmw.General.Mechanical.Works.order.OrderLineRepository;
 import com.gmw.General.Mechanical.Works.storage.ImageStorageService;
 import com.gmw.General.Mechanical.Works.storage.ImageStorageService.Folder;
 
@@ -26,10 +29,15 @@ public class ProductService {
 	public static final int MAX_BULLET_POINTS_LENGTH = 8000;
 
 	private final ProductRepository productRepository;
+	private final OrderLineRepository orderLineRepository;
 	private final ImageStorageService imageStorageService;
 
-	public ProductService(ProductRepository productRepository, ImageStorageService imageStorageService) {
+	public ProductService(
+			ProductRepository productRepository,
+			OrderLineRepository orderLineRepository,
+			ImageStorageService imageStorageService) {
 		this.productRepository = productRepository;
+		this.orderLineRepository = orderLineRepository;
 		this.imageStorageService = imageStorageService;
 	}
 
@@ -100,7 +108,7 @@ public class ProductService {
 		ensureUniqueSku(sku, id);
 
 		List<String> currentPaths = ProductJson.readStringList(product.getImagePathsJson());
-		List<String> imagePaths = resolveUpdatedImagePaths(currentPaths, keepImagePaths, files);
+		List<String> imagePaths = resolveUpdatedImagePaths(id, currentPaths, keepImagePaths, files);
 
 		applyFields(product, sku, name, description, bulletPointsRaw, category, sizesRaw, price, stock);
 		product.setImagePathsJson(ProductJson.writeStringList(imagePaths));
@@ -108,6 +116,7 @@ public class ProductService {
 	}
 
 	private List<String> resolveUpdatedImagePaths(
+			Long productId,
 			List<String> currentPaths,
 			List<String> keepImagePaths,
 			List<MultipartFile> files) {
@@ -121,9 +130,9 @@ public class ProductService {
 			}
 			base = new ArrayList<>(kept);
 			List<String> removed = currentPaths.stream().filter(path -> !base.contains(path)).toList();
-			deleteStoredPaths(removed);
+			deleteStoredPathsUnlessUsedByOrders(productId, removed);
 		} else if (files != null && !files.isEmpty()) {
-			deleteStoredPaths(currentPaths);
+			deleteStoredPathsUnlessUsedByOrders(productId, currentPaths);
 			base = new ArrayList<>();
 		} else {
 			base = new ArrayList<>(currentPaths);
@@ -159,7 +168,9 @@ public class ProductService {
 	public void delete(Long id) {
 		Product product = productRepository.findById(id)
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Product not found"));
-		deleteStoredPaths(ProductJson.readStringList(product.getImagePathsJson()));
+		deleteStoredPathsUnlessUsedByOrders(
+				id,
+				ProductJson.readStringList(product.getImagePathsJson()));
 		productRepository.delete(product);
 	}
 
@@ -280,6 +291,18 @@ public class ProductService {
 			paths.add(imageStorageService.upload(file, Folder.PRODUCTS, MAX_IMAGE_BYTES));
 		}
 		return paths;
+	}
+
+	private Set<String> orderImagePathsInUse(Long productId) {
+		return new HashSet<>(orderLineRepository.findDistinctImagePathsByProductId(productId));
+	}
+
+	private void deleteStoredPathsUnlessUsedByOrders(Long productId, List<String> webPaths) {
+		if (webPaths == null || webPaths.isEmpty()) {
+			return;
+		}
+		Set<String> inUse = orderImagePathsInUse(productId);
+		deleteStoredPaths(webPaths.stream().filter(path -> !inUse.contains(path)).toList());
 	}
 
 	private void deleteStoredPaths(List<String> webPaths) {
