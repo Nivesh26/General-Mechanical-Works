@@ -22,6 +22,7 @@ type CheckoutItem = {
   priceValue: number
   quantity: number
   image?: string | null
+  size?: string | null
 }
 
 type CheckoutState = {
@@ -320,6 +321,9 @@ const Checkout = () => {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-gray-900 truncate">{item.name}</p>
+                        {item.size ? (
+                          <p className="text-xs text-gray-500">Size: {item.size}</p>
+                        ) : null}
                         <p className="text-xs text-gray-500">Qty: {item.quantity}</p>
                       </div>
                       <p className="text-sm font-semibold text-gray-900">{formatRs(lineTotal)}</p>

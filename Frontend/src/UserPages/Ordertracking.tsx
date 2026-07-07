@@ -43,6 +43,7 @@ type TrackedProductLine = {
   orderId: string
   productId: number
   name: string
+  sizeLabel: string | null
   image: string
   sku: string
   qty: number
@@ -104,13 +105,15 @@ function mapOrdersToLines(orders: ApiOrder[]): TrackedProductLine[] {
 
     order.items.forEach((item, index) => {
       const status = lineStatus(order, item)
-      const sizePart = item.sizeLabel?.trim() ? ` Size: ${item.sizeLabel.trim()}.` : ''
+      const sizeLabel = item.sizeLabel?.trim() ? item.sizeLabel.trim() : null
+      const sizePart = sizeLabel ? ` Size: ${sizeLabel}.` : ''
       lines.push({
         id: String(item.id ?? `${order.id}-${index}`),
         shopOrderId: order.id,
         orderId: order.orderNumber,
         productId: item.productId,
         name: item.productName,
+        sizeLabel,
         image: toAbsoluteApiUrl(item.imagePath) ?? EngineOil,
         sku: item.sku,
         qty: item.quantity,
@@ -234,6 +237,12 @@ function ProductLineCard({
               </div>
             </div>
             <p className="mt-2 text-sm text-gray-600">
+              {line.sizeLabel ? (
+                <>
+                  Size <span className="font-medium text-gray-900">{line.sizeLabel}</span>
+                  <span className="mx-2 text-gray-300">·</span>
+                </>
+              ) : null}
               Qty <span className="font-medium text-gray-900">{line.qty}</span>
               <span className="mx-2 text-gray-300">·</span>
               {formatRs(lineTotal)}
@@ -301,6 +310,12 @@ function ProductLineCard({
               <dt className="text-xs text-gray-500">SKU</dt>
               <dd className="font-mono text-gray-900 mt-0.5">{line.sku}</dd>
             </div>
+            {line.sizeLabel ? (
+              <div className={`${detailCellClass} bg-gray-50`}>
+                <dt className="text-xs text-gray-500">Size</dt>
+                <dd className="font-medium text-gray-900 mt-0.5">{line.sizeLabel}</dd>
+              </div>
+            ) : null}
             <div className={`${detailCellClass} bg-gray-50`}>
               <dt className="text-xs text-gray-500">Unit price</dt>
               <dd className="font-medium text-gray-900 mt-0.5 tabular-nums">{formatRs(line.unitPrice)}</dd>

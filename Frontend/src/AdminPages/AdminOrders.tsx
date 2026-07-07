@@ -38,6 +38,7 @@ type OrderLine = {
   sku: string
   quantity: number
   unitPrice: number
+  sizeLabel: string | null
   cancelled: boolean
   cancelledAt?: string | null
   /** First product image (same as catalog) */
@@ -73,6 +74,7 @@ function mapApiOrder(order: ApiAdminOrder): Order {
       sku: item.sku,
       quantity: item.quantity,
       unitPrice: Number(item.unitPrice),
+      sizeLabel: item.sizeLabel?.trim() ? item.sizeLabel.trim() : null,
       cancelled: Boolean(item.cancelled),
       cancelledAt: item.cancelledAt ?? null,
       imageUrl: toAbsoluteApiUrl(item.imagePath) ?? EngineOil,
@@ -88,13 +90,17 @@ function cancelledLineCount(order: Order) {
   return order.items.filter((line) => line.cancelled).length
 }
 
+function lineSummaryLabel(line: OrderLine) {
+  const sizePart = line.sizeLabel ? ` (${line.sizeLabel})` : ''
+  return `${line.productName}${sizePart} ×${line.quantity}`
+}
+
 function itemsSummary(order: Order) {
   const cancelled = cancelledLineCount(order)
   if (order.items.length === 1) {
     const line = order.items[0]
-    return line.cancelled
-      ? `${line.productName} ×${line.quantity} (cancelled)`
-      : `${line.productName} ×${line.quantity}`
+    const base = lineSummaryLabel(line)
+    return line.cancelled ? `${base} (cancelled)` : base
   }
   if (cancelled > 0) {
     return `${order.items.length} items · ${cancelled} cancelled`
@@ -263,7 +269,7 @@ const AdminOrders = () => {
         order.customerEmail,
         order.phone,
         order.paymentMethod,
-        ...order.items.map((i) => `${i.productName} ${i.sku}`),
+        ...order.items.map((i) => `${i.productName} ${i.sku} ${i.sizeLabel ?? ''}`),
       ]
         .join(' ')
         .toLowerCase()
@@ -549,6 +555,7 @@ const AdminOrders = () => {
                                       Product
                                     </th>
                                     <th style={{ textAlign: 'left', padding: '8px 0', color: '#64748b', fontWeight: 600 }}>SKU</th>
+                                    <th style={{ textAlign: 'left', padding: '8px 0', color: '#64748b', fontWeight: 600 }}>Size</th>
                                     <th style={{ textAlign: 'right', padding: '8px 0', color: '#64748b', fontWeight: 600 }}>Qty</th>
                                     <th style={{ textAlign: 'right', padding: '8px 0', color: '#64748b', fontWeight: 600 }}>Unit</th>
                                     <th style={{ textAlign: 'right', padding: '8px 0', color: '#64748b', fontWeight: 600 }}>Line</th>
@@ -586,6 +593,9 @@ const AdminOrders = () => {
                                       </td>
                                       <td style={{ padding: '12px 0', fontFamily: 'monospace', color: '#334155', verticalAlign: 'middle' }}>
                                         {line.sku}
+                                      </td>
+                                      <td style={{ padding: '12px 0', color: '#334155', verticalAlign: 'middle' }}>
+                                        {line.sizeLabel ?? '—'}
                                       </td>
                                       <td style={{ padding: '12px 0', textAlign: 'right', color: '#334155', verticalAlign: 'middle' }}>
                                         {line.quantity}

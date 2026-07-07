@@ -26,6 +26,9 @@ const formatRs = (n: number) => `Rs. ${n.toLocaleString('en-IN')}`
 
 const itemCountLabel = (n: number) => `${n} ${n === 1 ? 'item' : 'items'}`
 
+const itemSummaryLabel = (name: string, size: string | null) =>
+  size ? `${name} (Size: ${size})` : name
+
 const TAX_RATE = 0.13
 
 const MIN_QTY = 1
@@ -432,14 +435,16 @@ const Cart = () => {
                       {selectedItems.length === 0
                         ? '—'
                         : selectedItems.length === 1
-                          ? selectedItems[0].name
+                          ? itemSummaryLabel(selectedItems[0].name, selectedItems[0].size)
                           : itemCountLabel(selectedItems.length)}
                     </span>
                   </div>
                   {selectedItems.length > 1 && (
                     <ul className="text-xs text-gray-500 pl-2 border-l-2 border-primary/30 space-y-1">
                       {selectedItems.map((p) => (
-                        <li key={p.id}>{p.name}</li>
+                        <li key={p.id}>
+                          {itemSummaryLabel(p.name, p.size)}
+                        </li>
                       ))}
                     </ul>
                   )}
