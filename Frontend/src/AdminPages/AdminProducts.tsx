@@ -84,12 +84,12 @@ const emptyForm: ProductForm = {
 
 const formatRs = (value: number) => `Rs. ${value.toLocaleString('en-IN')}`
 
-/** Very light red tint for inactive product rows (distinct from active white rows). */
-const INACTIVE_ROW_BG = '#fff5f5'
-const INACTIVE_ROW_BORDER = '#fecdd3'
-const INACTIVE_ROW_ACCENT = '#fb7185'
-const INACTIVE_IMG_BORDER = '#fecaca'
-const INACTIVE_IMG_BG = '#fff1f2'
+/** Very light red tint for out-of-stock or inactive product rows. */
+const ALERT_ROW_BG = '#fff5f5'
+const ALERT_ROW_BORDER = '#fecdd3'
+const ALERT_ROW_ACCENT = '#fb7185'
+const ALERT_IMG_BORDER = '#fecaca'
+const ALERT_IMG_BG = '#fff1f2'
 
 type ProductFieldKey = 'name' | 'sku' | 'description' | 'category' | 'price' | 'stock' | 'images'
 
@@ -959,19 +959,20 @@ const AdminProducts = () => {
                   const stockStatusBg = outOfStock ? '#fee2e2' : lowStock ? '#fef3c7' : '#dcfce7'
                   const listingActive = product.active
                   const inactiveRow = !listingActive
+                  const rowHighlight = outOfStock || inactiveRow
                   return (
                     <tr
                       key={product.id}
                       style={{
-                        background: inactiveRow ? INACTIVE_ROW_BG : undefined,
-                        boxShadow: inactiveRow ? `inset 4px 0 0 ${INACTIVE_ROW_ACCENT}` : undefined,
+                        background: rowHighlight ? ALERT_ROW_BG : undefined,
+                        boxShadow: inactiveRow ? `inset 4px 0 0 ${ALERT_ROW_ACCENT}` : undefined,
                       }}
                     >
                       <td
                         style={{
                           padding: '14px 16px',
-                          borderBottom: inactiveRow ? `1px solid ${INACTIVE_ROW_BORDER}` : '1px solid #f3f4f6',
-                          color: inactiveRow ? '#374151' : '#4b5563',
+                          borderBottom: rowHighlight ? `1px solid ${ALERT_ROW_BORDER}` : '1px solid #f3f4f6',
+                          color: rowHighlight ? '#374151' : '#4b5563',
                           verticalAlign: 'top',
                         }}
                       >
@@ -980,7 +981,7 @@ const AdminProducts = () => {
                       <td
                         style={{
                           padding: '12px 16px',
-                          borderBottom: inactiveRow ? `1px solid ${INACTIVE_ROW_BORDER}` : '1px solid #f3f4f6',
+                          borderBottom: rowHighlight ? `1px solid ${ALERT_ROW_BORDER}` : '1px solid #f3f4f6',
                           verticalAlign: 'top',
                         }}
                       >
@@ -993,21 +994,21 @@ const AdminProducts = () => {
                               height: '44px',
                               objectFit: 'cover',
                               borderRadius: '8px',
-                              border: inactiveRow ? `1px solid ${INACTIVE_IMG_BORDER}` : '1px solid #e5e7eb',
-                              background: inactiveRow ? INACTIVE_IMG_BG : '#f9fafb',
+                              border: rowHighlight ? `1px solid ${ALERT_IMG_BORDER}` : '1px solid #e5e7eb',
+                              background: rowHighlight ? ALERT_IMG_BG : '#f9fafb',
                               display: 'block',
                               filter: inactiveRow ? 'brightness(0.96)' : undefined,
                             }}
                           />
                         ) : (
-                          <span style={{ color: inactiveRow ? '#9f1239' : '#9ca3af', fontSize: '13px' }}>—</span>
+                          <span style={{ color: rowHighlight ? '#9f1239' : '#9ca3af', fontSize: '13px' }}>—</span>
                         )}
                       </td>
                       <td
                         style={{
                           padding: '14px 16px',
-                          borderBottom: inactiveRow ? `1px solid ${INACTIVE_ROW_BORDER}` : '1px solid #f3f4f6',
-                          color: inactiveRow ? '#1e293b' : '#111827',
+                          borderBottom: rowHighlight ? `1px solid ${ALERT_ROW_BORDER}` : '1px solid #f3f4f6',
+                          color: rowHighlight ? '#1e293b' : '#111827',
                           fontFamily: 'monospace',
                           verticalAlign: 'top',
                         }}
@@ -1017,8 +1018,8 @@ const AdminProducts = () => {
                       <td
                         style={{
                           padding: '14px 16px',
-                          borderBottom: inactiveRow ? `1px solid ${INACTIVE_ROW_BORDER}` : '1px solid #f3f4f6',
-                          color: inactiveRow ? '#0f172a' : '#111827',
+                          borderBottom: rowHighlight ? `1px solid ${ALERT_ROW_BORDER}` : '1px solid #f3f4f6',
+                          color: rowHighlight ? '#0f172a' : '#111827',
                           fontWeight: 600,
                           verticalAlign: 'top',
                         }}
@@ -1028,8 +1029,8 @@ const AdminProducts = () => {
                       <td
                         style={{
                           padding: '14px 16px',
-                          borderBottom: inactiveRow ? `1px solid ${INACTIVE_ROW_BORDER}` : '1px solid #f3f4f6',
-                          color: inactiveRow ? '#334155' : '#4b5563',
+                          borderBottom: rowHighlight ? `1px solid ${ALERT_ROW_BORDER}` : '1px solid #f3f4f6',
+                          color: rowHighlight ? '#334155' : '#4b5563',
                           maxWidth: '260px',
                           verticalAlign: 'top',
                           lineHeight: 1.4,
@@ -1051,8 +1052,8 @@ const AdminProducts = () => {
                       <td
                         style={{
                           padding: '14px 16px',
-                          borderBottom: inactiveRow ? `1px solid ${INACTIVE_ROW_BORDER}` : '1px solid #f3f4f6',
-                          color: inactiveRow ? '#334155' : '#4b5563',
+                          borderBottom: rowHighlight ? `1px solid ${ALERT_ROW_BORDER}` : '1px solid #f3f4f6',
+                          color: rowHighlight ? '#334155' : '#4b5563',
                           maxWidth: '260px',
                           verticalAlign: 'top',
                         }}
@@ -1072,8 +1073,8 @@ const AdminProducts = () => {
                       <td
                         style={{
                           padding: '14px 16px',
-                          borderBottom: inactiveRow ? `1px solid ${INACTIVE_ROW_BORDER}` : '1px solid #f3f4f6',
-                          color: inactiveRow ? '#334155' : '#4b5563',
+                          borderBottom: rowHighlight ? `1px solid ${ALERT_ROW_BORDER}` : '1px solid #f3f4f6',
+                          color: rowHighlight ? '#334155' : '#4b5563',
                           verticalAlign: 'top',
                         }}
                       >
@@ -1082,8 +1083,8 @@ const AdminProducts = () => {
                       <td
                         style={{
                           padding: '14px 16px',
-                          borderBottom: inactiveRow ? `1px solid ${INACTIVE_ROW_BORDER}` : '1px solid #f3f4f6',
-                          color: inactiveRow ? '#334155' : '#4b5563',
+                          borderBottom: rowHighlight ? `1px solid ${ALERT_ROW_BORDER}` : '1px solid #f3f4f6',
+                          color: rowHighlight ? '#334155' : '#4b5563',
                           verticalAlign: 'top',
                         }}
                       >
@@ -1092,8 +1093,8 @@ const AdminProducts = () => {
                       <td
                         style={{
                           padding: '14px 16px',
-                          borderBottom: inactiveRow ? `1px solid ${INACTIVE_ROW_BORDER}` : '1px solid #f3f4f6',
-                          color: inactiveRow ? '#0f172a' : '#111827',
+                          borderBottom: rowHighlight ? `1px solid ${ALERT_ROW_BORDER}` : '1px solid #f3f4f6',
+                          color: rowHighlight ? '#0f172a' : '#111827',
                           verticalAlign: 'top',
                         }}
                       >
@@ -1102,19 +1103,24 @@ const AdminProducts = () => {
                       <td
                         style={{
                           padding: '14px 16px',
-                          borderBottom: inactiveRow ? `1px solid ${INACTIVE_ROW_BORDER}` : '1px solid #f3f4f6',
-                          color: inactiveRow ? '#0f172a' : '#111827',
+                          borderBottom: rowHighlight ? `1px solid ${ALERT_ROW_BORDER}` : '1px solid #f3f4f6',
+                          color: rowHighlight ? '#0f172a' : '#111827',
                           verticalAlign: 'top',
                         }}
                       >
-                        <span style={{ color: lowStock ? '#b45309' : undefined, fontWeight: lowStock ? 700 : undefined }}>
+                        <span
+                          style={{
+                            color: outOfStock ? '#b91c1c' : lowStock ? '#b45309' : undefined,
+                            fontWeight: outOfStock || lowStock ? 700 : undefined,
+                          }}
+                        >
                           {product.stock}
                         </span>
                       </td>
                       <td
                         style={{
                           padding: '14px 16px',
-                          borderBottom: inactiveRow ? `1px solid ${INACTIVE_ROW_BORDER}` : '1px solid #f3f4f6',
+                          borderBottom: rowHighlight ? `1px solid ${ALERT_ROW_BORDER}` : '1px solid #f3f4f6',
                           verticalAlign: 'top',
                         }}
                       >
@@ -1153,7 +1159,7 @@ const AdminProducts = () => {
                       <td
                         style={{
                           padding: '14px 16px',
-                          borderBottom: inactiveRow ? `1px solid ${INACTIVE_ROW_BORDER}` : '1px solid #f3f4f6',
+                          borderBottom: rowHighlight ? `1px solid ${ALERT_ROW_BORDER}` : '1px solid #f3f4f6',
                           verticalAlign: 'middle',
                           whiteSpace: 'nowrap',
                           minWidth: '310px',
