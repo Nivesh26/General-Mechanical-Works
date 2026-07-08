@@ -865,6 +865,32 @@ export async function fetchAdminOrders(token: string): Promise<AdminOrder[]> {
   return res.json() as Promise<AdminOrder[]>
 }
 
+export type AdminPaymentStatus = 'paid' | 'pending'
+export type AdminPaymentMethod = 'COD' | 'eSewa' | 'Khalti'
+
+export type AdminPaymentRecord = {
+  id: string
+  reference: string
+  customerName: string
+  customerEmail: string
+  date: string
+  amount: number
+  method: AdminPaymentMethod
+  status: AdminPaymentStatus
+}
+
+export async function fetchAdminPayments(token: string): Promise<AdminPaymentRecord[]> {
+  const res = await fetch(`${getApiBase()}/api/admin/payments`, {
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  const rows = (await res.json()) as Array<Omit<AdminPaymentRecord, 'amount'> & { amount: number | string }>
+  return rows.map((row) => ({
+    ...row,
+    amount: Number(row.amount),
+  }))
+}
+
 export async function updateAdminOrderStatus(
   token: string,
   orderId: number,

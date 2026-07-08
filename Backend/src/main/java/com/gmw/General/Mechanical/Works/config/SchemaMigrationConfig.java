@@ -347,8 +347,11 @@ public class SchemaMigrationConfig {
 				jdbcTemplate.execute(
 						"ALTER TABLE `shop_order` ADD COLUMN `paid` TINYINT(1) NOT NULL DEFAULT 1");
 			}
-			jdbcTemplate.update(
-					"UPDATE `shop_order` SET `paid` = 1 WHERE `payment_method` = 'COD' AND `paid` = 0");
+			jdbcTemplate.update("""
+					UPDATE `shop_order`
+					SET `paid` = (`status` = 'DELIVERED')
+					WHERE `payment_method` = 'COD'
+					""");
 			jdbcTemplate.update("""
 					UPDATE `shop_order`
 					SET `status` = 'CANCELLED', `cancelled_at` = NOW(), `pending_cart_line_ids` = NULL

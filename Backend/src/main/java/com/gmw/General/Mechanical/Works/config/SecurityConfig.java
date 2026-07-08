@@ -95,6 +95,7 @@ public class SecurityConfig {
 						.requestMatchers(HttpMethod.GET, "/api/admin/notifications").hasRole("ADMIN")
 						.requestMatchers(HttpMethod.GET, "/api/admin/nav-badges").hasRole("ADMIN")
 						.requestMatchers("/api/admin/bills", "/api/admin/bills/**").hasRole("ADMIN")
+						.requestMatchers("/api/admin/payments", "/api/admin/payments/**").hasRole("ADMIN")
 						.requestMatchers("/api/chat/me", "/api/chat/me/**").authenticated()
 						.requestMatchers(HttpMethod.DELETE, "/api/chat/me/messages/*").authenticated()
 						.requestMatchers("/api/admin/chat", "/api/admin/chat/**").hasRole("ADMIN")

@@ -169,7 +169,7 @@ public class OrderService {
 
 		ShopOrder order = prepared.order();
 		order.setPaymentMethod(PaymentMethod.COD);
-		order.setPaid(true);
+		order.setPaid(false);
 
 		applyStockDeduction(prepared.cartLines());
 		ShopOrder saved = shopOrderRepository.save(order);
@@ -363,6 +363,9 @@ public class OrderService {
 		}
 		if (next == OrderStatus.DELIVERED) {
 			order.setDeliveredAt(LocalDateTime.now());
+			if (order.getPaymentMethod() == PaymentMethod.COD) {
+				order.setPaid(true);
+			}
 		}
 		ShopOrder saved = shopOrderRepository.save(order);
 		if (isStatusEmailStatus(next)) {
