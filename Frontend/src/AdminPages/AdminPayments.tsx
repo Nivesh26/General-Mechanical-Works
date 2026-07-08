@@ -80,7 +80,7 @@ const AdminPayments = () => {
 
   const filteredRows = useMemo(() => {
     const q = searchInput.trim().toLowerCase()
-    return rows.filter((row) => {
+    const filtered = rows.filter((row) => {
       if (methodFilter !== 'all' && row.method !== methodFilter) return false
       if (statusFilter !== 'all' && row.status !== statusFilter) return false
       if (!q) return true
@@ -95,6 +95,13 @@ const AdminPayments = () => {
         .join(' ')
         .toLowerCase()
       return haystack.includes(q)
+    })
+
+    // Always render newest first (new → old), even after filtering changes.
+    return [...filtered].sort((a, b) => {
+      const byDate = b.date.localeCompare(a.date) // yyyy-MM-dd, lexical works
+      if (byDate !== 0) return byDate
+      return b.reference.localeCompare(a.reference)
     })
   }, [rows, searchInput, methodFilter, statusFilter])
 

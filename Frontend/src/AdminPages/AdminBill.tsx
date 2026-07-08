@@ -186,8 +186,9 @@ const AdminBill = () => {
 
   const filteredList = useMemo(() => {
     const q = search.trim().toLowerCase()
-    if (!q) return invoices
-    return invoices.filter((inv) => {
+    const filtered = !q
+      ? invoices
+      : invoices.filter((inv) => {
       const blob = [
         inv.invoiceNumber,
         inv.customerName,
@@ -198,6 +199,18 @@ const AdminBill = () => {
         .join(' ')
         .toLowerCase()
       return blob.includes(q)
+    })
+
+    // Always render newest first (new → old).
+    return [...filtered].sort((a, b) => {
+      const aDraft = a.id < 0
+      const bDraft = b.id < 0
+      if (aDraft !== bDraft) return aDraft ? -1 : 1
+
+      const byIssuedAt = b.issuedAt.localeCompare(a.issuedAt) // yyyy-MM-dd, lexical works
+      if (byIssuedAt !== 0) return byIssuedAt
+
+      return b.id - a.id
     })
   }, [invoices, search])
 
