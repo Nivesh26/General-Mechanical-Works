@@ -27,7 +27,6 @@ import AdminAppointments from './AdminPages/AdminAppointments'
 import AdminBill from './AdminPages/AdminBill'
 import AdminBlog from './AdminPages/AdminBlog'
 import AdminOffer from './AdminPages/AdminOffer'
-import AdminServiceReviews from './AdminPages/AdminServiceReviews'
 import AdminPayments from './AdminPages/AdminPayments'
 import ChatbotWidget from './UserComponent/ChatbotWidget'
 import AdminUserProfile from './AdminPages/UserProfile'
@@ -123,7 +122,6 @@ function AnimatedRoutes() {
         <Route path="/adminbills" element={adminPage(<AdminBill />)} />
         <Route path="/adminblogs" element={adminPage(<AdminBlog />)} />
         <Route path="/adminoffers" element={adminPage(<AdminOffer />)} />
-        <Route path="/adminservicereviews" element={adminPage(<AdminServiceReviews />)} />
         <Route path="/adminpaymentsinvoices" element={adminPage(<AdminPayments />)} />
         <Route path="/adminuserprofile" element={adminPage(<AdminUserProfile />)} />
       </Routes>
