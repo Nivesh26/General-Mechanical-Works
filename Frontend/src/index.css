@@ -26,6 +26,12 @@ body {
   background-color: white;
 }
 
+/* Native clear (×) on type="search" — black icon, hand cursor on hover */
+input[type="search"]::-webkit-search-cancel-button {
+  cursor: pointer;
+  filter: brightness(0);
+}
+
 .font-sec {
   font-family: "Trobus Expanded", Impact, "Arial Black", sans-serif;
 }

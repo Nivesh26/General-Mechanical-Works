@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import Header from '../UserComponent/Header'
 import Footer from '../UserComponent/Footer'
 import Copyright from '../UserComponent/Copyright'
@@ -23,8 +24,25 @@ const bookingModeOptions = [
   },
 ]
 
+function modeFromParam(value: string | null): 'normal' | 'pickup' {
+  if (value === 'pickup') return 'pickup'
+  return 'normal'
+}
+
 const Service = () => {
-  const [bookingMode, setBookingMode] = useState<'normal' | 'pickup'>('normal')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [bookingMode, setBookingMode] = useState<'normal' | 'pickup'>(() =>
+    modeFromParam(searchParams.get('mode')),
+  )
+
+  useEffect(() => {
+    setBookingMode(modeFromParam(searchParams.get('mode')))
+  }, [searchParams])
+
+  const selectMode = (id: 'normal' | 'pickup') => {
+    setBookingMode(id)
+    setSearchParams(id === 'pickup' ? { mode: 'pickup' } : { mode: 'workshop' }, { replace: true })
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
@@ -50,7 +68,7 @@ const Service = () => {
                 <button
                   key={m.id}
                   type="button"
-                  onClick={() => setBookingMode(m.id)}
+                  onClick={() => selectMode(m.id)}
                   className={`rounded-xl p-4 border-2 text-left flex items-start gap-3 transition-colors cursor-pointer ${
                     bookingMode === m.id
                       ? 'border-primary bg-primary/5'
