@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { HiChevronDown } from 'react-icons/hi2'
 import { toast } from 'react-toastify'
 import AdminNavbar from '../AdminComponent/AdminNavbar'
@@ -156,7 +156,14 @@ const validateProductForm = (
 
   const imageCount =
     editingId !== null ? existingImageCount + uploadFiles.length : uploadFiles.length
-  if (imageCount > 4) e.images = 'You can upload at most 4 images.'
+  if (imageCount < 1) {
+    e.images =
+      editingId !== null
+        ? 'Keep or upload at least one product image.'
+        : 'Add at least one product image before saving.'
+  } else if (imageCount > 4) {
+    e.images = 'You can upload at most 4 images.'
+  }
 
   return e
 }
@@ -175,6 +182,7 @@ const AdminProducts = () => {
   const [fileInputKey, setFileInputKey] = useState(0)
   const [categorySuggestionsOpen, setCategorySuggestionsOpen] = useState(false)
   const [formOpen, setFormOpen] = useState(false)
+  const productFormSectionRef = useRef<HTMLElement | null>(null)
 
   const loadProducts = useCallback(async () => {
     if (!token) {
@@ -354,6 +362,18 @@ const AdminProducts = () => {
     )
     setFileInputKey((k) => k + 1)
     setFieldErrors({})
+
+    // Open the edit form at the top of the page.
+    requestAnimationFrame(() => {
+      const section = productFormSectionRef.current
+      if (!section) return
+      const scrollParent = section.closest('main')
+      if (scrollParent instanceof HTMLElement) {
+        scrollParent.scrollTo({ top: 0, behavior: 'smooth' })
+      } else {
+        section.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }
+    })
   }
 
   const onDelete = async (productId: number) => {
@@ -420,6 +440,7 @@ const AdminProducts = () => {
         </div>
 
         <section
+          ref={productFormSectionRef}
           style={{
             background: '#fff',
             border: '1px solid #dbe3ee',
@@ -738,7 +759,7 @@ const AdminProducts = () => {
                   htmlFor="product-images"
                   style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#475569', marginBottom: '6px' }}
                 >
-                  Product Images (max 4, up to 5 MB each)
+                  Product Images (required, max 4, up to 5 MB each)
                 </label>
                 <input
                   key={fileInputKey}

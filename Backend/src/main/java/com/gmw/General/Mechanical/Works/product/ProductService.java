@@ -76,6 +76,10 @@ public class ProductService {
 		validateFields(sku, name, description, bulletPointsRaw, category, price, stock, null);
 		ensureUniqueSku(sku, null);
 		List<String> imagePaths = storeImages(files, List.of());
+		if (imagePaths.isEmpty()) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+					"Add at least one product image before saving");
+		}
 		if (imagePaths.size() > MAX_IMAGES) {
 			deleteStoredPaths(imagePaths);
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "You can upload at most 4 images");
@@ -109,6 +113,10 @@ public class ProductService {
 
 		List<String> currentPaths = ProductJson.readStringList(product.getImagePathsJson());
 		List<String> imagePaths = resolveUpdatedImagePaths(id, currentPaths, keepImagePaths, files);
+		if (imagePaths.isEmpty()) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+					"Keep or upload at least one product image");
+		}
 
 		applyFields(product, sku, name, description, bulletPointsRaw, category, sizesRaw, price, stock);
 		product.setImagePathsJson(ProductJson.writeStringList(imagePaths));
