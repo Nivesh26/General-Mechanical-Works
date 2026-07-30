@@ -857,6 +857,15 @@ export async function cancelMyOrderLine(
   return res.json() as Promise<AdminOrder>
 }
 
+export async function cancelMyOrder(token: string, orderId: number): Promise<AdminOrder> {
+  const res = await fetch(`${getApiBase()}/api/orders/me/${orderId}/cancel`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res))
+  return res.json() as Promise<AdminOrder>
+}
+
 export async function fetchAdminOrders(token: string): Promise<AdminOrder[]> {
   const res = await fetch(`${getApiBase()}/api/admin/orders`, {
     headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },

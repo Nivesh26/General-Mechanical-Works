@@ -66,6 +66,7 @@ public class SecurityConfig {
 						.requestMatchers(HttpMethod.GET, "/api/payments/esewa/launch/*").authenticated()
 						.requestMatchers(HttpMethod.POST, "/api/payments/khalti/init").authenticated()
 						.requestMatchers(HttpMethod.POST, "/api/orders/me/*/lines/*/cancel").authenticated()
+						.requestMatchers(HttpMethod.POST, "/api/orders/me/*/cancel").authenticated()
 						.requestMatchers(HttpMethod.GET, "/api/payments/esewa/success").permitAll()
 						.requestMatchers(HttpMethod.GET, "/api/payments/esewa/failure").permitAll()
 						.requestMatchers(HttpMethod.GET, "/api/payments/khalti/return").permitAll()

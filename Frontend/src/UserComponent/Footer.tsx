@@ -33,7 +33,7 @@ const Footer = () => {
               <a href="https://www.instagram.com/general.mechanical.works/" target="_blank" rel="noopener noreferrer" className="text-white hover:opacity-80 transition-opacity no-underline outline-none focus:outline-none focus:ring-0" aria-label="Instagram">
                 <FaInstagram className="w-6 h-6" />
               </a>
-              <a href="#" className="text-white hover:opacity-80 transition-opacity no-underline outline-none focus:outline-none focus:ring-0" aria-label="TikTok">
+              <a href="https://www.tiktok.com/@nivesh_46" target="_blank" rel="noopener noreferrer" className="text-white hover:opacity-80 transition-opacity no-underline outline-none focus:outline-none focus:ring-0" aria-label="TikTok">
                 <FaTiktok className="w-6 h-6" />
               </a>
               <a href="https://www.linkedin.com/in/nivesh-shrestha-6318b8282" target="_blank" rel="noopener noreferrer" className="text-white hover:opacity-80 transition-opacity no-underline outline-none focus:outline-none focus:ring-0" aria-label="LinkedIn">
@@ -67,11 +67,22 @@ const Footer = () => {
           <div className="w-full sm:flex-shrink-0 sm:basis-[200px]">
             <h4 className="text-base mb-4 font-bold">Popular Services</h4>
             <ul className="list-none p-0 text-sm border-0 outline-none">
-              <li className="mb-2.5 cursor-pointer">Service Work</li>
-              <li className="mb-2.5 cursor-pointer">Engine Repair</li>
-              <li className="mb-2.5 cursor-pointer">Tyre Repair</li>
-              <li className="mb-2.5 cursor-pointer">Bike Wash</li>
-              <li className="mb-2.5 cursor-pointer">Dent Painting</li>
+              {[
+                'Service Work',
+                'Engine Repair',
+                'Tyre Repair',
+                'Bike Wash',
+                'Dent Painting',
+              ].map((label) => (
+                <li key={label} className="mb-2.5">
+                  <NavLink
+                    to="/services"
+                    className="text-white hover:opacity-80 transition-opacity opacity-90"
+                  >
+                    {label}
+                  </NavLink>
+                </li>
+              ))}
             </ul>
           </div>
 

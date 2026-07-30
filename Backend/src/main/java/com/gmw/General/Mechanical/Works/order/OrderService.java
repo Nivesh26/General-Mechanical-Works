@@ -391,15 +391,7 @@ public class OrderService {
 		ShopOrder order = shopOrderRepository.findByIdAndUser_IdWithLines(orderId, user.getId())
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
 
-		if (!order.isPaid()) {
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "This order is not paid yet");
-		}
-
-		OrderStatus orderStatus = order.getStatus();
-		if (orderStatus != OrderStatus.PENDING && orderStatus != OrderStatus.CONFIRMED) {
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-					"Only pending or confirmed orders can be cancelled");
-		}
+		requireOrderCancellableByUser(order);
 
 		OrderLine line = order.getLines().stream()
 				.filter(l -> l.getId().equals(lineId))
@@ -411,13 +403,7 @@ public class OrderService {
 		}
 
 		LocalDateTime now = LocalDateTime.now();
-		line.setCancelled(true);
-		line.setCancelledAt(now);
-
-		Product product = productRepository.findById(line.getProductId()).orElse(null);
-		if (product != null) {
-			product.setStock(product.getStock() + line.getQuantity());
-		}
+		cancelLineAndRestoreStock(line, now);
 
 		boolean allCancelled = order.getLines().stream().allMatch(OrderLine::isCancelled);
 		if (allCancelled) {
@@ -426,6 +412,54 @@ public class OrderService {
 		}
 
 		return OrderMapper.toDto(shopOrderRepository.save(order));
+	}
+
+	@Transactional
+	public OrderDto cancelOrderForUser(String email, Long orderId) {
+		User user = requireUser(email);
+		ShopOrder order = shopOrderRepository.findByIdAndUser_IdWithLines(orderId, user.getId())
+				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
+
+		requireOrderCancellableByUser(order);
+
+		LocalDateTime now = LocalDateTime.now();
+		for (OrderLine line : order.getLines()) {
+			if (!line.isCancelled()) {
+				cancelLineAndRestoreStock(line, now);
+			}
+		}
+
+		order.setStatus(OrderStatus.CANCELLED);
+		order.setCancelledAt(now);
+		return OrderMapper.toDto(shopOrderRepository.save(order));
+	}
+
+	/**
+	 * COD stays unpaid until delivery, so unpaid COD orders can still be cancelled.
+	 * Online (eSewa/Khalti) orders must be paid before cancel is allowed.
+	 */
+	private static void requireOrderCancellableByUser(ShopOrder order) {
+		OrderStatus orderStatus = order.getStatus();
+		if (orderStatus == OrderStatus.CANCELLED) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "This order is already cancelled");
+		}
+		if (orderStatus != OrderStatus.PENDING && orderStatus != OrderStatus.CONFIRMED) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+					"Only pending or confirmed orders can be cancelled");
+		}
+		if (order.getPaymentMethod() != PaymentMethod.COD && !order.isPaid()) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "This order is not paid yet");
+		}
+	}
+
+	private void cancelLineAndRestoreStock(OrderLine line, LocalDateTime cancelledAt) {
+		line.setCancelled(true);
+		line.setCancelledAt(cancelledAt);
+
+		Product product = productRepository.findById(line.getProductId()).orElse(null);
+		if (product != null) {
+			product.setStock(product.getStock() + line.getQuantity());
+		}
 	}
 
 	private PreparedOrder prepareOrder(User user, List<Long> cartLineIds) {

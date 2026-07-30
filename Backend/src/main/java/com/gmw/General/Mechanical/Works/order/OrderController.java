@@ -39,4 +39,9 @@ public class OrderController {
 			@PathVariable Long lineId) {
 		return orderService.cancelOrderLineForUser(principal.getName(), orderId, lineId);
 	}
+
+	@PostMapping("/{orderId}/cancel")
+	public OrderDto cancelOrder(Principal principal, @PathVariable Long orderId) {
+		return orderService.cancelOrderForUser(principal.getName(), orderId);
+	}
 }

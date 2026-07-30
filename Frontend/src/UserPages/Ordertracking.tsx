@@ -7,7 +7,7 @@ import Copyright from '../UserComponent/Copyright'
 import EngineOil from '../assets/EngineOil.png'
 import { useAuth } from '../context/AuthContext'
 import {
-  cancelMyOrderLine,
+  cancelMyOrder,
   fetchMyOrders,
   toAbsoluteApiUrl,
   type AdminOrder as ApiOrder,
@@ -53,22 +53,32 @@ type TrackedProductLine = {
   placedAtIso: string
   paymentMethod: PaymentMethod
   canCancel: boolean
-  /** Shown when pending */
   estimatedDelivery?: string
-  /** Shown when confirmed */
   confirmedOn?: string
-  /** Shown when shipped */
   shippedOn?: string
-  /** Shown when delivered */
   deliveredOn?: string
-  /** Shown when cancelled */
   cancelledOn?: string
   description: string
 }
 
+type TrackedOrder = {
+  key: string
+  shopOrderId: number
+  orderId: string
+  orderedOn: string
+  placedAtIso: string
+  paymentMethod: PaymentMethod
+  status: ProductLineStatus
+  canCancel: boolean
+  estimatedDelivery?: string
+  confirmedOn?: string
+  shippedOn?: string
+  deliveredOn?: string
+  lines: TrackedProductLine[]
+}
+
 const formatRs = (n: number) => `Rs. ${n.toLocaleString('en-IN')}`
 
-/** Shared sizing for detail grid cells (SKU, price, delivered, review, etc.). */
 const detailCellClass =
   'rounded-lg px-3 py-2 min-h-[4.5rem] h-full flex flex-col justify-start'
 
@@ -141,6 +151,54 @@ function mapOrdersToLines(orders: ApiOrder[]): TrackedProductLine[] {
   return lines
 }
 
+function orderDisplayStatus(lines: TrackedProductLine[]): ProductLineStatus {
+  const active = lines.filter((l) => l.status !== 'cancelled')
+  if (active.length === 0) return 'cancelled'
+  return active[0].status
+}
+
+function groupLinesIntoOrders(lines: TrackedProductLine[]): TrackedOrder[] {
+  const byOrder = new Map<string, TrackedProductLine[]>()
+  for (const line of lines) {
+    const key = String(line.shopOrderId)
+    const bucket = byOrder.get(key)
+    if (bucket) bucket.push(line)
+    else byOrder.set(key, [line])
+  }
+
+  const orders: TrackedOrder[] = []
+  for (const [key, orderLines] of byOrder) {
+    const sortedLines = [...orderLines].sort((a, b) => {
+      if (a.status === 'cancelled' && b.status !== 'cancelled') return 1
+      if (a.status !== 'cancelled' && b.status === 'cancelled') return -1
+      return 0
+    })
+    const first = sortedLines[0]
+    const status = orderDisplayStatus(sortedLines)
+    orders.push({
+      key,
+      shopOrderId: first.shopOrderId,
+      orderId: first.orderId,
+      orderedOn: first.orderedOn,
+      placedAtIso: first.placedAtIso,
+      paymentMethod: first.paymentMethod,
+      status,
+      canCancel: sortedLines.some((l) => l.canCancel),
+      estimatedDelivery: first.estimatedDelivery,
+      confirmedOn: first.confirmedOn,
+      shippedOn: first.shippedOn,
+      deliveredOn: first.deliveredOn,
+      lines: sortedLines,
+    })
+  }
+
+  return orders.sort((a, b) => {
+    if (a.status === 'cancelled' && b.status !== 'cancelled') return 1
+    if (a.status !== 'cancelled' && b.status === 'cancelled') return -1
+    return b.placedAtIso.localeCompare(a.placedAtIso)
+  })
+}
+
 function PaymentMethodBadge({ method }: { method: PaymentMethod }) {
   const styles: Record<PaymentMethod, string> = {
     COD: 'border-gray-300 bg-gray-100 text-gray-900',
@@ -204,81 +262,106 @@ function StatusBadge({ status }: { status: ProductLineStatus }) {
   )
 }
 
-function ProductLineCard({
-  line,
+function OrderCard({
+  order,
   expanded,
   onToggle,
-  onCancelProduct,
+  onCancelOrder,
   cancelling,
 }: {
-  line: TrackedProductLine
+  order: TrackedOrder
   expanded: boolean
   onToggle: () => void
-  onCancelProduct?: () => void
+  onCancelOrder?: () => void
   cancelling?: boolean
 }) {
-  const lineTotal = line.unitPrice * line.qty
-  const canCancel = line.canCancel && onCancelProduct
+  const itemCount = order.lines.length
+  const orderTotal = order.lines
+    .filter((l) => l.status !== 'cancelled')
+    .reduce((sum, l) => sum + l.unitPrice * l.qty, 0)
 
   return (
-    <article className="rounded-2xl border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md">
-      <div className="flex flex-col gap-4 p-4 sm:p-5">
-        <div className="flex gap-4 flex-1 min-w-0">
-          <div className="h-24 w-24 sm:h-28 sm:w-28 shrink-0 rounded-xl bg-linear-to-br from-gray-50 to-slate-100 p-2 ring-1 ring-black/5">
-            <img src={line.image} alt={line.name} className="h-full w-full object-contain" />
+    <article className="rounded-2xl border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md overflow-hidden">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 bg-slate-50/70 px-4 sm:px-5 py-3">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+            <span className="font-semibold text-gray-900">
+              Order <span className="font-mono">{order.orderId}</span>
+            </span>
+            <span className="text-gray-300">·</span>
+            <span className="text-gray-600">Ordered {order.orderedOn}</span>
+            <span className="text-gray-300">·</span>
+            <span className="text-gray-600">
+              {itemCount} {itemCount === 1 ? 'item' : 'items'}
+            </span>
           </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-start justify-between gap-3">
-              <h2 className="text-base font-semibold text-gray-900 leading-snug min-w-0 flex-1 pr-1">
-                {line.name}
-              </h2>
-              <div className="shrink-0 pt-0.5">
-                <StatusBadge status={line.status} />
-              </div>
-            </div>
-            <p className="mt-2 text-sm text-gray-600">
-              {line.sizeLabel ? (
-                <>
-                  Size <span className="font-medium text-gray-900">{line.sizeLabel}</span>
-                  <span className="mx-2 text-gray-300">·</span>
-                </>
-              ) : null}
-              Qty <span className="font-medium text-gray-900">{line.qty}</span>
-              <span className="mx-2 text-gray-300">·</span>
-              {formatRs(lineTotal)}
-              {line.qty > 1 && (
-                <span className="text-gray-400"> ({formatRs(line.unitPrice)} each)</span>
-              )}
-            </p>
-            {canCancel && (
-              <div className="mt-3">
-                <button
-                  type="button"
-                  onClick={onCancelProduct}
-                  disabled={cancelling}
-                  className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm font-medium text-red-700 transition-colors hover:bg-red-50 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {cancelling ? 'Cancelling…' : 'Cancel product'}
-                </button>
-              </div>
-            )}
+          <div className="mt-1.5 flex flex-wrap items-center gap-2">
+            <span className="text-xs font-medium text-gray-500">Payment</span>
+            <PaymentMethodBadge method={order.paymentMethod} />
+            {orderTotal > 0 ? (
+              <span className="text-xs text-gray-500">
+                Total <span className="font-semibold text-gray-800 tabular-nums">{formatRs(orderTotal)}</span>
+              </span>
+            ) : null}
           </div>
         </div>
-
-        <div className="flex w-full flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-gray-100 pt-3">
-          <div className="text-xs text-gray-500">
-            <span>
-              Order <span className="font-mono font-medium text-gray-700">{line.orderId}</span>
-            </span>
-            <span className="mx-1.5 text-gray-300">·</span>
-            <span>Ordered {line.orderedOn}</span>
-          </div>
-          <div className="flex items-center gap-2 ml-auto">
-            <span className="text-xs font-medium text-gray-500">Payment</span>
-            <PaymentMethodBadge method={line.paymentMethod} />
-          </div>
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <StatusBadge status={order.status} />
+          {order.canCancel && onCancelOrder ? (
+            <button
+              type="button"
+              onClick={onCancelOrder}
+              disabled={cancelling}
+              className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm font-medium text-red-700 transition-colors hover:bg-red-50 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {cancelling ? 'Cancelling…' : 'Cancel order'}
+            </button>
+          ) : null}
         </div>
       </div>
+
+      <ul className="divide-y divide-gray-100">
+        {order.lines.map((line) => {
+          const lineTotal = line.unitPrice * line.qty
+          const cancelled = line.status === 'cancelled'
+          return (
+            <li
+              key={line.id}
+              className={`flex gap-4 p-4 sm:p-5 ${cancelled ? 'bg-gray-50/80 opacity-75' : ''}`}
+            >
+              <div className="h-20 w-20 sm:h-24 sm:w-24 shrink-0 rounded-xl bg-linear-to-br from-gray-50 to-slate-100 p-2 ring-1 ring-black/5">
+                <img src={line.image} alt={line.name} className="h-full w-full object-contain" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-start justify-between gap-3">
+                  <h2
+                    className={`text-base font-semibold leading-snug min-w-0 flex-1 ${
+                      cancelled ? 'text-gray-500 line-through' : 'text-gray-900'
+                    }`}
+                  >
+                    {line.name}
+                  </h2>
+                  {cancelled ? <StatusBadge status="cancelled" /> : null}
+                </div>
+                <p className="mt-1.5 text-sm text-gray-600">
+                  {line.sizeLabel ? (
+                    <>
+                      Size <span className="font-medium text-gray-900">{line.sizeLabel}</span>
+                      <span className="mx-2 text-gray-300">·</span>
+                    </>
+                  ) : null}
+                  Qty <span className="font-medium text-gray-900">{line.qty}</span>
+                  <span className="mx-2 text-gray-300">·</span>
+                  {formatRs(lineTotal)}
+                  {line.qty > 1 && (
+                    <span className="text-gray-400"> ({formatRs(line.unitPrice)} each)</span>
+                  )}
+                </p>
+              </div>
+            </li>
+          )
+        })}
+      </ul>
 
       <button
         type="button"
@@ -293,111 +376,124 @@ function ProductLineCard({
           </>
         ) : (
           <>
-            Product details
+            Order details
             <HiOutlineChevronDown className="h-4 w-4" />
           </>
         )}
       </button>
 
       {expanded && (
-        <div className="border-t border-gray-100 bg-white px-4 sm:px-5 pb-5 pt-4 space-y-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">About this product</p>
-            <p className="text-sm text-gray-600 leading-relaxed">{line.description}</p>
-          </div>
+        <div className="border-t border-gray-100 bg-white px-4 sm:px-5 pb-5 pt-4 space-y-5">
           <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm items-stretch">
-            <div className={`${detailCellClass} bg-gray-50`}>
-              <dt className="text-xs text-gray-500">SKU</dt>
-              <dd className="font-mono text-gray-900 mt-0.5">{line.sku}</dd>
-            </div>
-            {line.sizeLabel ? (
-              <div className={`${detailCellClass} bg-gray-50`}>
-                <dt className="text-xs text-gray-500">Size</dt>
-                <dd className="font-medium text-gray-900 mt-0.5">{line.sizeLabel}</dd>
-              </div>
-            ) : null}
-            <div className={`${detailCellClass} bg-gray-50`}>
-              <dt className="text-xs text-gray-500">Unit price</dt>
-              <dd className="font-medium text-gray-900 mt-0.5 tabular-nums">{formatRs(line.unitPrice)}</dd>
-            </div>
-            <div className={`${detailCellClass} bg-gray-50`}>
-              <dt className="text-xs text-gray-500">Line total</dt>
-              <dd className="font-semibold text-primary mt-0.5 tabular-nums">{formatRs(lineTotal)}</dd>
-            </div>
             <div className={`${detailCellClass} bg-gray-50`}>
               <dt className="text-xs text-gray-500">Payment method</dt>
               <dd className="mt-1">
-                <PaymentMethodBadge method={line.paymentMethod} />
+                <PaymentMethodBadge method={order.paymentMethod} />
               </dd>
             </div>
-            {line.status === 'pending' && (
+            {order.status === 'pending' && (
               <div className={`${detailCellClass} bg-amber-50/80 ring-1 ring-amber-100`}>
                 <dt className="text-xs text-amber-800/90 flex items-center gap-1">
                   <HiOutlineTruck className="h-3.5 w-3.5" />
                   Estimated delivery
                 </dt>
-                <dd className="font-medium text-amber-950 mt-0.5">{line.estimatedDelivery ?? '—'}</dd>
+                <dd className="font-medium text-amber-950 mt-0.5">{order.estimatedDelivery ?? '—'}</dd>
               </div>
             )}
-            {line.status === 'confirmed' && (
+            {order.status === 'confirmed' && (
               <div className={`${detailCellClass} bg-sky-50/80 ring-1 ring-sky-100`}>
                 <dt className="text-xs text-sky-800/90 flex items-center gap-1">
                   <HiOutlineClipboardDocumentCheck className="h-3.5 w-3.5" />
                   Confirmed on
                 </dt>
-                <dd className="font-medium text-sky-950 mt-0.5">{line.confirmedOn ?? '—'}</dd>
+                <dd className="font-medium text-sky-950 mt-0.5">{order.confirmedOn ?? '—'}</dd>
                 <dd className="text-xs text-sky-800/80 mt-1">
-                  Est. delivery: {line.estimatedDelivery ?? '—'}
+                  Est. delivery: {order.estimatedDelivery ?? '—'}
                 </dd>
               </div>
             )}
-            {line.status === 'shipped' && (
+            {order.status === 'shipped' && (
               <div className={`${detailCellClass} bg-violet-50/80 ring-1 ring-violet-100`}>
                 <dt className="text-xs text-violet-800/90 flex items-center gap-1">
                   <HiOutlineTruck className="h-3.5 w-3.5" />
                   Shipped on
                 </dt>
-                <dd className="font-medium text-violet-950 mt-0.5">{line.shippedOn ?? '—'}</dd>
+                <dd className="font-medium text-violet-950 mt-0.5">{order.shippedOn ?? '—'}</dd>
                 <dd className="text-xs text-violet-800/80 mt-1">
-                  Est. delivery: {line.estimatedDelivery ?? '—'}
+                  Est. delivery: {order.estimatedDelivery ?? '—'}
                 </dd>
               </div>
             )}
-            {line.status === 'delivered' && (
-              <>
-                <div className={`${detailCellClass} bg-emerald-50/80 ring-1 ring-emerald-100`}>
-                  <dt className="text-xs text-emerald-800/90 flex items-center gap-1">
-                    <HiOutlineCheckCircle className="h-3.5 w-3.5 shrink-0" />
-                    Delivered on
-                  </dt>
-                  <dd className="font-medium text-emerald-950 mt-0.5">{line.deliveredOn ?? '—'}</dd>
-                </div>
-                {Number.isFinite(line.productId) && line.productId > 0 ? (
-                  <Link
-                    to={`/productdetail/${line.productId}#reviews`}
-                    className={`${detailCellClass} bg-emerald-50/80 ring-1 ring-emerald-100 hover:bg-emerald-100/80 transition-colors`}
-                  >
-                    <span className="text-xs text-emerald-800/90 flex items-center gap-1">
-                      <HiOutlinePencilSquare className="h-3.5 w-3.5 shrink-0" />
-                      Review
-                    </span>
-                    <span className="mt-0.5 min-h-[1.25rem] block" aria-hidden />
-                  </Link>
-                ) : (
-                  <div className={`${detailCellClass} bg-emerald-50/40 ring-1 ring-emerald-100/60 hidden sm:flex`} aria-hidden />
-                )}
-              </>
-            )}
-            {line.status === 'cancelled' && (
-              <div className={`${detailCellClass} bg-gray-100 ring-1 ring-gray-200`}>
-                <dt className="text-xs text-gray-600 flex items-center gap-1">
-                  <HiOutlineNoSymbol className="h-3.5 w-3.5" />
-                  Cancelled on
+            {order.status === 'delivered' && (
+              <div className={`${detailCellClass} bg-emerald-50/80 ring-1 ring-emerald-100`}>
+                <dt className="text-xs text-emerald-800/90 flex items-center gap-1">
+                  <HiOutlineCheckCircle className="h-3.5 w-3.5 shrink-0" />
+                  Delivered on
                 </dt>
-                <dd className="font-medium text-gray-900 mt-0.5">{line.cancelledOn ?? '—'}</dd>
+                <dd className="font-medium text-emerald-950 mt-0.5">{order.deliveredOn ?? '—'}</dd>
               </div>
             )}
           </dl>
+
+          <div className="space-y-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Items in this order</p>
+            {order.lines.map((line) => {
+              const lineTotal = line.unitPrice * line.qty
+              return (
+                <div
+                  key={`detail-${line.id}`}
+                  className={`rounded-xl border border-gray-100 p-3 sm:p-4 ${
+                    line.status === 'cancelled' ? 'bg-gray-50 opacity-80' : 'bg-white'
+                  }`}
+                >
+                  <p className="text-sm font-semibold text-gray-900">{line.name}</p>
+                  <p className="mt-1 text-sm text-gray-600 leading-relaxed">{line.description}</p>
+                  <dl className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm items-stretch">
+                    <div className={`${detailCellClass} bg-gray-50`}>
+                      <dt className="text-xs text-gray-500">SKU</dt>
+                      <dd className="font-mono text-gray-900 mt-0.5">{line.sku}</dd>
+                    </div>
+                    {line.sizeLabel ? (
+                      <div className={`${detailCellClass} bg-gray-50`}>
+                        <dt className="text-xs text-gray-500">Size</dt>
+                        <dd className="font-medium text-gray-900 mt-0.5">{line.sizeLabel}</dd>
+                      </div>
+                    ) : null}
+                    <div className={`${detailCellClass} bg-gray-50`}>
+                      <dt className="text-xs text-gray-500">Unit price</dt>
+                      <dd className="font-medium text-gray-900 mt-0.5 tabular-nums">{formatRs(line.unitPrice)}</dd>
+                    </div>
+                    <div className={`${detailCellClass} bg-gray-50`}>
+                      <dt className="text-xs text-gray-500">Line total</dt>
+                      <dd className="font-semibold text-primary mt-0.5 tabular-nums">{formatRs(lineTotal)}</dd>
+                    </div>
+                    {line.status === 'cancelled' && (
+                      <div className={`${detailCellClass} bg-gray-100 ring-1 ring-gray-200`}>
+                        <dt className="text-xs text-gray-600 flex items-center gap-1">
+                          <HiOutlineNoSymbol className="h-3.5 w-3.5" />
+                          Cancelled on
+                        </dt>
+                        <dd className="font-medium text-gray-900 mt-0.5">{line.cancelledOn ?? '—'}</dd>
+                      </div>
+                    )}
+                    {line.status === 'delivered' &&
+                    Number.isFinite(line.productId) &&
+                    line.productId > 0 ? (
+                      <Link
+                        to={`/productdetail/${line.productId}#reviews`}
+                        className={`${detailCellClass} bg-emerald-50/80 ring-1 ring-emerald-100 hover:bg-emerald-100/80 transition-colors`}
+                      >
+                        <span className="text-xs text-emerald-800/90 flex items-center gap-1">
+                          <HiOutlinePencilSquare className="h-3.5 w-3.5 shrink-0" />
+                          Leave a review
+                        </span>
+                      </Link>
+                    ) : null}
+                  </dl>
+                </div>
+              )
+            })}
+          </div>
         </div>
       )}
     </article>
@@ -411,7 +507,7 @@ const Ordertracking = () => {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [filter, setFilter] = useState<FilterTab>('all')
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set())
-  const [cancellingLineId, setCancellingLineId] = useState<string | null>(null)
+  const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null)
 
   const loadOrders = useCallback(async () => {
     if (!token) {
@@ -436,23 +532,21 @@ const Ordertracking = () => {
     void loadOrders()
   }, [loadOrders])
 
+  const allOrders = useMemo(() => groupLinesIntoOrders(lines), [lines])
+
   const counts = useMemo(() => {
-    const pending = lines.filter((l) => l.status === 'pending').length
-    const confirmed = lines.filter((l) => l.status === 'confirmed').length
-    const shipped = lines.filter((l) => l.status === 'shipped').length
-    const delivered = lines.filter((l) => l.status === 'delivered').length
-    const cancelled = lines.filter((l) => l.status === 'cancelled').length
-    return { all: lines.length, pending, confirmed, shipped, delivered, cancelled }
-  }, [lines])
+    const pending = allOrders.filter((o) => o.status === 'pending').length
+    const confirmed = allOrders.filter((o) => o.status === 'confirmed').length
+    const shipped = allOrders.filter((o) => o.status === 'shipped').length
+    const delivered = allOrders.filter((o) => o.status === 'delivered').length
+    const cancelled = allOrders.filter((o) => o.status === 'cancelled').length
+    return { all: allOrders.length, pending, confirmed, shipped, delivered, cancelled }
+  }, [allOrders])
 
   const visible = useMemo(() => {
-    const filtered = filter === 'all' ? lines : lines.filter((l) => l.status === filter)
-    return [...filtered].sort((a, b) => {
-      if (a.status === 'cancelled' && b.status !== 'cancelled') return 1
-      if (a.status !== 'cancelled' && b.status === 'cancelled') return -1
-      return b.placedAtIso.localeCompare(a.placedAtIso)
-    })
-  }, [lines, filter])
+    if (filter === 'all') return allOrders
+    return allOrders.filter((o) => o.status === filter)
+  }, [allOrders, filter])
 
   const toggleExpand = (id: string) => {
     setExpandedIds((prev) => {
@@ -463,24 +557,28 @@ const Ordertracking = () => {
     })
   }
 
-  const cancelProduct = async (line: TrackedProductLine) => {
+  const cancelOrder = async (order: TrackedOrder) => {
     if (!token) return
+    const itemLabel =
+      order.lines.length === 1
+        ? `"${order.lines[0].name}"`
+        : `all ${order.lines.length} products`
     if (
       !window.confirm(
-        `Cancel "${line.name}" from order ${line.orderId}? This cannot be undone.`,
+        `Cancel ${itemLabel} in order ${order.orderId}? This cannot be undone.`,
       )
     ) {
       return
     }
-    setCancellingLineId(line.id)
+    setCancellingOrderId(order.key)
     try {
-      await cancelMyOrderLine(token, line.shopOrderId, Number(line.id))
-      toast.success('Product cancelled.')
+      await cancelMyOrder(token, order.shopOrderId)
+      toast.success('Order cancelled.')
       await loadOrders()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Could not cancel product.')
+      toast.error(err instanceof Error ? err.message : 'Could not cancel order.')
     } finally {
-      setCancellingLineId(null)
+      setCancellingOrderId(null)
     }
   }
 
@@ -568,21 +666,21 @@ const Ordertracking = () => {
                   </Link>
                 </>
               ) : (
-                'No products in this view.'
+                'No orders in this view.'
               )}
             </div>
           ) : (
             <ul className="space-y-4">
-              {visible.map((line) => (
-                <li key={line.id}>
-                  <ProductLineCard
-                    line={line}
-                    expanded={expandedIds.has(line.id)}
-                    onToggle={() => toggleExpand(line.id)}
-                    onCancelProduct={
-                      line.canCancel ? () => void cancelProduct(line) : undefined
+              {visible.map((order) => (
+                <li key={order.key}>
+                  <OrderCard
+                    order={order}
+                    expanded={expandedIds.has(order.key)}
+                    onToggle={() => toggleExpand(order.key)}
+                    onCancelOrder={
+                      order.canCancel ? () => void cancelOrder(order) : undefined
                     }
-                    cancelling={cancellingLineId === line.id}
+                    cancelling={cancellingOrderId === order.key}
                   />
                 </li>
               ))}
