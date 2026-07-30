@@ -47,10 +47,16 @@ public interface ServiceAppointmentRepository extends JpaRepository<ServiceAppoi
 			@org.springframework.data.repository.query.Param("date") LocalDate date,
 			@org.springframework.data.repository.query.Param("statuses") List<AppointmentStatus> statuses);
 
-	boolean existsByAppointmentDateAndTimeSlotAndStatusIn(
-			LocalDate appointmentDate,
-			String timeSlot,
-			List<AppointmentStatus> statuses);
+	@Query("""
+			SELECT COUNT(a) FROM ServiceAppointment a
+			WHERE a.appointmentDate = :date
+			  AND a.timeSlot = :timeSlot
+			  AND a.status IN :statuses
+			""")
+	long countActiveBookingsForSlot(
+			@org.springframework.data.repository.query.Param("date") LocalDate date,
+			@org.springframework.data.repository.query.Param("timeSlot") String timeSlot,
+			@org.springframework.data.repository.query.Param("statuses") List<AppointmentStatus> statuses);
 
 	long countByStatus(AppointmentStatus status);
 }

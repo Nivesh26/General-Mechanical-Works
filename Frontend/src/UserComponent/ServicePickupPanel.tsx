@@ -11,6 +11,7 @@ import {
   type ServiceAvailabilityDay,
 } from "../lib/api";
 import { workshopServices } from "./serviceBookingShared";
+import { BookingRedirectOverlay } from "./BookingRedirectOverlay";
 
 /** Google Maps iframe: official Embed API when key is set, otherwise classic lat/lng embed. */
 function buildGoogleMapsEmbedSrc(lat: number, lng: number): string {
@@ -45,6 +46,7 @@ const ServicePickupPanel = () => {
   const [availability, setAvailability] = useState<ServiceAvailabilityDay[]>([]);
   const [availabilityLoading, setAvailabilityLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
 
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [geoStatus, setGeoStatus] = useState<"idle" | "loading" | "ok" | "denied" | "error">("idle");
@@ -60,8 +62,13 @@ const ServicePickupPanel = () => {
     try {
       const data = await fetchServiceAvailability();
       setAvailability(data);
-    } catch {
-      setAvailability([]);
+    } catch (err) {
+      // Keep current slots on background refresh failure so one booked time
+      // does not wipe the whole schedule.
+      if (!silent) {
+        setAvailability([]);
+        toast.error(err instanceof Error ? err.message : "Could not load available slots");
+      }
     } finally {
       if (!silent) setAvailabilityLoading(false);
     }
@@ -204,18 +211,12 @@ const ServicePickupPanel = () => {
         notes: notes.trim() || undefined,
       });
       toast.success("Pickup service booked. We will confirm your appointment soon.");
-      setSelectedServiceIds([]);
-      setDate("");
-      setSlot("");
-      setNotes("");
-      setCoords(null);
-      setGeoStatus("idle");
-      setGeoMessage("");
-      await loadAvailability(true);
+      setRedirecting(true);
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      navigate("/bookings");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not book pickup appointment");
       await loadAvailability(true);
-    } finally {
       setSubmitting(false);
     }
   };
@@ -232,6 +233,7 @@ const ServicePickupPanel = () => {
 
   return (
     <section className="mt-10 rounded-2xl border border-gray-200 bg-gray-50/60 p-6 sm:p-8 space-y-8">
+      {redirecting && <BookingRedirectOverlay />}
       <div>
         <h2 className="text-xl font-bold text-gray-900">Pickup service</h2>
         <p className="mt-2 text-sm text-gray-600 max-w-2xl">

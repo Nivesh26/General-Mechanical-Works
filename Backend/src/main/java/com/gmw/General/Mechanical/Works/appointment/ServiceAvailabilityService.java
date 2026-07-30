@@ -2,11 +2,11 @@ package com.gmw.General.Mechanical.Works.appointment;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -88,7 +88,7 @@ public class ServiceAvailabilityService {
 	@Transactional
 	public void validateBookableSlot(LocalDate date, String timeSlot) {
 		validateDateInWindow(date);
-		String slot = timeSlot != null ? timeSlot.trim() : "";
+		String slot = normalizeSlotLabel(timeSlot);
 		if (!WorkshopServiceCatalog.isValidTimeSlot(slot)) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid time slot");
 		}
@@ -96,14 +96,16 @@ public class ServiceAvailabilityService {
 		ServiceAvailability configured = serviceAvailabilityRepository.findByAvailabilityDate(date)
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
 						"No availability configured for this date"));
-		List<String> configuredSlots = ProductJson.readStringList(configured.getTimeSlotsJson());
+		List<String> configuredSlots = ProductJson.readStringList(configured.getTimeSlotsJson()).stream()
+				.map(ServiceAvailabilityService::normalizeSlotLabel)
+				.filter(WorkshopServiceCatalog::isValidTimeSlot)
+				.toList();
 		if (!configuredSlots.contains(slot)) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "This time slot is not available");
 		}
 
-		Set<String> booked = bookedSlotsFor(date);
-		if (booked.contains(slot)) {
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "This time slot is already booked");
+		if (isSlotBooked(date, slot)) {
+			throw new ResponseStatusException(HttpStatus.CONFLICT, "This time slot is already booked");
 		}
 	}
 
@@ -117,13 +119,14 @@ public class ServiceAvailabilityService {
 	}
 
 	private ServiceAvailabilityDto toBookableDto(ServiceAvailability row) {
-		List<String> openSlots = new ArrayList<>();
 		Set<String> booked = bookedSlotsFor(row.getAvailabilityDate());
-		for (String slot : ProductJson.readStringList(row.getTimeSlotsJson())) {
-			if (!booked.contains(slot)) {
-				openSlots.add(slot);
-			}
-		}
+		// Keep admin-configured labels; only hide times that are already booked.
+		List<String> openSlots = ProductJson.readStringList(row.getTimeSlotsJson()).stream()
+				.map(ServiceAvailabilityService::normalizeSlotLabel)
+				.filter(StringUtils::hasText)
+				.filter(slot -> !booked.contains(slot))
+				.distinct()
+				.toList();
 		return new ServiceAvailabilityDto(row.getAvailabilityDate().format(DATE_FORMAT), openSlots);
 	}
 
@@ -134,20 +137,25 @@ public class ServiceAvailabilityService {
 	}
 
 	private Set<String> bookedSlotsFor(LocalDate date) {
-		return new LinkedHashSet<>(serviceAppointmentRepository.findBookedTimeSlotsForDate(
-				date,
-				SLOT_BLOCKING_STATUSES));
+		return serviceAppointmentRepository.findBookedTimeSlotsForDate(date, SLOT_BLOCKING_STATUSES).stream()
+				.map(ServiceAvailabilityService::normalizeSlotLabel)
+				.filter(StringUtils::hasText)
+				.collect(Collectors.toCollection(LinkedHashSet::new));
 	}
 
 	boolean isSlotBooked(LocalDate date, String timeSlot) {
-		String slot = timeSlot != null ? timeSlot.trim() : "";
+		String slot = normalizeSlotLabel(timeSlot);
 		if (!StringUtils.hasText(slot)) {
 			return false;
 		}
-		return serviceAppointmentRepository.existsByAppointmentDateAndTimeSlotAndStatusIn(
-				date,
-				slot,
-				SLOT_BLOCKING_STATUSES);
+		return serviceAppointmentRepository.countActiveBookingsForSlot(date, slot, SLOT_BLOCKING_STATUSES) > 0;
+	}
+
+	private static String normalizeSlotLabel(String slot) {
+		if (slot == null) {
+			return "";
+		}
+		return slot.trim().replaceAll("\\s+", " ");
 	}
 
 	private static List<String> normalizeSlots(List<String> slots) {

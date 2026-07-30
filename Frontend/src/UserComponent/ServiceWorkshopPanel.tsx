@@ -10,6 +10,7 @@ import {
   type ServiceAvailabilityDay,
 } from "../lib/api";
 import { workshopServices } from "./serviceBookingShared";
+import { BookingRedirectOverlay } from "./BookingRedirectOverlay";
 
 const BOOKING_WINDOW_DAYS = 5;
 
@@ -31,14 +32,20 @@ const ServiceWorkshopPanel = () => {
   const [availability, setAvailability] = useState<ServiceAvailabilityDay[]>([]);
   const [availabilityLoading, setAvailabilityLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
 
   const loadAvailability = useCallback(async (silent = false) => {
     if (!silent) setAvailabilityLoading(true);
     try {
       const data = await fetchServiceAvailability();
       setAvailability(data);
-    } catch {
-      setAvailability([]);
+    } catch (err) {
+      // Keep current slots on background refresh failure so one booked time
+      // does not wipe the whole schedule.
+      if (!silent) {
+        setAvailability([]);
+        toast.error(err instanceof Error ? err.message : "Could not load available slots");
+      }
     } finally {
       if (!silent) setAvailabilityLoading(false);
     }
@@ -137,15 +144,12 @@ const ServiceWorkshopPanel = () => {
         notes: notes.trim() || undefined,
       });
       toast.success("Workshop visit booked. We will confirm your appointment soon.");
-      setSelectedServiceIds([]);
-      setDate("");
-      setSlot("");
-      setNotes("");
-      await loadAvailability(true);
+      setRedirecting(true);
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      navigate("/bookings");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not book appointment");
       await loadAvailability(true);
-    } finally {
       setSubmitting(false);
     }
   };
@@ -171,6 +175,7 @@ const ServiceWorkshopPanel = () => {
 
   return (
     <section className="mt-10 rounded-2xl border border-gray-200 bg-gray-50/60 p-6 sm:p-8 space-y-8">
+      {redirecting && <BookingRedirectOverlay />}
       <div>
         <h2 className="text-xl font-bold text-gray-900">Workshop visit</h2>
         <p className="mt-2 text-sm text-gray-600 max-w-2xl">

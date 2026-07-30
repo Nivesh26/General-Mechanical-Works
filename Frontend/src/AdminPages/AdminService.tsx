@@ -31,11 +31,18 @@ const AdminService = () => {
   const [editingDate, setEditingDate] = useState<string | null>(null)
 
   const { minDate, maxDate } = useMemo(() => {
+    const toLocalYmd = (d: Date) => {
+      const y = d.getFullYear()
+      const m = String(d.getMonth() + 1).padStart(2, '0')
+      const day = String(d.getDate()).padStart(2, '0')
+      return `${y}-${m}-${day}`
+    }
     const today = new Date()
-    const max = new Date(today.getTime() + (BOOKING_WINDOW_DAYS - 1) * 24 * 60 * 60 * 1000)
+    const max = new Date(today)
+    max.setDate(max.getDate() + (BOOKING_WINDOW_DAYS - 1))
     return {
-      minDate: today.toISOString().slice(0, 10),
-      maxDate: max.toISOString().slice(0, 10),
+      minDate: toLocalYmd(today),
+      maxDate: toLocalYmd(max),
     }
   }, [])
 

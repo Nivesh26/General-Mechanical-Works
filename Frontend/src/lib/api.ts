@@ -1263,8 +1263,10 @@ export type ServiceAvailabilityDay = {
 }
 
 export async function fetchServiceAvailability(): Promise<ServiceAvailabilityDay[]> {
-  const res = await fetch(`${getApiBase()}/api/service-availability`, {
+  // Avoid Cache-Control header — it is not CORS-allowed and blocks the browser request.
+  const res = await fetch(`${getApiBase()}/api/service-availability?_=${Date.now()}`, {
     headers: { Accept: 'application/json' },
+    cache: 'no-store',
   })
   if (!res.ok) throw new Error(await parseErrorMessage(res))
   return res.json() as Promise<ServiceAvailabilityDay[]>
