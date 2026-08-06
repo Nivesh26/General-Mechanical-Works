@@ -177,22 +177,13 @@ const Profile = () => {
           onCoverFile={handleCoverFile}
           onCoverDelete={handleCoverDelete}
           coverBusy={coverBusy}
+          onLogout={handleLogout}
         />
         <Profileform
           profile={profileFields}
           onNameChange={handleNameChange}
           onPersist={handlePersist}
         />
-
-        <div className="flex justify-center mt-6 mb-6">
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="px-8 py-2.5 rounded-full border border-gray-300 text-gray-800 text-sm font-medium hover:bg-gray-50 transition-colors"
-          >
-            Log out
-          </button>
-        </div>
       </div>
 
       <Footer />

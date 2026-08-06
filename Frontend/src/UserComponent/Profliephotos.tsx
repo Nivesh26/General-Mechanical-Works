@@ -25,6 +25,7 @@ interface ProfliphotosProps {
   onCoverFile?: (file: File) => void;
   onCoverDelete?: () => void;
   coverBusy?: boolean;
+  onLogout?: () => void;
 }
 
 function letterFromName(firstName: string, lastName: string): string {
@@ -67,6 +68,7 @@ const Profliephotos = ({
   onCoverFile,
   onCoverDelete,
   coverBusy = false,
+  onLogout,
 }: ProfliphotosProps) => {
   const fileRef = useRef<HTMLInputElement>(null);
   const coverFileRef = useRef<HTMLInputElement>(null);
@@ -199,13 +201,24 @@ const Profliephotos = ({
             </div>
           </div>
 
-          <div className="pb-10 -mt-24 sm:-mt-25">
-            <h1 className="text-primary font-bold text-xl sm:text-2xl">
-              {firstName} {lastName}
-            </h1>
-            <p className="text-black text-sm sm:text-base mt-0.5 font-normal">
-              {vehicleLabel}
-            </p>
+          <div className="pb-10 -mt-24 sm:-mt-25 flex items-start gap-6 sm:gap-8 flex-wrap">
+            <div>
+              <h1 className="text-primary font-bold text-xl sm:text-2xl">
+                {firstName} {lastName}
+              </h1>
+              <p className="text-black text-sm sm:text-base mt-0.5 font-normal">
+                {vehicleLabel}
+              </p>
+            </div>
+            {onLogout ? (
+              <button
+                type="button"
+                onClick={onLogout}
+                className="shrink-0 mt-0.5 px-5 py-2 rounded-full border border-gray-300 text-gray-800 text-sm font-medium transition-colors cursor-pointer hover:border-primary hover:text-primary hover:bg-red-50"
+              >
+                Log out
+              </button>
+            ) : null}
           </div>
         </div>
 

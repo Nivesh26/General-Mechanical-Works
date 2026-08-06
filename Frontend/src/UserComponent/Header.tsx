@@ -134,7 +134,7 @@ const Header = () => {
             <button
               type="button"
               onClick={handleLogout}
-              className="mt-4 flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-800 text-sm font-medium hover:bg-gray-50 transition-colors cursor-pointer"
+              className="mt-4 flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-800 text-sm font-medium transition-colors cursor-pointer hover:border-primary hover:text-primary hover:bg-red-50"
             >
               <FiLogOut size={16} aria-hidden />
               Log out
