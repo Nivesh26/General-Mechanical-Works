@@ -152,9 +152,13 @@ function statusRank(status: OrderStatus): number | null {
 }
 
 function statusChoicesForOrder(current: OrderStatus): OrderStatus[] {
-  if (current === 'cancelled') return []
+  if (current === 'cancelled' || current === 'delivered') return []
   const rank = statusRank(current)!
-  return ADMIN_STATUS_OPTIONS.filter((s) => STATUS_ORDER[s] >= rank)
+  // Only current + next step (cannot jump e.g. pending → delivered)
+  return ADMIN_STATUS_OPTIONS.filter((s) => {
+    const r = STATUS_ORDER[s]
+    return r === rank || r === rank + 1
+  })
 }
 
 function LineStatusBadge({ line, orderStatus }: { line: OrderLine; orderStatus: OrderStatus }) {
@@ -306,6 +310,10 @@ const AdminOrders = () => {
     const rNext = statusRank(nextStatus)
     if (rCur == null || rNext == null) return
     if (rNext < rCur) return
+    if (rNext > rCur + 1) {
+      toast.error('Update status one step at a time: Pending → Confirmed → Shipped → Delivered.')
+      return
+    }
     try {
       const updated = await updateAdminOrderStatus(token, Number(orderId), UI_TO_API_STATUS[nextStatus])
       setOrders((prev) => prev.map((o) => (o.id === orderId ? mapApiOrder(updated) : o)))

@@ -349,6 +349,10 @@ public class OrderService {
 		if (rank(next) < rank(current)) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Status cannot move backwards");
 		}
+		if (rank(next) > rank(current) + 1) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+					"Update status one step at a time: Pending → Confirmed → Shipped → Delivered");
+		}
 
 		if (next == current) {
 			return OrderMapper.toDto(order);

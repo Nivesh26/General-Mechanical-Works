@@ -118,11 +118,18 @@ const AdminNavbar = () => {
   const sidebarContent = (
     <>
       <div className="flex flex-col items-center justify-center mb-4 shrink-0">
-        <img
-          src={GMWLogo}
-          alt="General Mechanical Works"
-          className="w-[110px] sm:w-[130px] h-16 sm:h-20 object-contain"
-        />
+        <NavLink
+          to="/admindashboard"
+          onClick={closeSidebar}
+          className="block no-underline cursor-pointer"
+          aria-label="Go to dashboard"
+        >
+          <img
+            src={GMWLogo}
+            alt="General Mechanical Works"
+            className="w-[110px] sm:w-[130px] h-16 sm:h-20 object-contain"
+          />
+        </NavLink>
         <p className="m-0 mt-1 text-xs text-center text-slate-600">
           General Mechanical Works Admin
         </p>
@@ -196,7 +203,13 @@ const AdminNavbar = () => {
         >
           {sidebarOpen ? <FiX size={22} /> : <FiMenu size={22} />}
         </button>
-        <img src={GMWLogo} alt="" className="h-9 w-auto object-contain" />
+        <NavLink
+          to="/admindashboard"
+          className="block no-underline cursor-pointer"
+          aria-label="Go to dashboard"
+        >
+          <img src={GMWLogo} alt="" className="h-9 w-auto object-contain" />
+        </NavLink>
         <span className="text-sm font-semibold text-slate-800 truncate">Admin</span>
       </header>
 
