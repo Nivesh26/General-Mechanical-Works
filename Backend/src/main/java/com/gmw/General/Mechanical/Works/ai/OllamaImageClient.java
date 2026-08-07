@@ -24,9 +24,11 @@ class OllamaImageClient {
 
 	private final OllamaProperties properties;
 	private final RestClient restClient;
+	private final BikeColorPreviewRenderer localRenderer;
 
-	OllamaImageClient(OllamaProperties properties) {
+	OllamaImageClient(OllamaProperties properties, BikeColorPreviewRenderer localRenderer) {
 		this.properties = properties;
+		this.localRenderer = localRenderer;
 		SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
 		requestFactory.setReadTimeout(Duration.ofSeconds(Math.max(30, properties.getImageTimeoutSeconds())));
 		this.restClient = RestClient.builder()
@@ -36,12 +38,22 @@ class OllamaImageClient {
 	}
 
 	Optional<byte[]> repaintBikePreview(String sourceImageBase64, String targetColor) {
-		if (!properties.isEnabled() || !properties.isImageGenerationEnabled()) {
-			return Optional.empty();
-		}
 		if (!StringUtils.hasText(sourceImageBase64) || !StringUtils.hasText(targetColor)) {
 			return Optional.empty();
 		}
+
+		if (properties.isEnabled() && properties.isImageGenerationEnabled()) {
+			Optional<byte[]> fromOllama = generateWithOllama(sourceImageBase64, targetColor);
+			if (fromOllama.isPresent()) {
+				return fromOllama;
+			}
+			log.info("Ollama image preview unavailable — using local bike recolor for {}", targetColor);
+		}
+
+		return localRenderer.recolorFromBase64(sourceImageBase64, targetColor);
+	}
+
+	private Optional<byte[]> generateWithOllama(String sourceImageBase64, String targetColor) {
 		String prompt = """
 				Edit this motorcycle photograph: repaint the bike body panels to glossy %s.
 				Keep the same motorcycle model, camera angle, wheels, and background.

@@ -147,16 +147,20 @@ final class ChatAiIntent {
 		if (containsAny(normalized,
 				"change color", "change colour", "change the color", "change the colour",
 				"change bike color", "change bike colour",
+				"make this bike color", "make the bike color", "make bike color",
+				"bike color to", "bike colour to", "color to", "colour to",
 				"color in image", "colour in image", "color in photo", "colour in photo",
 				"colour in this image", "color in this image",
 				"repaint", "paint job", "new color", "new colour", "color change", "colour change",
 				"different color", "different colour", "customize", "customise", "customization",
 				"customisation", "modify my bike", "modification",
 				"dent and paint", "dent & paint",
-				"want to change", "paint my bike", "paint the bike", "paint this bike")) {
+				"want to change", "paint my bike", "paint the bike", "paint this bike",
+				"generate image", "generate an image", "generate a image", "genegare")) {
 			return true;
 		}
-		return (normalized.contains("change") || normalized.contains("modify") || normalized.contains("modif"))
+		return (normalized.contains("change") || normalized.contains("modify") || normalized.contains("modif")
+				|| normalized.contains("make"))
 				&& (normalized.contains("color") || normalized.contains("colour")
 						|| normalized.contains("paint") || normalized.contains("look"));
 	}
@@ -190,13 +194,16 @@ final class ChatAiIntent {
 		if (containsAny(normalized,
 				"change color", "change colour", "repaint", "paint job", "color change", "colour change",
 				"paint my bike", "paint the bike", "paint this bike", "new color", "new colour",
-				"customize", "customise", "color in image", "colour in image", "color in photo", "colour in photo")) {
+				"customize", "customise", "color in image", "colour in image", "color in photo", "colour in photo",
+				"make this bike color", "make the bike color", "bike color to", "bike colour to",
+				"generate image", "generate an image", "genegare")) {
 			return true;
 		}
-		return (containsAny(normalized, "change", "modify", "repaint")
+		return (containsAny(normalized, "change", "modify", "repaint", "make")
 				&& containsAny(normalized, "color", "colour", "paint"))
 				|| (ChatAiColorParser.extractTargetColor(text).isPresent()
-						&& containsAny(normalized, "change", "paint", "repaint", "color", "colour", "want", "make"));
+						&& containsAny(normalized, "change", "paint", "repaint", "color", "colour", "want", "make",
+								"generate", "genegare"));
 	}
 
 	static String normalizeForIntent(String text) {
@@ -206,6 +213,9 @@ final class ChatAiIntent {
 				.replace("chnge", "change")
 				.replace("colur", "colour")
 				.replace("coulor", "colour")
+				.replace("genegare", "generate")
+				.replace("generte", "generate")
+				.replace("genrate", "generate")
 				.replaceAll("[!.?,]+", " ")
 				.replaceAll("\\s+", " ")
 				.trim();

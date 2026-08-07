@@ -10,6 +10,7 @@ final class ChatAiColorParser {
 
 	private static final List<String> COLORS = List.of(
 			"matte black", "gloss black", "metallic silver", "dark blue", "light blue",
+			"lime green", "neon green", "fluorescent green", "lime",
 			"red", "blue", "black", "white", "green", "yellow", "orange", "silver",
 			"grey", "gray", "pink", "purple", "brown", "gold", "maroon", "navy", "beige", "bronze");
 
@@ -21,7 +22,9 @@ final class ChatAiColorParser {
 			return Optional.empty();
 		}
 		String normalized = ChatAiIntent.normalizeForIntent(text);
+		// Prefer longer / more specific color phrases first (list order).
 		for (String color : COLORS) {
+			String colorPattern = "\\b" + color.replace(" ", "\\s+") + "\\b";
 			if (normalized.contains("to " + color)
 					|| normalized.contains("into " + color)
 					|| normalized.contains("in " + color)
@@ -36,7 +39,8 @@ final class ChatAiColorParser {
 					|| normalized.contains("colour to " + color)
 					|| normalized.contains(color + " color")
 					|| normalized.contains(color + " paint")
-					|| normalized.contains(color + " colour")) {
+					|| normalized.contains(color + " colour")
+					|| normalized.matches("(?s).*" + colorPattern + ".*")) {
 				return Optional.of(titleCase(color));
 			}
 		}

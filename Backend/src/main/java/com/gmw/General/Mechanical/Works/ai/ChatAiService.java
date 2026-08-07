@@ -81,7 +81,9 @@ public class ChatAiService {
 								+ "please describe your question in text or send a photo if you can.");
 				return;
 			}
-			if (hasUserImage && ChatAiIntent.isBikeDamageOrDiagnosisQuestion(userText)) {
+			if (hasUserImage && ChatAiIntent.isBikeDamageOrDiagnosisQuestion(userText)
+					&& !ChatAiIntent.isBikeCustomizationQuestion(userText)
+					&& ChatAiColorParser.extractTargetColor(userText).isEmpty()) {
 				try {
 					String reply = ollamaClient.chat(promptBuilder.buildMessages(history, userText, userId));
 					if (!StringUtils.hasText(reply)) {
