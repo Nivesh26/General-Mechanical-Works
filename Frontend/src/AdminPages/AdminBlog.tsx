@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { HiOutlineHeart } from 'react-icons/hi2'
 import { toast } from 'react-toastify'
 import AdminNavbar from '../AdminComponent/AdminNavbar'
@@ -39,8 +39,10 @@ const AdminBlog = () => {
   const [uploadFile, setUploadFile] = useState<File | null>(null)
   const [fileInputKey, setFileInputKey] = useState(0)
   const [objectUrl, setObjectUrl] = useState<string | null>(null)
+  const [hideExistingPreview, setHideExistingPreview] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<'title' | 'body' | 'dateLabel' | 'image', string>>>({})
   const [searchInput, setSearchInput] = useState('')
+  const fileRef = useRef<HTMLInputElement>(null)
 
   const loadBlogs = useCallback(async () => {
     if (!token) {
@@ -80,13 +82,15 @@ const AdminBlog = () => {
   )
 
   const previewSrc =
-    objectUrl ?? (editingBlog ? blogImageUrl(editingBlog.imagePath) : null)
+    objectUrl ??
+    (!hideExistingPreview && editingBlog ? blogImageUrl(editingBlog.imagePath) : null)
 
   const resetForm = () => {
     setForm(emptyForm)
     setEditingId(null)
     setUploadFile(null)
     setFileInputKey((k) => k + 1)
+    setHideExistingPreview(false)
     setFieldErrors({})
   }
 
@@ -102,6 +106,7 @@ const AdminBlog = () => {
       delete next.image
       return next
     })
+    setHideExistingPreview(false)
     setUploadFile(file)
   }
 
@@ -153,6 +158,7 @@ const AdminBlog = () => {
     })
     setUploadFile(null)
     setFileInputKey((k) => k + 1)
+    setHideExistingPreview(false)
     setFieldErrors({})
   }
 
@@ -270,16 +276,103 @@ const AdminBlog = () => {
               <div style={{ fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
                 Cover image (1){editingId != null ? ' — leave empty to keep current' : ''}
               </div>
-              <input
-                key={fileInputKey}
-                type="file"
-                accept="image/*"
-                onChange={onFileChange}
-                style={{ fontSize: '14px', color: '#475569' }}
-              />
-              {fieldErrors.image && <span style={{ ...errStyle, display: 'block', marginTop: '6px' }}>{fieldErrors.image}</span>}
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                style={{
+                  ...inputStyle,
+                  display: 'flex',
+                  alignItems: 'center',
+                  maxWidth: '320px',
+                  height: '40px',
+                  padding: '8px 12px',
+                  border: fieldErrors.image ? borderError : borderNormal,
+                  backgroundColor: '#ffffff',
+                  overflow: 'hidden',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  color: uploadFile ? '#475569' : '#94a3b8',
+                  fontWeight: 400,
+                }}
+              >
+                <input
+                  key={fileInputKey}
+                  ref={fileRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={onFileChange}
+                  style={{
+                    position: 'absolute',
+                    width: 1,
+                    height: 1,
+                    padding: 0,
+                    margin: -1,
+                    overflow: 'hidden',
+                    clip: 'rect(0, 0, 0, 0)',
+                    whiteSpace: 'nowrap',
+                    border: 0,
+                  }}
+                />
+                <span
+                  style={{
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    minWidth: 0,
+                  }}
+                  title={uploadFile?.name}
+                >
+                  {uploadFile ? uploadFile.name : 'Choose file'}
+                </span>
+              </button>
+              {fieldErrors.image && (
+                <span style={{ ...errStyle, display: 'block', marginTop: '6px' }}>{fieldErrors.image}</span>
+              )}
               {previewSrc && (
-                <div style={{ marginTop: '12px' }}>
+                <div
+                  style={{
+                    position: 'relative',
+                    marginTop: '12px',
+                    display: 'inline-block',
+                    maxWidth: '320px',
+                  }}
+                >
+                  <button
+                    type="button"
+                    aria-label="Remove image"
+                    onClick={() => {
+                      setUploadFile(null)
+                      setFileInputKey((k) => k + 1)
+                      setHideExistingPreview(true)
+                      setFieldErrors((prev) => {
+                        const n = { ...prev }
+                        delete n.image
+                        return n
+                      })
+                    }}
+                    style={{
+                      position: 'absolute',
+                      top: '8px',
+                      right: '8px',
+                      width: '24px',
+                      height: '24px',
+                      borderRadius: '999px',
+                      border: '1px solid #fecaca',
+                      backgroundColor: '#fee2e2',
+                      color: '#bd162c',
+                      fontSize: '16px',
+                      lineHeight: 1,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      boxShadow: '0 1px 2px rgba(15, 23, 42, 0.08)',
+                      padding: 0,
+                      zIndex: 1,
+                    }}
+                  >
+                    ×
+                  </button>
                   <img
                     src={previewSrc}
                     alt=""
@@ -290,6 +383,7 @@ const AdminBlog = () => {
                       objectFit: 'cover',
                       borderRadius: '10px',
                       border: '1px solid #e2e8f0',
+                      display: 'block',
                     }}
                   />
                 </div>

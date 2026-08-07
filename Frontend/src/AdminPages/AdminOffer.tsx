@@ -212,19 +212,60 @@ const AdminOffer = () => {
               <div style={{ flex: '0 1 320px', minWidth: 0 }}>
                 <label style={labelStyle}>
                   Poster
-                  <input
-                    key={fileInputKey}
-                    ref={fileRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={onPickFile}
-                    style={{ fontSize: '16px', color: '#475569', marginTop: '10px' }}
-                  />
+                  <button
+                    type="button"
+                    onClick={() => fileRef.current?.click()}
+                    style={{
+                      ...inputStyleCompact,
+                      display: 'flex',
+                      alignItems: 'center',
+                      width: '100%',
+                      maxWidth: 'none',
+                      border: fieldErrors.poster ? borderError : borderNormal,
+                      backgroundColor: '#ffffff',
+                      overflow: 'hidden',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      color: uploadFile ? '#475569' : '#94a3b8',
+                      fontWeight: 400,
+                    }}
+                  >
+                    <input
+                      key={fileInputKey}
+                      ref={fileRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={onPickFile}
+                      style={{
+                        position: 'absolute',
+                        width: 1,
+                        height: 1,
+                        padding: 0,
+                        margin: -1,
+                        overflow: 'hidden',
+                        clip: 'rect(0, 0, 0, 0)',
+                        whiteSpace: 'nowrap',
+                        border: 0,
+                      }}
+                    />
+                    <span
+                      style={{
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        minWidth: 0,
+                      }}
+                      title={uploadFile?.name}
+                    >
+                      {uploadFile ? uploadFile.name : 'Choose file'}
+                    </span>
+                  </button>
                   {fieldErrors.poster && <span style={errStyle}>{fieldErrors.poster}</span>}
                 </label>
                 {previewUrl && (
                   <div
                     style={{
+                      position: 'relative',
                       marginTop: '10px',
                       backgroundColor: '#f8fafc',
                       borderRadius: '8px',
@@ -236,6 +277,40 @@ const AdminOffer = () => {
                       maxWidth: '220px',
                     }}
                   >
+                    <button
+                      type="button"
+                      aria-label="Remove image"
+                      onClick={() => {
+                        setUploadFile(null)
+                        setFileInputKey((k) => k + 1)
+                        setFieldErrors((prev) => {
+                          const n = { ...prev }
+                          delete n.poster
+                          return n
+                        })
+                      }}
+                      style={{
+                        position: 'absolute',
+                        top: '6px',
+                        right: '6px',
+                        width: '24px',
+                        height: '24px',
+                        borderRadius: '999px',
+                        border: '1px solid #fecaca',
+                        backgroundColor: '#fee2e2',
+                        color: '#bd162c',
+                        fontSize: '16px',
+                        lineHeight: 1,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        boxShadow: '0 1px 2px rgba(15, 23, 42, 0.08)',
+                        padding: 0,
+                      }}
+                    >
+                      ×
+                    </button>
                     <img
                       src={previewUrl}
                       alt=""
