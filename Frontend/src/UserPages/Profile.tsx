@@ -25,7 +25,7 @@ const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
 const COVER_MAX_BYTES = 4 * 1024 * 1024;
 
 const Profile = () => {
-  const { user, loading, logout, token, refreshUser, replaceToken } = useAuth();
+  const { user, loading, token, refreshUser, replaceToken } = useAuth();
   const navigate = useNavigate();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -79,12 +79,6 @@ const Profile = () => {
   const handleNameChange = (newFirstName: string, newLastName: string) => {
     setFirstName(newFirstName);
     setLastName(newLastName);
-  };
-
-  const handleLogout = () => {
-    toast.error("You have been logged out.");
-    logout();
-    navigate("/login", { replace: true });
   };
 
   const handlePersist = async (patch: ProfileUpdatePayload) => {
@@ -177,7 +171,6 @@ const Profile = () => {
           onCoverFile={handleCoverFile}
           onCoverDelete={handleCoverDelete}
           coverBusy={coverBusy}
-          onLogout={handleLogout}
         />
         <Profileform
           profile={profileFields}

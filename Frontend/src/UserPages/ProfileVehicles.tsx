@@ -26,7 +26,7 @@ function splitFullName(fullName: string): { first: string; last: string } {
 }
 
 const ProfileVehicles = () => {
-  const { user, loading, token, refreshUser, logout } = useAuth()
+  const { user, loading, token, refreshUser } = useAuth()
   const navigate = useNavigate()
   const { vehicles, setVehicles, vehiclesLoading } = useProfileVehicles(
     token,
@@ -139,12 +139,6 @@ const ProfileVehicles = () => {
     }
   }
 
-  const handleLogout = () => {
-    toast.error('You have been logged out.')
-    logout()
-    navigate('/login', { replace: true })
-  }
-
   return (
     <div>
       <Header />
@@ -166,7 +160,6 @@ const ProfileVehicles = () => {
           onCoverFile={handleCoverFile}
           onCoverDelete={handleCoverDelete}
           coverBusy={coverBusy}
-          onLogout={handleLogout}
         />
         {vehiclesLoading ? (
           <p className="py-8 text-center text-gray-600">Loading your vehicles…</p>

@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import {
   HiOutlineCalendarDays,
   HiOutlineShoppingCart,
+  HiOutlineUserCircle,
 } from 'react-icons/hi2'
 import { FiLogOut, FiMenu, FiX } from 'react-icons/fi'
 import GMWlogo from '../assets/GMWlogo.png'
@@ -23,7 +24,9 @@ const Header = () => {
   const navigate = useNavigate()
   const location = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false)
   const [pendingBookingCount, setPendingBookingCount] = useState(0)
+  const profileMenuRef = useRef<HTMLDivElement>(null)
 
   useBodyScrollLock(menuOpen)
 
@@ -45,6 +48,10 @@ const Header = () => {
   }, [loadPendingBookings, location.pathname])
 
   useEffect(() => {
+    setProfileMenuOpen(false)
+  }, [location.pathname])
+
+  useEffect(() => {
     if (!menuOpen) return
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setMenuOpen(false)
@@ -52,6 +59,24 @@ const Header = () => {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [menuOpen])
+
+  useEffect(() => {
+    if (!profileMenuOpen) return
+    const onPointer = (e: MouseEvent) => {
+      if (!profileMenuRef.current?.contains(e.target as Node)) {
+        setProfileMenuOpen(false)
+      }
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setProfileMenuOpen(false)
+    }
+    window.addEventListener('mousedown', onPointer)
+    window.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('mousedown', onPointer)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [profileMenuOpen])
 
   const navLinks = [
     { to: '/', label: 'Home' },
@@ -82,6 +107,7 @@ const Header = () => {
 
   const handleLogout = () => {
     closeMenu()
+    setProfileMenuOpen(false)
     toast.error('You have been logged out.')
     logout()
     navigate('/login', { replace: true })
@@ -252,28 +278,57 @@ const Header = () => {
                       aria-hidden
                     />
                   ) : user ? (
-                    <NavLink
-                      to="/profile"
-                      className="flex-shrink-0 flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-full text-black hover:bg-gray-100 transition-colors overflow-hidden border border-gray-200 bg-gray-50"
-                      aria-label="Profile"
-                      title="Profile"
-                    >
-                      {avatarUrl ? (
-                        <img
-                          src={avatarUrl}
-                          alt=""
-                          className="w-full h-full object-cover"
-                          referrerPolicy="no-referrer"
-                        />
-                      ) : (
-                        <span
-                          className="text-base sm:text-lg font-bold text-primary select-none"
-                          aria-hidden
+                    <div ref={profileMenuRef} className="relative flex-shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setProfileMenuOpen((o) => !o)}
+                        className="flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-full text-black hover:bg-gray-100 transition-colors overflow-hidden border border-gray-200 bg-gray-50 cursor-pointer"
+                        aria-label="Account menu"
+                        aria-expanded={profileMenuOpen}
+                        aria-haspopup="menu"
+                      >
+                        {avatarUrl ? (
+                          <img
+                            src={avatarUrl}
+                            alt=""
+                            className="w-full h-full object-cover"
+                            referrerPolicy="no-referrer"
+                          />
+                        ) : (
+                          <span
+                            className="text-base sm:text-lg font-bold text-primary select-none"
+                            aria-hidden
+                          >
+                            {profileInitialFromName(user.name)}
+                          </span>
+                        )}
+                      </button>
+                      {profileMenuOpen ? (
+                        <div
+                          role="menu"
+                          className="absolute right-0 top-[calc(100%+8px)] z-50 min-w-[10.5rem] rounded-xl border border-gray-200 bg-white py-1 shadow-lg"
                         >
-                          {profileInitialFromName(user.name)}
-                        </span>
-                      )}
-                    </NavLink>
+                          <NavLink
+                            to="/profile"
+                            role="menuitem"
+                            onClick={() => setProfileMenuOpen(false)}
+                            className="flex items-center gap-2 px-3 py-2.5 text-sm font-medium text-gray-800 no-underline hover:bg-gray-50"
+                          >
+                            <HiOutlineUserCircle className="w-4 h-4 text-gray-500" aria-hidden />
+                            Profile
+                          </NavLink>
+                          <button
+                            type="button"
+                            role="menuitem"
+                            onClick={handleLogout}
+                            className="flex w-full items-center gap-2 px-3 py-2.5 text-sm font-medium text-gray-800 hover:bg-red-50 hover:text-primary cursor-pointer"
+                          >
+                            <FiLogOut size={16} className="text-gray-500" aria-hidden />
+                            Log out
+                          </button>
+                        </div>
+                      ) : null}
+                    </div>
                   ) : null}
                 </>
               )}

@@ -24,7 +24,7 @@ const AVATAR_MAX_BYTES = 2 * 1024 * 1024
 const COVER_MAX_BYTES = 4 * 1024 * 1024
 
 const ProfileSecurity = () => {
-  const { user, loading, token, refreshUser, logout } = useAuth()
+  const { user, loading, token, refreshUser } = useAuth()
   const navigate = useNavigate()
   const { avatarUrl, busy: avatarBusy, uploadAvatar, removeAvatar } = useProfileAvatar(
     user,
@@ -107,12 +107,6 @@ const ProfileSecurity = () => {
     }
   }
 
-  const handleLogout = () => {
-    toast.error('You have been logged out.')
-    logout()
-    navigate('/login', { replace: true })
-  }
-
   return (
     <div>
       <Header />
@@ -134,7 +128,6 @@ const ProfileSecurity = () => {
           onCoverFile={handleCoverFile}
           onCoverDelete={handleCoverDelete}
           coverBusy={coverBusy}
-          onLogout={handleLogout}
         />
         <Securityform />
       </div>
