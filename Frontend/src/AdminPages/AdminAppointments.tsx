@@ -413,7 +413,7 @@ const AdminAppointments = () => {
                           <StatusBadge status={a.status} />
                         </td>
                         <td style={{ ...tdStyle, verticalAlign: 'middle' }}>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
                             {a.status === 'pending' && (
                               <>
                                 <button
@@ -444,31 +444,33 @@ const AdminAppointments = () => {
                                 Mark completed
                               </button>
                             )}
-                            <button
-                              type="button"
-                              title={`Open messages for ${a.customerName}`}
-                              aria-label={`Open messages for ${a.customerName}`}
-                              style={btnMessage}
-                              onClick={() =>
-                                navigate('/adminmessages', {
-                                  state: {
-                                    appointmentId: a.id,
-                                    customerName: a.customerName,
-                                    customerEmail: a.customerEmail || undefined,
-                                    customerPhone: a.customerPhone || undefined,
-                                  },
-                                })
-                              }
-                            >
-                              Message
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setExpandedId(isOpen ? null : a.id)}
-                              style={btnGhost}
-                            >
-                              {isOpen ? 'Hide' : 'Details'}
-                            </button>
+                            <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'nowrap' }}>
+                              <button
+                                type="button"
+                                title={`Open messages for ${a.customerName}`}
+                                aria-label={`Open messages for ${a.customerName}`}
+                                style={btnMessage}
+                                onClick={() =>
+                                  navigate('/adminmessages', {
+                                    state: {
+                                      appointmentId: a.id,
+                                      customerName: a.customerName,
+                                      customerEmail: a.customerEmail || undefined,
+                                      customerPhone: a.customerPhone || undefined,
+                                    },
+                                  })
+                                }
+                              >
+                                Message
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setExpandedId(isOpen ? null : a.id)}
+                                style={btnGhost}
+                              >
+                                {isOpen ? 'Hide' : 'Details'}
+                              </button>
+                            </div>
                           </div>
                         </td>
                       </tr>

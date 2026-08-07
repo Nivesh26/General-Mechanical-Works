@@ -138,8 +138,11 @@ public class ServiceAppointmentService {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
 					"Choose a date within the next " + ServiceAvailabilityService.BOOKING_WINDOW_DAYS + " days");
 		}
-		serviceAvailabilityService.validateBookableSlot(appointmentDate, rawTimeSlot);
-		String timeSlot = rawTimeSlot.trim();
+		String timeSlot = WorkshopServiceCatalog.normalizeTimeSlot(rawTimeSlot);
+		if (timeSlot == null) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid time slot");
+		}
+		serviceAvailabilityService.validateBookableSlot(appointmentDate, timeSlot);
 		if (serviceAvailabilityService.isSlotBooked(appointmentDate, timeSlot)) {
 			throw new ResponseStatusException(HttpStatus.CONFLICT, "This time slot is already booked");
 		}

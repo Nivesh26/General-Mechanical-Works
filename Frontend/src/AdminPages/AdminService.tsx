@@ -10,9 +10,43 @@ import {
   upsertAdminServiceAvailability,
   type ServiceAvailabilityDay,
 } from '../lib/api'
-import { timeSlots } from '../UserComponent/serviceBookingShared'
 
 const BOOKING_WINDOW_DAYS = 5
+
+/** Convert HTML time / hour value to on-the-hour label like "1:00 AM", "4:00 PM". */
+function formatHourLabel(hhmm: string): string | null {
+  const match = /^(\d{1,2})(?::(\d{2}))?$/.exec(hhmm.trim())
+  if (!match) return null
+  let hour = Number(match[1])
+  const minute = match[2] != null ? Number(match[2]) : 0
+  if (!Number.isFinite(hour) || hour < 0 || hour > 23 || minute !== 0) {
+    return null
+  }
+  const suffix = hour >= 12 ? 'PM' : 'AM'
+  hour = hour % 12
+  if (hour === 0) hour = 12
+  return `${hour}:00 ${suffix}`
+}
+
+const HOUR_OPTIONS = Array.from({ length: 24 }, (_, hour) => {
+  const value = `${String(hour).padStart(2, '0')}:00`
+  const label = formatHourLabel(value)!
+  return { value, label }
+})
+
+function slotSortKey(label: string): number {
+  const m = /^(\d{1,2}):(\d{2})\s*(AM|PM)$/i.exec(label.trim())
+  if (!m) return 0
+  let h = Number(m[1])
+  const min = Number(m[2])
+  const ampm = m[3].toUpperCase()
+  if (ampm === 'AM') {
+    if (h === 12) h = 0
+  } else if (h !== 12) {
+    h += 12
+  }
+  return h * 60 + min
+}
 
 function dayNameFromDate(date: string): string {
   const parsed = new Date(`${date}T00:00:00`)
@@ -23,6 +57,7 @@ function dayNameFromDate(date: string): string {
 const AdminService = () => {
   const { token } = useAuth()
   const [date, setDate] = useState('')
+  const [timeInput, setTimeInput] = useState('')
   const [selectedSlots, setSelectedSlots] = useState<string[]>([])
   const [availability, setAvailability] = useState<ServiceAvailabilityDay[]>([])
   const [loading, setLoading] = useState(true)
@@ -46,6 +81,11 @@ const AdminService = () => {
     }
   }, [])
 
+  const sortedSlots = useMemo(
+    () => [...selectedSlots].sort((a, b) => slotSortKey(a) - slotSortKey(b)),
+    [selectedSlots],
+  )
+
   const loadAvailability = useCallback(async () => {
     if (!token) {
       setAvailability([])
@@ -68,8 +108,19 @@ const AdminService = () => {
     void loadAvailability()
   }, [loadAvailability])
 
-  const toggleSlot = (slot: string) => {
-    setSelectedSlots((prev) => (prev.includes(slot) ? prev.filter((s) => s !== slot) : [...prev, slot]))
+  const addTimeSlot = () => {
+    const label = formatHourLabel(timeInput)
+    if (!label) {
+      setError('Choose an hour first.')
+      return
+    }
+    setError('')
+    setSelectedSlots((prev) => (prev.includes(label) ? prev : [...prev, label]))
+    setTimeInput('')
+  }
+
+  const removeSlot = (slot: string) => {
+    setSelectedSlots((prev) => prev.filter((s) => s !== slot))
   }
 
   const addAvailability = async () => {
@@ -79,7 +130,7 @@ const AdminService = () => {
       return
     }
     if (selectedSlots.length === 0) {
-      setError('Please select at least one time slot.')
+      setError('Please add at least one time slot.')
       return
     }
 
@@ -88,13 +139,14 @@ const AdminService = () => {
     try {
       const saved = await upsertAdminServiceAvailability(token, {
         date,
-        slots: selectedSlots,
+        slots: [...selectedSlots].sort((a, b) => slotSortKey(a) - slotSortKey(b)),
       })
       setAvailability((prev) => {
         const next = prev.filter((row) => row.date !== saved.date)
         return [...next, saved].sort((a, b) => a.date.localeCompare(b.date))
       })
       setSelectedSlots([])
+      setTimeInput('')
       setEditingDate(null)
       toast.success(editingDate ? 'Availability updated.' : 'Availability added.')
     } catch (err) {
@@ -114,6 +166,7 @@ const AdminService = () => {
         setEditingDate(null)
         setDate('')
         setSelectedSlots([])
+        setTimeInput('')
       }
       toast.success('Availability removed.')
     } catch (err) {
@@ -124,6 +177,7 @@ const AdminService = () => {
   const startEdit = (row: ServiceAvailabilityDay) => {
     setDate(row.date)
     setSelectedSlots([...row.slots])
+    setTimeInput('')
     setEditingDate(row.date)
     setError('')
   }
@@ -162,30 +216,64 @@ const AdminService = () => {
             </div>
             <div>
               <span style={labelStyle}>Available time slots</span>
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                {timeSlots.map((slot) => {
-                  const active = selectedSlots.includes(slot)
-                  return (
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <select
+                  id="admin-service-time"
+                  value={timeInput}
+                  onChange={(e) => setTimeInput(e.target.value)}
+                  style={{ ...inputStyle, width: 'auto', minWidth: '160px' }}
+                  aria-label="Add hour"
+                >
+                  <option value="">Select hour…</option>
+                  {HOUR_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value} disabled={selectedSlots.includes(opt.label)}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={addTimeSlot}
+                  style={{
+                    border: '1px solid #bd162c',
+                    borderRadius: '8px',
+                    padding: '8px 14px',
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    color: '#ffffff',
+                    backgroundColor: '#bd162c',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Add time
+                </button>
+              </div>
+              {sortedSlots.length > 0 ? (
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '12px' }}>
+                  {sortedSlots.map((slot) => (
                     <button
                       key={slot}
                       type="button"
-                      onClick={() => toggleSlot(slot)}
+                      onClick={() => removeSlot(slot)}
+                      title="Remove this time"
                       style={{
-                        border: active ? '1px solid #bd162c' : '1px solid #d1d5db',
+                        border: '1px solid #bd162c',
                         borderRadius: '999px',
-                        padding: '8px 14px',
+                        padding: '8px 12px',
                         fontSize: '14px',
                         fontWeight: 600,
-                        color: active ? '#ffffff' : '#475569',
-                        backgroundColor: active ? '#bd162c' : '#f8fafc',
+                        color: '#ffffff',
+                        backgroundColor: '#bd162c',
                         cursor: 'pointer',
                       }}
                     >
-                      {slot}
+                      {slot} ×
                     </button>
-                  )
-                })}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <p style={{ margin: '12px 0 0', fontSize: '13px', color: '#94a3b8' }}>No times added yet.</p>
+              )}
             </div>
           </div>
 
