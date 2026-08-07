@@ -1334,9 +1334,9 @@ export type SaveAdminBillPayload = {
   issuedAt: string
   dueAt: string
   customerName: string
-  customerEmail?: string
-  customerPhone?: string
-  customerAddress?: string
+  customerEmail: string
+  customerPhone: string
+  customerAddress: string
   lines: AdminBillLine[]
   discountPercent: number
   paymentTerms: string

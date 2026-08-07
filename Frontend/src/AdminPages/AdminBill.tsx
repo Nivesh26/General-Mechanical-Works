@@ -115,16 +115,19 @@ function mapBillFromApi(b: AdminBillItem): Invoice {
 
 function mapBillToPayload(inv: Invoice): SaveAdminBillPayload {
   return {
-    invoiceNumber: inv.invoiceNumber,
+    invoiceNumber: inv.invoiceNumber.trim(),
     issuedAt: inv.issuedAt,
     dueAt: inv.dueAt,
-    customerName: inv.customerName.trim() || 'Customer',
-    customerEmail: inv.customerEmail.trim() || undefined,
-    customerPhone: inv.customerPhone.trim() || undefined,
-    customerAddress: inv.customerAddress.trim() || undefined,
-    lines: inv.lines,
+    customerName: inv.customerName.trim(),
+    customerEmail: inv.customerEmail.trim(),
+    customerPhone: inv.customerPhone.trim(),
+    customerAddress: inv.customerAddress.trim(),
+    lines: inv.lines.map((l) => ({
+      ...l,
+      description: l.description.trim(),
+    })),
     discountPercent: inv.discountPercent ?? 0,
-    paymentTerms: inv.paymentTerms,
+    paymentTerms: inv.paymentTerms.trim(),
   }
 }
 
@@ -136,6 +139,60 @@ const emptyLine = (): InvoiceLine => ({
 })
 
 const borderNormal = '1px solid #e2e8f0'
+const borderError = '1px solid #dc2626'
+const errText: CSSProperties = { fontSize: '12px', color: '#dc2626', fontWeight: 500, marginTop: '4px' }
+
+type BillFieldErrors = {
+  invoiceNumber?: string
+  issuedAt?: string
+  dueAt?: string
+  customerName?: string
+  customerEmail?: string
+  customerPhone?: string
+  customerAddress?: string
+  paymentTerms?: string
+  lines?: string
+  lineErrors?: Record<string, { description?: string; quantity?: string; unitPrice?: string }>
+}
+
+function validateInvoice(inv: Invoice): BillFieldErrors {
+  const errors: BillFieldErrors = {}
+  if (!inv.invoiceNumber.trim()) errors.invoiceNumber = 'Invoice number is required.'
+  if (!inv.issuedAt.trim()) errors.issuedAt = 'Issue date is required.'
+  if (!inv.dueAt.trim()) errors.dueAt = 'Due date is required.'
+  if (!inv.customerName.trim()) errors.customerName = 'Customer name is required.'
+  if (!inv.customerEmail.trim()) errors.customerEmail = 'Email is required.'
+  else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inv.customerEmail.trim())) {
+    errors.customerEmail = 'Enter a valid email address.'
+  }
+  if (!inv.customerPhone.trim()) errors.customerPhone = 'Phone is required.'
+  if (!inv.customerAddress.trim()) errors.customerAddress = 'Address is required.'
+  if (!inv.paymentTerms.trim()) errors.paymentTerms = 'Payment terms are required.'
+
+  if (!inv.lines.length) {
+    errors.lines = 'Add at least one line item.'
+  } else {
+    const lineErrors: NonNullable<BillFieldErrors['lineErrors']> = {}
+    for (const line of inv.lines) {
+      const le: { description?: string; quantity?: string; unitPrice?: string } = {}
+      if (!line.description.trim()) le.description = 'Description is required.'
+      if (!line.quantity || line.quantity < 1) le.quantity = 'Qty must be at least 1.'
+      if (!line.unitPrice || line.unitPrice <= 0) le.unitPrice = 'Rate is required.'
+      if (Object.keys(le).length > 0) lineErrors[line.id] = le
+    }
+    if (Object.keys(lineErrors).length > 0) {
+      errors.lineErrors = lineErrors
+      errors.lines = 'Complete every line item (description, qty, and rate).'
+    }
+  }
+  return errors
+}
+
+function hasBillErrors(errors: BillFieldErrors) {
+  const { lineErrors, ...rest } = errors
+  return Object.keys(rest).length > 0 || Boolean(lineErrors && Object.keys(lineErrors).length > 0)
+}
+
 const inputSm: CSSProperties = {
   width: '100%',
   padding: '8px 10px',
@@ -181,6 +238,7 @@ const AdminBill = () => {
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState<BillFieldErrors>({})
 
   const selected = invoices.find((i) => i.id === selectedId) ?? null
 
@@ -256,6 +314,7 @@ const AdminBill = () => {
           setInvoices((prev) => prev.map((i) => (i.id === updated.id ? mapBillFromApi(updated) : i)))
         }
         toast.success('Invoice saved.')
+        setFieldErrors({})
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'Could not save invoice.')
       } finally {
@@ -267,12 +326,30 @@ const AdminBill = () => {
 
   const handleSave = () => {
     if (!selected) return
+    const errors = validateInvoice(selected)
+    setFieldErrors(errors)
+    if (hasBillErrors(errors)) {
+      toast.error('Fill in all required fields.')
+      return
+    }
     void saveSelectedInvoice(selected)
   }
 
   const patchSelected = (patch: Partial<Invoice>) => {
     if (!selectedId) return
     setInvoices((prev) => prev.map((i) => (i.id === selectedId ? { ...i, ...patch } : i)))
+    setFieldErrors((prev) => {
+      const next = { ...prev }
+      if (patch.invoiceNumber !== undefined) delete next.invoiceNumber
+      if (patch.issuedAt !== undefined) delete next.issuedAt
+      if (patch.dueAt !== undefined) delete next.dueAt
+      if (patch.customerName !== undefined) delete next.customerName
+      if (patch.customerEmail !== undefined) delete next.customerEmail
+      if (patch.customerPhone !== undefined) delete next.customerPhone
+      if (patch.customerAddress !== undefined) delete next.customerAddress
+      if (patch.paymentTerms !== undefined) delete next.paymentTerms
+      return next
+    })
   }
 
   const patchLine = (lineId: string, patch: Partial<InvoiceLine>) => {
@@ -284,9 +361,27 @@ const AdminBill = () => {
           : {
               ...i,
               lines: i.lines.map((l) => (l.id === lineId ? { ...l, ...patch } : l)),
-            }
-      )
+            },
+      ),
     )
+    setFieldErrors((prev) => {
+      if (!prev.lineErrors?.[lineId] && !prev.lines) return prev
+      const next = { ...prev }
+      if (next.lineErrors?.[lineId]) {
+        const le = { ...next.lineErrors[lineId] }
+        for (const k of Object.keys(patch) as (keyof InvoiceLine)[]) {
+          if (k === 'description' || k === 'quantity' || k === 'unitPrice') delete le[k]
+        }
+        const lineErrors = { ...next.lineErrors }
+        if (Object.keys(le).length === 0) delete lineErrors[lineId]
+        else lineErrors[lineId] = le
+        if (Object.keys(lineErrors).length === 0) {
+          delete next.lineErrors
+          delete next.lines
+        } else next.lineErrors = lineErrors
+      }
+      return next
+    })
   }
 
   const addLine = () => {
@@ -327,6 +422,7 @@ const AdminBill = () => {
       }
       setInvoices((prev) => [draft, ...prev])
       setSelectedId(draft.id)
+      setFieldErrors({})
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Could not create invoice.')
     }
@@ -495,7 +591,10 @@ const AdminBill = () => {
                         >
                           <button
                             type="button"
-                            onClick={() => setSelectedId(inv.id)}
+                            onClick={() => {
+                              setSelectedId(inv.id)
+                              setFieldErrors({})
+                            }}
                             style={{
                               flex: 1,
                               minWidth: 0,
@@ -639,9 +738,18 @@ const AdminBill = () => {
                             type="text"
                             value={selected.invoiceNumber}
                             onChange={(e) => patchSelected({ invoiceNumber: e.target.value })}
-                            style={{ ...inputSm, maxWidth: '200px', marginLeft: 'auto', display: 'block' }}
+                            style={{
+                              ...inputSm,
+                              maxWidth: '200px',
+                              marginLeft: 'auto',
+                              display: 'block',
+                              border: fieldErrors.invoiceNumber ? borderError : inputSm.border,
+                            }}
                             aria-label="Invoice number"
                           />
+                          {fieldErrors.invoiceNumber ? (
+                            <div style={{ ...errText, textAlign: 'right' }}>{fieldErrors.invoiceNumber}</div>
+                          ) : null}
                         </div>
                       </div>
                     </header>
@@ -667,34 +775,62 @@ const AdminBill = () => {
                           BILL TO
                         </div>
                         <div className="admin-bill-no-print" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                          <input
-                            type="text"
-                            placeholder="Customer name"
-                            value={selected.customerName}
-                            onChange={(e) => patchSelected({ customerName: e.target.value })}
-                            style={inputSm}
-                          />
-                          <input
-                            type="email"
-                            placeholder="Email"
-                            value={selected.customerEmail}
-                            onChange={(e) => patchSelected({ customerEmail: e.target.value })}
-                            style={inputSm}
-                          />
-                          <input
-                            type="tel"
-                            placeholder="Phone"
-                            value={selected.customerPhone}
-                            onChange={(e) => patchSelected({ customerPhone: e.target.value })}
-                            style={inputSm}
-                          />
-                          <textarea
-                            placeholder="Address"
-                            value={selected.customerAddress}
-                            onChange={(e) => patchSelected({ customerAddress: e.target.value })}
-                            rows={3}
-                            style={{ ...inputSm, resize: 'vertical', fontFamily: 'inherit' }}
-                          />
+                          <div>
+                            <input
+                              type="text"
+                              placeholder="Customer name"
+                              value={selected.customerName}
+                              onChange={(e) => patchSelected({ customerName: e.target.value })}
+                              style={{
+                                ...inputSm,
+                                border: fieldErrors.customerName ? borderError : inputSm.border,
+                              }}
+                            />
+                            {fieldErrors.customerName ? <div style={errText}>{fieldErrors.customerName}</div> : null}
+                          </div>
+                          <div>
+                            <input
+                              type="email"
+                              placeholder="Email"
+                              value={selected.customerEmail}
+                              onChange={(e) => patchSelected({ customerEmail: e.target.value })}
+                              style={{
+                                ...inputSm,
+                                border: fieldErrors.customerEmail ? borderError : inputSm.border,
+                              }}
+                            />
+                            {fieldErrors.customerEmail ? <div style={errText}>{fieldErrors.customerEmail}</div> : null}
+                          </div>
+                          <div>
+                            <input
+                              type="tel"
+                              placeholder="Phone"
+                              value={selected.customerPhone}
+                              onChange={(e) => patchSelected({ customerPhone: e.target.value })}
+                              style={{
+                                ...inputSm,
+                                border: fieldErrors.customerPhone ? borderError : inputSm.border,
+                              }}
+                            />
+                            {fieldErrors.customerPhone ? <div style={errText}>{fieldErrors.customerPhone}</div> : null}
+                          </div>
+                          <div>
+                            <textarea
+                              placeholder="Address"
+                              value={selected.customerAddress}
+                              onChange={(e) => patchSelected({ customerAddress: e.target.value })}
+                              rows={3}
+                              style={{
+                                ...inputSm,
+                                resize: 'vertical',
+                                fontFamily: 'inherit',
+                                border: fieldErrors.customerAddress ? borderError : inputSm.border,
+                              }}
+                            />
+                            {fieldErrors.customerAddress ? (
+                              <div style={errText}>{fieldErrors.customerAddress}</div>
+                            ) : null}
+                          </div>
                         </div>
                         <div className="admin-bill-print-only" style={{ display: 'none', fontSize: '13px', lineHeight: 1.6, color: '#334155' }}>
                           <strong>{selected.customerName || '—'}</strong>
@@ -728,8 +864,12 @@ const AdminBill = () => {
                                     type="date"
                                     value={selected.issuedAt}
                                     onChange={(e) => patchSelected({ issuedAt: e.target.value })}
-                                    style={inputSm}
+                                    style={{
+                                      ...inputSm,
+                                      border: fieldErrors.issuedAt ? borderError : inputSm.border,
+                                    }}
                                   />
+                                  {fieldErrors.issuedAt ? <div style={errText}>{fieldErrors.issuedAt}</div> : null}
                                 </span>
                                 <span className="admin-bill-print-only admin-bill-print-only-inline" style={{ display: 'none' }}>
                                   {selected.issuedAt}
@@ -744,8 +884,12 @@ const AdminBill = () => {
                                     type="date"
                                     value={selected.dueAt}
                                     onChange={(e) => patchSelected({ dueAt: e.target.value })}
-                                    style={inputSm}
+                                    style={{
+                                      ...inputSm,
+                                      border: fieldErrors.dueAt ? borderError : inputSm.border,
+                                    }}
                                   />
+                                  {fieldErrors.dueAt ? <div style={errText}>{fieldErrors.dueAt}</div> : null}
                                 </span>
                                 <span className="admin-bill-print-only admin-bill-print-only-inline" style={{ display: 'none' }}>
                                   {selected.dueAt}
@@ -760,8 +904,14 @@ const AdminBill = () => {
                                     type="text"
                                     value={selected.paymentTerms}
                                     onChange={(e) => patchSelected({ paymentTerms: e.target.value })}
-                                    style={inputSm}
+                                    style={{
+                                      ...inputSm,
+                                      border: fieldErrors.paymentTerms ? borderError : inputSm.border,
+                                    }}
                                   />
+                                  {fieldErrors.paymentTerms ? (
+                                    <div style={errText}>{fieldErrors.paymentTerms}</div>
+                                  ) : null}
                                 </span>
                                 <span className="admin-bill-print-only admin-bill-print-only-inline" style={{ display: 'none' }}>
                                   {selected.paymentTerms}
@@ -792,7 +942,9 @@ const AdminBill = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {selected.lines.map((line) => (
+                        {selected.lines.map((line) => {
+                          const lineErr = fieldErrors.lineErrors?.[line.id]
+                          return (
                           <tr key={line.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                             <td style={{ padding: '10px', verticalAlign: 'top' }}>
                               <input
@@ -800,8 +952,13 @@ const AdminBill = () => {
                                 value={line.description}
                                 onChange={(e) => patchLine(line.id, { description: e.target.value })}
                                 placeholder="Line description"
-                                style={{ ...inputSm, border: '1px solid transparent', backgroundColor: '#fafafa' }}
+                                style={{
+                                  ...inputSm,
+                                  border: lineErr?.description ? borderError : '1px solid transparent',
+                                  backgroundColor: '#fafafa',
+                                }}
                               />
+                              {lineErr?.description ? <div style={errText}>{lineErr.description}</div> : null}
                             </td>
                             <td style={{ padding: '10px', verticalAlign: 'top' }}>
                               <input
@@ -812,8 +969,13 @@ const AdminBill = () => {
                                 onChange={(e) =>
                                   patchLine(line.id, { quantity: Math.max(0, parseInt(e.target.value, 10) || 0) })
                                 }
-                                style={{ ...inputSm, textAlign: 'right' }}
+                                style={{
+                                  ...inputSm,
+                                  textAlign: 'right',
+                                  border: lineErr?.quantity ? borderError : inputSm.border,
+                                }}
                               />
+                              {lineErr?.quantity ? <div style={errText}>{lineErr.quantity}</div> : null}
                             </td>
                             <td style={{ padding: '10px', verticalAlign: 'top' }}>
                               <input
@@ -824,8 +986,13 @@ const AdminBill = () => {
                                 onChange={(e) =>
                                   patchLine(line.id, { unitPrice: Math.max(0, parseFloat(e.target.value) || 0) })
                                 }
-                                style={{ ...inputSm, textAlign: 'right' }}
+                                style={{
+                                  ...inputSm,
+                                  textAlign: 'right',
+                                  border: lineErr?.unitPrice ? borderError : inputSm.border,
+                                }}
                               />
+                              {lineErr?.unitPrice ? <div style={errText}>{lineErr.unitPrice}</div> : null}
                             </td>
                             <td style={{ padding: '10px', textAlign: 'right', fontWeight: 600, verticalAlign: 'top' }}>
                               {formatRs(lineAmount(line))}
@@ -849,9 +1016,15 @@ const AdminBill = () => {
                               </button>
                             </td>
                           </tr>
-                        ))}
+                          )
+                        })}
                       </tbody>
                     </table>
+                    {fieldErrors.lines ? (
+                      <p className="admin-bill-no-print" style={{ ...errText, marginBottom: '12px' }}>
+                        {fieldErrors.lines}
+                      </p>
+                    ) : null}
 
                     <div className="admin-bill-no-print" style={{ marginBottom: '20px' }}>
                       <button type="button" style={btnGhost} onClick={addLine}>

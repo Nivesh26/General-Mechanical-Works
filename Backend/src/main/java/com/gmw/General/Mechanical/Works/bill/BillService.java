@@ -87,15 +87,15 @@ public class BillService {
 	private static void applyRequest(Bill bill, SaveBillRequest request, String invoiceNumber) {
 		List<BillLineDto> lines = normalizeLines(request.lines());
 		if (lines.isEmpty()) {
-			lines = List.of(new BillLineDto("line-1", "", 1, 0));
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Add at least one complete line item");
 		}
 		bill.setInvoiceNumber(invoiceNumber);
 		bill.setIssuedAt(request.issuedAt());
 		bill.setDueAt(request.dueAt());
-		bill.setCustomerName(StringUtils.hasText(request.customerName()) ? request.customerName().trim() : "Customer");
-		bill.setCustomerEmail(trimToNull(request.customerEmail()));
-		bill.setCustomerPhone(trimToNull(request.customerPhone()));
-		bill.setCustomerAddress(trimToNull(request.customerAddress()));
+		bill.setCustomerName(request.customerName().trim());
+		bill.setCustomerEmail(request.customerEmail().trim());
+		bill.setCustomerPhone(request.customerPhone().trim());
+		bill.setCustomerAddress(request.customerAddress().trim());
 		bill.setDiscountPercent(clampDiscount(request.discountPercent()));
 		bill.setPaymentTerms(request.paymentTerms().trim());
 		bill.setLinesJson(BillJson.writeLines(lines));
@@ -109,8 +109,8 @@ public class BillService {
 						Math.max(0, line.quantity()),
 						Math.max(0, line.unitPrice())))
 				.filter(line -> StringUtils.hasText(line.description())
-						|| line.quantity() > 0
-						|| line.unitPrice() > 0)
+						&& line.quantity() > 0
+						&& line.unitPrice() > 0)
 				.toList();
 	}
 
@@ -127,13 +127,6 @@ public class BillService {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invoice number is required");
 		}
 		return invoiceNumber.trim();
-	}
-
-	private static String trimToNull(String value) {
-		if (!StringUtils.hasText(value)) {
-			return null;
-		}
-		return value.trim();
 	}
 
 	static final class BillMapper {

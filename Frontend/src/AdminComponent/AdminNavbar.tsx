@@ -146,13 +146,18 @@ const AdminNavbar = () => {
               key={item.to}
               to={item.to}
               onClick={() => handleNavClick(item.badgeKey)}
-              className={({ isActive }) =>
-                `flex items-center gap-2.5 px-3 py-2.5 mb-1.5 rounded-lg text-sm font-medium no-underline transition-colors ${
-                  isActive
+              className={({ isActive }) => {
+                const usersSectionActive =
+                  item.to === '/adminusers' &&
+                  (location.pathname.startsWith('/adminusers') ||
+                    location.pathname.startsWith('/adminuserprofile'))
+                const active = isActive || usersSectionActive
+                return `flex items-center gap-2.5 px-3 py-2.5 mb-1.5 rounded-lg text-sm font-medium no-underline transition-colors ${
+                  active
                     ? 'bg-red-100 text-red-700'
                     : 'text-slate-600 hover:bg-slate-200/60'
                 }`
-              }
+              }}
             >
               <item.icon size={16} className="shrink-0" />
               <span className="flex-1 min-w-0">{item.label}</span>
