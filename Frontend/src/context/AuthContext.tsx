@@ -16,21 +16,40 @@ import {
   type UserProfile,
   type AuthResponse,
   type LoginPendingResponse,
+  type Role,
 } from '../lib/api'
 
-/** Tab/session scoped: cleared when the browser tab is closed (unlike localStorage). */
 const TOKEN_KEY = 'gmw_auth_token'
 
+/**
+ * USER → localStorage (survives new tabs / browser restart until logout).
+ * ADMIN → sessionStorage (this tab/window only; other browsers stay separate).
+ */
+function writeStoredToken(accessToken: string, role: Role) {
+  if (role === 'ADMIN') {
+    sessionStorage.setItem(TOKEN_KEY, accessToken)
+    localStorage.removeItem(TOKEN_KEY)
+  } else {
+    localStorage.setItem(TOKEN_KEY, accessToken)
+    sessionStorage.removeItem(TOKEN_KEY)
+  }
+}
+
 function readStoredToken(): string | null {
-	const fromSession = sessionStorage.getItem(TOKEN_KEY)
-	if (fromSession) return fromSession
-	const legacy = localStorage.getItem(TOKEN_KEY)
-	if (legacy) {
-		sessionStorage.setItem(TOKEN_KEY, legacy)
-		localStorage.removeItem(TOKEN_KEY)
-		return legacy
-	}
-	return null
+  // Prefer tab-scoped admin session for this window.
+  const fromSession = sessionStorage.getItem(TOKEN_KEY)
+  if (fromSession) return fromSession
+  return localStorage.getItem(TOKEN_KEY)
+}
+
+function clearStoredToken() {
+  localStorage.removeItem(TOKEN_KEY)
+  sessionStorage.removeItem(TOKEN_KEY)
+}
+
+/** Put token in the correct store for this role (fixes leftover admin tokens in localStorage). */
+function rehomeTokenForRole(accessToken: string, role: Role) {
+  writeStoredToken(accessToken, role)
 }
 
 type AuthContextValue = {
@@ -55,8 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState<boolean>(() => Boolean(readStoredToken()))
 
   const logout = useCallback(() => {
-    sessionStorage.removeItem(TOKEN_KEY)
-    localStorage.removeItem(TOKEN_KEY)
+    clearStoredToken()
     setToken(null)
     setUser(null)
     setLoading(false)
@@ -73,7 +91,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(true)
     authFetchProfile(token)
       .then((profile) => {
-        if (!cancelled) setUser(profile)
+        if (cancelled) return
+        rehomeTokenForRole(token, profile.role)
+        setUser(profile)
       })
       .catch(() => {
         if (!cancelled) logout()
@@ -87,9 +107,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [token, logout])
 
+  // Sync USER login/logout across tabs (localStorage only; admin stays tab-local).
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== TOKEN_KEY) return
+      // Ignore when this tab has an admin session — keep admin isolated.
+      if (sessionStorage.getItem(TOKEN_KEY)) return
+      const next = e.newValue
+      if (!next) {
+        setToken(null)
+        setUser(null)
+        setLoading(false)
+        return
+      }
+      setToken(next)
+    }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
+  }, [])
+
   const applySession = useCallback((auth: AuthResponse) => {
-    sessionStorage.setItem(TOKEN_KEY, auth.accessToken)
-    localStorage.removeItem(TOKEN_KEY)
+    writeStoredToken(auth.accessToken, auth.role)
     setToken(auth.accessToken)
   }, [])
 
@@ -126,14 +164,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const t = readStoredToken() ?? token
     if (!t) return
     const profile = await authFetchProfile(t)
+    rehomeTokenForRole(t, profile.role)
     setUser(profile)
   }, [token])
 
-  const replaceToken = useCallback((accessToken: string) => {
-    sessionStorage.setItem(TOKEN_KEY, accessToken)
-    localStorage.removeItem(TOKEN_KEY)
-    setToken(accessToken)
-  }, [])
+  const replaceToken = useCallback(
+    (accessToken: string) => {
+      const role = user?.role ?? 'USER'
+      writeStoredToken(accessToken, role)
+      setToken(accessToken)
+    },
+    [user?.role],
+  )
 
   const value = useMemo(
     () => ({

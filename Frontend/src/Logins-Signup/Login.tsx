@@ -251,7 +251,7 @@ const Userlogin = () => {
                     <div className="flex justify-end mt-1">
                       <Link
                         to="/forgetpassword"
-                        className="text-sm text-primary hover:underline"
+                        className="text-sm text-primary hover:underline cursor-pointer"
                       >
                         Forget Password?
                       </Link>
@@ -326,7 +326,7 @@ const Userlogin = () => {
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="w-full py-3 rounded-lg bg-primary text-white font-bold hover:opacity-90 transition-opacity disabled:opacity-60 disabled:cursor-not-allowed"
+                    className="w-full py-3 rounded-lg bg-primary text-white font-bold hover:opacity-90 transition-opacity cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     {submitting ? 'Verifying…' : 'Verify & sign in'}
                   </button>
@@ -337,7 +337,7 @@ const Userlogin = () => {
                     type="button"
                     onClick={handleResendCode}
                     disabled={resending || submitting}
-                    className="text-primary hover:underline disabled:opacity-60 disabled:cursor-not-allowed"
+                    className="text-primary hover:underline cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     {resending ? 'Sending…' : 'Resend code'}
                   </button>
@@ -345,7 +345,7 @@ const Userlogin = () => {
                     type="button"
                     onClick={handleBackToLogin}
                     disabled={submitting}
-                    className="text-gray-600 hover:underline disabled:opacity-60"
+                    className="text-gray-600 hover:underline cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     Back to login
                   </button>

@@ -236,7 +236,7 @@ const Forgetpassword = () => {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="w-full bg-primary text-white font-bold py-3 rounded-lg hover:opacity-90 transition-opacity disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="w-full bg-primary text-white font-bold py-3 rounded-lg hover:opacity-90 transition-opacity cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {submitting ? 'Sending…' : 'Send reset code'}
                 </button>
@@ -292,7 +292,7 @@ const Forgetpassword = () => {
 
                 <button
                   type="submit"
-                  className="w-full bg-primary text-white font-bold py-3 rounded-lg hover:opacity-90 transition-opacity"
+                  className="w-full bg-primary text-white font-bold py-3 rounded-lg hover:opacity-90 transition-opacity cursor-pointer"
                 >
                   Continue
                 </button>
@@ -303,7 +303,7 @@ const Forgetpassword = () => {
                   type="button"
                   onClick={handleResendCode}
                   disabled={resending || !verificationToken}
-                  className="text-primary hover:underline disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="text-primary hover:underline cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {resending ? 'Sending…' : 'Resend code'}
                 </button>
@@ -314,7 +314,7 @@ const Forgetpassword = () => {
                     setOtpDigits(emptyOtpDigits())
                     setErrors({})
                   }}
-                  className="text-gray-600 hover:underline"
+                  className="text-gray-600 hover:underline cursor-pointer"
                 >
                   Use a different email
                 </button>
@@ -409,7 +409,7 @@ const Forgetpassword = () => {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="w-full bg-primary text-white font-bold py-3 rounded-lg hover:opacity-90 transition-opacity disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="w-full bg-primary text-white font-bold py-3 rounded-lg hover:opacity-90 transition-opacity cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {submitting ? 'Updating…' : 'Reset password'}
                 </button>
@@ -422,7 +422,7 @@ const Forgetpassword = () => {
                     setStep('otp')
                     setErrors({})
                   }}
-                  className="text-sm text-gray-600 hover:underline"
+                  className="text-sm text-gray-600 hover:underline cursor-pointer"
                 >
                   Back to verification code
                 </button>
