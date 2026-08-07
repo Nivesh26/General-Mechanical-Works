@@ -14,7 +14,8 @@ import Forgetpassword from './Logins-Signup/Forgetpassword'
 import Productdetail from './UserPages/Productdetail'
 import Cart from './UserPages/Cart'
 import Ordertracking from './UserPages/Ordertracking'
-import Blogs from './UserPages/Blogsdetail'
+import Blogsdetail from './UserPages/Blogsdetail'
+import Blogs from './UserPages/Blogs'
 import './App.css'
 import AdminDashboard from './AdminPages/AdminDashboard'
 import AdminOrders from './AdminPages/AdminOrders'
@@ -98,7 +99,8 @@ function AnimatedRoutes() {
         <Route path="/cart" element={userPage(<Cart />)} />
         <Route path="/bookings" element={userPage(<BookingHistory />)} />
         <Route path="/ordertracking" element={userPage(<Ordertracking />)} />
-        <Route path="/blogs/:id" element={<Blogs />} />
+        <Route path="/blogs" element={<Blogs />} />
+        <Route path="/blogs/:id" element={<Blogsdetail />} />
         <Route path="/checkout" element={userPage(<Checkout />)} />
         <Route path="/payment/esewa/result" element={<EsewaPaymentResult />} />
         <Route path="/payment/khalti/result" element={<KhaltiPaymentResult />} />

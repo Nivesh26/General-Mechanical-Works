@@ -467,12 +467,25 @@ export type BlogPost = {
   likedByCurrentUser: boolean
 }
 
+/** Newest display date first; higher id wins ties / unparseable dates. */
+function sortBlogsNewestFirst<T extends { id: number; dateLabel: string }>(posts: T[]): T[] {
+  return [...posts].sort((a, b) => {
+    const tb = Date.parse(b.dateLabel.trim())
+    const ta = Date.parse(a.dateLabel.trim())
+    const nb = Number.isNaN(tb) ? 0 : tb
+    const na = Number.isNaN(ta) ? 0 : ta
+    if (nb !== na) return nb - na
+    return b.id - a.id
+  })
+}
+
 export async function fetchBlogs(): Promise<BlogSummary[]> {
   const res = await fetch(`${getApiBase()}/api/blogs`, {
     headers: { Accept: 'application/json' },
   })
   if (!res.ok) throw new Error(await parseErrorMessage(res))
-  return res.json() as Promise<BlogSummary[]>
+  const list = (await res.json()) as BlogSummary[]
+  return sortBlogsNewestFirst(list)
 }
 
 export async function fetchBlog(id: number, token?: string | null): Promise<BlogPost> {
@@ -506,7 +519,8 @@ export async function fetchAdminBlogs(token: string): Promise<BlogPost[]> {
     headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
   })
   if (!res.ok) throw new Error(await parseErrorMessage(res))
-  return res.json() as Promise<BlogPost[]>
+  const list = (await res.json()) as BlogPost[]
+  return sortBlogsNewestFirst(list)
 }
 
 export async function createAdminBlog(

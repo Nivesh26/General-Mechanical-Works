@@ -82,11 +82,11 @@ const Blogsdetail = () => {
         <div className="max-w-4xl mx-auto">
           <div className="mb-6">
             <Link
-              to="/"
+              to="/blogs"
               className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
             >
               <HiOutlineArrowLeft className="h-4 w-4 shrink-0" aria-hidden />
-              Back to home
+              Back to blog
             </Link>
           </div>
 

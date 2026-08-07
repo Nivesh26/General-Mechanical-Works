@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { HiOutlineArrowRight } from 'react-icons/hi2'
 import { fetchBlogs, type BlogSummary } from '../lib/api'
 import { blogImageUrl } from '../lib/blogs'
@@ -71,9 +71,18 @@ const Blog = () => {
 
   return (
     <section className="w-full py-12 sm:py-16 bg-white overflow-hidden">
-      <h2 className="text-center text-primary text-2xl sm:text-3xl font-sec font-bold tracking-[4px] uppercase mb-10 sm:mb-12">
-        Latest News / Blogs
-      </h2>
+      <div className="relative max-w-6xl mx-auto px-4 sm:px-8 mb-10 sm:mb-12">
+        <h2 className="text-center text-primary text-2xl sm:text-3xl font-sec font-bold tracking-[4px] uppercase">
+          Latest News / Blogs
+        </h2>
+        <Link
+          to="/blogs"
+          className="absolute right-4 sm:right-8 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 text-sm sm:text-base italic text-gray-600 hover:text-primary underline underline-offset-2 transition-colors cursor-pointer"
+        >
+          view all
+          <HiOutlineArrowRight className="w-4 h-4" aria-hidden />
+        </Link>
+      </div>
 
       <div className="relative max-w-6xl mx-auto px-4 sm:px-8">
         {loading ? (
@@ -128,7 +137,7 @@ const Blog = () => {
                 return (
                   <article
                     key={post.id}
-                    className="rounded-2xl overflow-hidden border border-gray-200 bg-white shadow-lg flex flex-col"
+                    className="rounded-2xl overflow-hidden border border-gray-200 bg-white shadow-lg flex flex-col cursor-pointer [&_*]:cursor-pointer"
                     role="button"
                     tabIndex={0}
                     onClick={() => openBlogDetail(post.id)}
