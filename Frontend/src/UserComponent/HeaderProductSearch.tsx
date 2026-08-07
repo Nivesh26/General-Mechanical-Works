@@ -2,13 +2,16 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType }
 import { useNavigate } from 'react-router-dom'
 import {
   HiOutlineBuildingStorefront,
+  HiOutlineDocumentText,
   HiOutlineMagnifyingGlass,
   HiOutlineTruck,
 } from 'react-icons/hi2'
-import { fetchProducts, type ProductItem } from '../lib/api'
+import { fetchBlogs, fetchProducts, type BlogSummary, type ProductItem } from '../lib/api'
+import { blogImageUrl } from '../lib/blogs'
 import { productImageUrl } from '../lib/products'
 
 const MAX_PRODUCT_RESULTS = 6
+const MAX_BLOG_RESULTS = 4
 
 type HeaderProductSearchProps = {
   className?: string
@@ -49,6 +52,8 @@ const SERVICE_ITEMS: ServiceSearchItem[] = [
 type SearchHit =
   | { kind: 'service'; item: ServiceSearchItem }
   | { kind: 'product'; item: ProductItem }
+  | { kind: 'blog'; item: BlogSummary }
+  | { kind: 'blogsPage' }
 
 function matchesProduct(product: ProductItem, needle: string): boolean {
   return (
@@ -64,6 +69,23 @@ function matchesService(service: ServiceSearchItem, needle: string): boolean {
   return service.keywords.some((k) => k.includes(needle) || needle.includes(k))
 }
 
+function matchesBlog(blog: BlogSummary, needle: string): boolean {
+  return (
+    blog.title.toLowerCase().includes(needle) ||
+    blog.description.toLowerCase().includes(needle) ||
+    blog.dateLabel.toLowerCase().includes(needle)
+  )
+}
+
+function matchesBlogsPage(needle: string): boolean {
+  return (
+    'blog'.includes(needle) ||
+    'blogs'.includes(needle) ||
+    needle.includes('blog') ||
+    needle.includes('news')
+  )
+}
+
 const formatPrice = (n: number) => `Rs. ${n.toLocaleString('en-IN')}`
 
 export default function HeaderProductSearch({
@@ -77,23 +99,41 @@ export default function HeaderProductSearch({
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
   const [products, setProducts] = useState<ProductItem[]>([])
-  const [loaded, setLoaded] = useState(false)
-  const [loading, setLoading] = useState(false)
+  const [blogs, setBlogs] = useState<BlogSummary[]>([])
+  const [productsLoaded, setProductsLoaded] = useState(false)
+  const [blogsLoaded, setBlogsLoaded] = useState(false)
+  const [loadingProducts, setLoadingProducts] = useState(false)
+  const [loadingBlogs, setLoadingBlogs] = useState(false)
 
-  const loadProducts = useCallback(async () => {
-    if (loaded || loading) return
-    setLoading(true)
-    try {
-      const list = await fetchProducts()
-      setProducts(list.filter((p) => p.active !== false))
-      setLoaded(true)
-    } catch {
-      setProducts([])
-      setLoaded(true)
-    } finally {
-      setLoading(false)
+  const loadCatalog = useCallback(async () => {
+    if (!productsLoaded && !loadingProducts) {
+      setLoadingProducts(true)
+      try {
+        const list = await fetchProducts()
+        setProducts(list.filter((p) => p.active !== false))
+        setProductsLoaded(true)
+      } catch {
+        setProducts([])
+        setProductsLoaded(true)
+      } finally {
+        setLoadingProducts(false)
+      }
     }
-  }, [loaded, loading])
+
+    if (!blogsLoaded && !loadingBlogs) {
+      setLoadingBlogs(true)
+      try {
+        const list = await fetchBlogs()
+        setBlogs(list)
+        setBlogsLoaded(true)
+      } catch {
+        setBlogs([])
+        setBlogsLoaded(true)
+      } finally {
+        setLoadingBlogs(false)
+      }
+    }
+  }, [productsLoaded, loadingProducts, blogsLoaded, loadingBlogs])
 
   const results = useMemo((): SearchHit[] => {
     const needle = query.trim().toLowerCase()
@@ -106,11 +146,18 @@ export default function HeaderProductSearch({
       .filter((p) => matchesProduct(p, needle))
       .slice(0, MAX_PRODUCT_RESULTS)
       .map((item) => ({ kind: 'product' as const, item }))
+    const blogHits: SearchHit[] = blogs
+      .filter((b) => matchesBlog(b, needle))
+      .slice(0, MAX_BLOG_RESULTS)
+      .map((item) => ({ kind: 'blog' as const, item }))
+    const blogsPage: SearchHit[] = matchesBlogsPage(needle) ? [{ kind: 'blogsPage' }] : []
 
-    return [...services, ...productHits]
-  }, [products, query])
+    return [...services, ...blogsPage, ...blogHits, ...productHits]
+  }, [products, blogs, query])
 
   const showDropdown = open && query.trim().length > 0
+  const stillLoading =
+    (loadingProducts && !productsLoaded) || (loadingBlogs && !blogsLoaded)
 
   useEffect(() => {
     if (!open) return
@@ -142,6 +189,14 @@ export default function HeaderProductSearch({
       finishNavigate(hit.item.to)
       return
     }
+    if (hit.kind === 'blogsPage') {
+      finishNavigate('/blogs')
+      return
+    }
+    if (hit.kind === 'blog') {
+      finishNavigate(`/blogs/${hit.item.id}`)
+      return
+    }
     finishNavigate(`/productdetail/${hit.item.id}`)
   }
 
@@ -164,7 +219,7 @@ export default function HeaderProductSearch({
           }}
           onFocus={() => {
             setOpen(true)
-            void loadProducts()
+            void loadCatalog()
           }}
           placeholder="Search..."
           className={
@@ -195,10 +250,10 @@ export default function HeaderProductSearch({
                 : 'left-0 right-0'
           }`}
         >
-          {loading && !loaded ? (
+          {stillLoading ? (
             <p className="px-3 py-3 text-sm text-gray-500">Searching…</p>
           ) : results.length === 0 ? (
-            <p className="px-3 py-3 text-sm text-gray-500">No products or services found.</p>
+            <p className="px-3 py-3 text-sm text-gray-500">No products, services, or blogs found.</p>
           ) : (
             <ul className="py-1">
               {results.map((hit) => {
@@ -219,6 +274,60 @@ export default function HeaderProductSearch({
                             {item.title}
                           </span>
                           <span className="block text-xs text-gray-500">{item.description}</span>
+                        </span>
+                      </button>
+                    </li>
+                  )
+                }
+
+                if (hit.kind === 'blogsPage') {
+                  return (
+                    <li key="blogs-page" role="option">
+                      <button
+                        type="button"
+                        onClick={() => goToHit(hit)}
+                        className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-gray-50 transition-colors cursor-pointer"
+                      >
+                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-gray-100 bg-primary/5">
+                          <HiOutlineDocumentText className="h-5 w-5 text-primary" />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-medium text-gray-900">
+                            All blogs
+                          </span>
+                          <span className="block text-xs text-gray-500">
+                            Browse latest news and articles
+                          </span>
+                        </span>
+                      </button>
+                    </li>
+                  )
+                }
+
+                if (hit.kind === 'blog') {
+                  const blog = hit.item
+                  const image = blogImageUrl(blog.imagePath)
+                  return (
+                    <li key={`blog-${blog.id}`} role="option">
+                      <button
+                        type="button"
+                        onClick={() => goToHit(hit)}
+                        className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-gray-50 transition-colors cursor-pointer"
+                      >
+                        <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-gray-100 bg-gray-50">
+                          {image ? (
+                            <img src={image} alt="" className="h-full w-full object-cover" />
+                          ) : (
+                            <HiOutlineDocumentText className="h-5 w-5 text-primary" />
+                          )}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-medium text-gray-900">
+                            {blog.title}
+                          </span>
+                          <span className="block text-xs text-gray-500">
+                            Blog{blog.dateLabel ? ` · ${blog.dateLabel}` : ''}
+                          </span>
                         </span>
                       </button>
                     </li>

@@ -80,12 +80,13 @@ const Blogs = () => {
         <div className="max-w-6xl mx-auto">
           <div className="mb-8 sm:mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div className="min-w-0">
-              <Link
-                to="/"
-                className="text-sm text-gray-500 hover:text-primary no-underline transition-colors"
-              >
-                ← Back to home
-              </Link>
+              <nav className="flex items-center gap-2 text-sm text-gray-500" aria-label="Breadcrumb">
+                <Link to="/" className="hover:text-primary transition-colors">
+                  Home
+                </Link>
+                <span aria-hidden>/</span>
+                <span className="text-gray-900 font-medium">Blogs</span>
+              </nav>
               <h1 className="mt-3 text-primary text-2xl sm:text-3xl font-sec font-bold tracking-[4px] uppercase">
                 All Blogs
               </h1>

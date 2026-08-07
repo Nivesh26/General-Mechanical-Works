@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'react-toastify'
-import { HiOutlineArrowLeft, HiOutlineHandThumbUp } from 'react-icons/hi2'
+import { HiOutlineHandThumbUp } from 'react-icons/hi2'
 import Header from '../UserComponent/Header'
 import Footer from '../UserComponent/Footer'
 import Copyright from '../UserComponent/Copyright'
@@ -80,15 +80,19 @@ const Blogsdetail = () => {
       <Header />
       <main className={`flex-1 ${PAGE_GUTTER} py-8 sm:py-10`}>
         <div className="max-w-4xl mx-auto">
-          <div className="mb-6">
-            <Link
-              to="/blogs"
-              className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
-            >
-              <HiOutlineArrowLeft className="h-4 w-4 shrink-0" aria-hidden />
-              Back to blog
+          <nav className="mb-6 flex items-center gap-2 text-sm text-gray-500" aria-label="Breadcrumb">
+            <Link to="/" className="hover:text-primary transition-colors">
+              Home
             </Link>
-          </div>
+            <span aria-hidden>/</span>
+            <Link to="/blogs" className="hover:text-primary transition-colors">
+              Blogs
+            </Link>
+            <span aria-hidden>/</span>
+            <span className="text-gray-900 font-medium line-clamp-1">
+              {post?.title ?? (loading ? 'Loading…' : 'Blog')}
+            </span>
+          </nav>
 
           {loading ? (
             <p className="text-gray-500">Loading article…</p>
